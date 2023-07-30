@@ -17,6 +17,7 @@ opt.undodir = os.getenv("HOME") .. "/.nvim/undodir"
 opt.undofile = true
 
 opt.ignorecase = true
+opt.smartcase = true
 opt.hlsearch = true
 opt.incsearch = true
 
@@ -35,7 +36,6 @@ opt.listchars:append("space:⋅")
 opt.listchars:append("eol:↴")
 opt.listchars:append("tab:▸ ")
 
--- Don't know how to set this via lua
-vim.cmd('let g:netrw_liststyle=3')
+vim.g.netrw_liststyle = 3
 
---opt.colorcolumn = "80"
+-- opt.colorcolumn = "80"
