@@ -31,6 +31,10 @@ opt.updatetime = 50
 
 opt.clipboard = ''
 
+-- This is for configuring the split behavior
+opt.splitbelow = true
+opt.splitright = true
+
 opt.list = true
 opt.listchars:append("space:⋅")
 opt.listchars:append("eol:↴")
