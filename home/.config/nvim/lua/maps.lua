@@ -17,7 +17,7 @@ vim.keymap.set('i', '<C-l>', '<Right>', { desc = 'Better horizontal navigation o
 
 -- Quick saving, faster than typing the commands
 vim.keymap.set('n', '<leader><leader>s', vim.cmd.write, { desc = 'Save' })
-vim.keymap.set('n', '<leader><leader>sa', function () vim.cmd('wa') end, { desc = 'Save all' })
+vim.keymap.set('n', '<leader><leader>a', function () vim.cmd('wa') end, { desc = 'Save all' })
 
 -- Toggle relative number if sharing screen so others don't get confusion
 vim.keymap.set('n', '<leader><leader>n', function()
