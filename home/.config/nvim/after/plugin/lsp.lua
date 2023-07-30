@@ -3,18 +3,17 @@ local lsp = require("lsp-zero").preset()
 lsp.on_attach(function(client, bufnr)
   lsp.default_keymaps({buffer = bufnr})
 
-  -- Maybe those aren't needed?
-  -- local getOpts = function (desc)
-  --   return {
-  --     buffer = bufnr,
-  --     remap = false,
-  --     desc = desc,
-  --   }
-  -- end
+  local getOpts = function (desc)
+    return {
+      buffer = bufnr,
+      remap = false,
+      desc = desc,
+    }
+  end
 
-  -- vim.keymap.set("n", "<leader>ca", function() vim.lsp.buf.code_action() end, getOpts('Code Actions'))
-  -- vim.keymap.set("n", "<leader>cr", function() vim.lsp.buf.rename() end, getOpts('Rename symbol'))
-  -- vim.keymap.set("i", "<C-k>", function() vim.lsp.buf.signature_help() end, getOpts('Signature Help'))
+  vim.keymap.set("n", "<leader>ca", function() vim.lsp.buf.code_action() end, getOpts('Code Actions'))
+  vim.keymap.set("n", "<leader>cr", function() vim.lsp.buf.rename() end, getOpts('Rename symbol'))
+  vim.keymap.set("i", "<C-k>", function() vim.lsp.buf.signature_help() end, getOpts('Signature Help'))
 end)
 
 require('lspconfig').lua_ls.setup(lsp.nvim_lua_ls())

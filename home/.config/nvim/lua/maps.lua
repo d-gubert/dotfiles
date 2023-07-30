@@ -1,3 +1,7 @@
+--
+-- Tip: only use double leader (e.g. <leader><leader>) for maps you won't be using often
+--
+
 vim.g.mapleader = ' '
 
 -- Open Netrw
@@ -16,8 +20,8 @@ vim.keymap.set('i', '<C-h>', '<Left>', { desc = 'Better horizontal navigation on
 vim.keymap.set('i', '<C-l>', '<Right>', { desc = 'Better horizontal navigation on insert mode' })
 
 -- Quick saving, faster than typing the commands
-vim.keymap.set('n', '<leader><leader>s', vim.cmd.write, { desc = 'Save' })
-vim.keymap.set('n', '<leader><leader>a', function () vim.cmd('wa') end, { desc = 'Save all' })
+vim.keymap.set('n', '<leader>ss', vim.cmd.write, { remap = false, desc = 'Save' })
+vim.keymap.set('n', '<leader>sa', function () vim.cmd('wa') end, { remap = false, desc = 'Save all' })
 
 -- Toggle relative number if sharing screen so others don't get confusion
 vim.keymap.set('n', '<leader><leader>n', function()
