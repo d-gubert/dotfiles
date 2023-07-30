@@ -14,6 +14,7 @@ return require("packer").startup(function(use)
 		requires = { { "nvim-lua/plenary.nvim" } },
 	})
 
+	-- REQUIRED! This allows for further refinement of search results
 	use({
 		"nvim-telescope/telescope-fzf-native.nvim",
 		run = "cmake -S. -Bbuild -DCMAKE_BUILD_TYPE=Release && cmake --build build --config Release && cmake --install build --prefix build",
@@ -86,6 +87,7 @@ return require("packer").startup(function(use)
 	use("tpope/vim-sleuth")
 	use("tpope/vim-surround")
 	use("tpope/vim-commentary")
+	use("lukas-reineke/indent-blankline.nvim")
 	use({
 		"windwp/nvim-autopairs",
 		config = function()
