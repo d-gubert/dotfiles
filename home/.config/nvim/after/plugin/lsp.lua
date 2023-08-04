@@ -11,9 +11,11 @@ lsp.on_attach(function(client, bufnr)
     }
   end
 
-  vim.keymap.set("n", "<leader>ca", function() vim.lsp.buf.code_action() end, getOpts('Code Actions'))
-  vim.keymap.set("n", "<leader>cr", function() vim.lsp.buf.rename() end, getOpts('Rename symbol'))
-  vim.keymap.set("i", "<C-k>", function() vim.lsp.buf.signature_help() end, getOpts('Signature Help'))
+  vim.keymap.set("n", "[d", vim.diagnostic.goto_prev, getOpts('Previous diagnostic'))
+  vim.keymap.set("n", "]d", vim.diagnostic.goto_next, getOpts('Next diagnostic'))
+  vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action, getOpts('Code Actions'))
+  vim.keymap.set("n", "<leader>cr", vim.lsp.buf.rename, getOpts('Rename symbol'))
+  vim.keymap.set("i", "<C-k>", vim.lsp.buf.signature_help, getOpts('Signature Help'))
 end)
 
 require('lspconfig').lua_ls.setup(lsp.nvim_lua_ls())
