@@ -11,6 +11,7 @@ lsp.on_attach(function(client, bufnr)
     }
   end
 
+  vim.keymap.set("n", "gd", vim.lsp.buf.definition, getOpts('Go to definition'))
   vim.keymap.set("n", "[d", vim.diagnostic.goto_prev, getOpts('Previous diagnostic'))
   vim.keymap.set("n", "]d", vim.diagnostic.goto_next, getOpts('Next diagnostic'))
   vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action, getOpts('Code Actions'))
