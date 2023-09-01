@@ -10,6 +10,7 @@ nls.setup({
     nls.builtins.formatting.stylua,
     nls.builtins.formatting.prettierd,
     nls.builtins.diagnostics.eslint_d,
+    -- nls.builtins.diagnostics.golangci_lint,
   }
 })
 
