@@ -20,14 +20,14 @@ vim.keymap.set('i', '<C-h>', '<Left>', { desc = 'Better horizontal navigation on
 vim.keymap.set('i', '<C-l>', '<Right>', { desc = 'Better horizontal navigation on insert mode' })
 
 -- Quick saving, faster than typing the commands
-vim.keymap.set('n', '<leader>ss', vim.cmd.write, { remap = false, desc = 'Save' })
-vim.keymap.set('n', '<leader>sa', function () vim.cmd('wa') end, { remap = false, desc = 'Save all' })
-vim.keymap.set('n', '<leader>sq', function () vim.cmd('wq') end, { remap = false, desc = 'Save and quit' })
+vim.keymap.set('n', '<leader>s', vim.cmd.write, { remap = false, desc = 'Save' })
+vim.keymap.set('n', '<leader>qs', function () vim.cmd [[wq]] end, { remap = false, desc = 'Save and quit' })
+vim.keymap.set('n', '<leader>qx', function () vim.cmd [[w!]] end, { remap = false, desc = 'Force quit' })
 
 -- Toggle relative number if sharing screen so others don't get confusion
 vim.keymap.set('n', '<leader><leader>n', function()
 	vim.opt.relativenumber = not vim.opt.relativenumber:get()
-end, { desc = 'Toggle relative number' })
+end, { desc = 'Toggle relative line number' })
 
 -- Easy copy/paste to clipboard
 vim.keymap.set({'n', 'v'}, '<A-y>', '"+y', { desc = 'Copy to clipboard' })
@@ -40,6 +40,9 @@ vim.keymap.set("v", "K", ":m '<-2<CR>gv=gv", { desc = 'Move highlighted lines up
 -- Move to search result and centralize viewport
 vim.keymap.set("n", "n", "nzzzv")
 vim.keymap.set("n", "N", "Nzzzv")
+
+-- Easy clear search highlights
+vim.keymap.set("n", "<ESC>", ":noh<CR>", { desc = 'Clear search highlights', silent = true })
 
 -- Page scroll and centralize
 vim.keymap.set("n", "<C-d>", "<C-d>zz", { desc = 'Page scroll and centralize' })

@@ -29,6 +29,9 @@ telescope.load_extension('workspaces')
 
 vim.keymap.set('n', '<leader>ld', builtin.lsp_document_symbols, { desc = 'Telescope: Document symbols' })
 vim.keymap.set('n', '<leader>lw', builtin.lsp_workspace_symbols, { desc = 'Telescope: Workspace symbols' })
+
+vim.keymap.set('n', '<leader>fg', builtin.git_files, { desc = 'Telescope: Git files' })
+vim.keymap.set('n', '<leader>fi', builtin.find_files, { desc = 'Telescope: Find files' })
 vim.keymap.set('n', '<leader>fb', builtin.buffers, { desc = 'Telescope: Buffers' })
 vim.keymap.set('n', '<leader>fo', function ()
 	-- Only show oldfiles from the current directory
@@ -41,6 +44,7 @@ vim.keymap.set('n', '<leader>f,', builtin.builtin, { desc = 'Telescope: Built-in
 
 -- Git management
 vim.keymap.set('n', '<leader>gs', builtin.git_status, { desc = 'Telescope: Git status' })
+vim.keymap.set('n', '<leader>gb', builtin.git_bcommits, { desc = 'Telescope: Git status' })
 
 vim.keymap.set('n', '<leader>fs', function()
 	builtin.grep_string({ search = vim.fn.input('Grep > ') })
