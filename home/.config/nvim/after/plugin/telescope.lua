@@ -27,6 +27,8 @@ telescope.setup({
 telescope.load_extension('fzf')
 telescope.load_extension('workspaces')
 
+vim.keymap.set('n', '<leader>fw', [[:Telescope workspaces<CR>]], { desc = 'Telescope: Workspaces plugin' })
+
 vim.keymap.set('n', '<leader>ld', builtin.lsp_document_symbols, { desc = 'Telescope: Document symbols' })
 vim.keymap.set('n', '<leader>lw', builtin.lsp_workspace_symbols, { desc = 'Telescope: Workspace symbols' })
 

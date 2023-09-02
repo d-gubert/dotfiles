@@ -110,13 +110,8 @@ return require("packer").startup(function(use)
 		end,
 	})
 
-	use({
-		"natecraddock/workspaces.nvim",
-		requires = "nvim-telescope/telescope.nvim",
-		config = function()
-			require("workspaces").setup()
-		end,
-	})
+	use("natecraddock/workspaces.nvim")
+	use("natecraddock/sessions.nvim")
 
 	-- Themes
 	use("folke/tokyonight.nvim")
