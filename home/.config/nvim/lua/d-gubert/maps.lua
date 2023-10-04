@@ -7,6 +7,9 @@ vim.g.mapleader = ' '
 -- Open Netrw
 vim.keymap.set('n', '<leader>e', vim.cmd.Ex, { desc = 'Open Netrw' })
 
+-- Tab navigation
+vim.keymap.set('n', '<Tab>', function () vim.cmd('tabnext') end, { desc = 'Cycle Tab' })
+
 -- Easy window handling (pressing ctrl is too much wrist displacement)
 vim.keymap.set('n', '<leader>w', '<C-w>', { desc = 'Window handling' })
 vim.keymap.set('n', '<A-w>', '<C-w>', { desc = 'Window handling' })
