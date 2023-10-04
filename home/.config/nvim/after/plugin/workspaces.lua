@@ -1,7 +1,14 @@
+local e, workspaces = pcall(require, 'workspaces')
+
+if not e then
+	return
+end
+
+local telescope = require('telescope')
 local telescopeBuiltinPickers = require('telescope.builtin')
 local sessions = require('sessions')
 
-require('workspaces').setup({
+workspaces.setup({
 	hooks = {
 		open_pre = function ()
 			sessions.stop_autosave({ save = true })
@@ -18,3 +25,5 @@ require('workspaces').setup({
 		end
 	}
 })
+
+telescope.load_extension('workspaces')

@@ -25,7 +25,6 @@ telescope.setup({
 })
 
 telescope.load_extension('fzf')
-telescope.load_extension('workspaces')
 
 vim.keymap.set('n', '<leader>fw', [[:Telescope workspaces<CR>]], { desc = 'Telescope: Workspaces plugin' })
 

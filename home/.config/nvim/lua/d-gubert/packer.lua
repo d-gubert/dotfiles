@@ -41,7 +41,7 @@ return require("packer").startup(function(use)
 	use("nvim-treesitter/playground")
 	use("nvim-treesitter/nvim-treesitter-textobjects") -- OMG
 	use("nvim-treesitter/nvim-treesitter-context") -- sweet
-	use("mbbill/undotree")
+	-- use("mbbill/undotree")
 
 	-- Movement goodness
 	use({
@@ -110,7 +110,7 @@ return require("packer").startup(function(use)
 		end,
 	})
 
-	use("natecraddock/workspaces.nvim")
+	-- use("natecraddock/workspaces.nvim")
 	use("natecraddock/sessions.nvim")
 
 	-- Themes
