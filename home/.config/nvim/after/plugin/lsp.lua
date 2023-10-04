@@ -1,4 +1,12 @@
-local lsp = require("lsp-zero").preset()
+local lsp = require("lsp-zero").preset({})
+local nvim_lsp = require("lspconfig")
+
+lsp.ensure_installed({
+	'tsserver',
+	'denols',
+	'gopls',
+	'lua_ls',
+})
 
 lsp.on_attach(function(client, bufnr)
 	lsp.default_keymaps({ buffer = bufnr })
@@ -21,7 +29,16 @@ lsp.on_attach(function(client, bufnr)
 	vim.keymap.set("i", "<C-k>", vim.lsp.buf.signature_help, getOpts("Signature Help"))
 end)
 
-require("lspconfig").lua_ls.setup(lsp.nvim_lua_ls())
+nvim_lsp.lua_ls.setup(lsp.nvim_lua_ls())
+
+nvim_lsp.denols.setup({
+	root_dir = nvim_lsp.util.root_pattern("deno.json", "deno.jsonc"),
+})
+
+nvim_lsp.tsserver.setup({
+	root_dir = nvim_lsp.util.root_pattern("package.json"),
+	single_file_support = false,
+})
 
 lsp.setup()
 
