@@ -76,12 +76,3 @@ vim.keymap.set("t", "jk", "<C-\\><C-n>", { desc = 'Terminal: Quick escape' })
 vim.keymap.set("t", "kj", "<C-\\><C-n>", { desc = 'Terminal: Quick escape' })
 vim.keymap.set("t", "<ESC>", "<C-\\><C-n>", { desc = 'Terminal: Escape' })
 
--- Disable eslint diagnostics
-function DisableEslintDiagnostics()
-	for id, namespace in pairs(vim.diagnostic.get_namespaces()) do
-		-- for some reason this is the name of the `eslint` namespace
-		if namespace.name == 'NULL_LS_SOURCE_3' then
-			vim.diagnostic.disable(nil, id)
-		end
-	end
-end
