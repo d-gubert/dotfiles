@@ -12,11 +12,6 @@
 set $mod Mod1
 set $super Mod4
 
-# Common applications
-bindsym $super+1 exec brave-browser
-bindsym $super+2 exec spotify
-bindsym $super+3 exec /opt/Rocket.Chat/rocketchat-desktop %U
-
 # colors
 set $bg-color #2f343f
 set $inactive-bg-color #2f343f
@@ -50,6 +45,9 @@ bindsym $super+l exec --no-startup-id loginctl lock-session
 # NetworkManager is the most popular way to manage wireless networks on Linux,
 # and nm-applet is a desktop environment-independent system tray GUI for it.
 exec --no-startup-id nm-applet
+
+# Configure display
+exec_always --no-startup-id ~/.config/i3/scripts/home-screen-setup.sh
 
 # Media player controls
 bindsym XF86AudioPlay exec "playerctl -p spotify,brave play-pause"
@@ -86,7 +84,7 @@ bindsym $mod+Shift+q kill
 # bindsym $mod+d exec "rofi -modi drun,run -show drun"
 #f There also is i3-dmenu-desktop which only displays applications shipping a
 # .desktop file. It is a wrapper around dmenu, so you need that installed.
-bindsym $mod+d exec --no-startup-id i3-dmenu-desktop
+bindsym $mod+e exec --no-startup-id i3-dmenu-desktop
 
 # change focus
 bindsym $mod+h focus left
@@ -95,10 +93,10 @@ bindsym $mod+k focus up
 bindsym $mod+l focus right
 
 # alternatively, you can use the cursor keys:
-bindsym $mod+Left focus left
-bindsym $mod+Down focus down
-bindsym $mod+Up focus up
-bindsym $mod+Right focus right
+# bindsym $mod+Left focus left
+# bindsym $mod+Down focus down
+# bindsym $mod+Up focus up
+# bindsym $mod+Right focus right
 
 # move focused window
 bindsym $mod+Shift+h move left
@@ -107,10 +105,10 @@ bindsym $mod+Shift+k move up
 bindsym $mod+Shift+l move right
 
 # alternatively, you can use the cursor keys:
-bindsym $mod+Shift+Left move left
-bindsym $mod+Shift+Down move down
-bindsym $mod+Shift+Up move up
-bindsym $mod+Shift+Right move right
+# bindsym $mod+Shift+Left move left
+# bindsym $mod+Shift+Down move down
+# bindsym $mod+Shift+Up move up
+# bindsym $mod+Shift+Right move right
 
 # split in horizontal orientation
 bindsym $mod+s split h
@@ -123,8 +121,8 @@ bindsym $mod+f fullscreen toggle
 
 # change container layout (stacked, tabbed, toggle split)
 # bindsym $mod+s layout stacking
-bindsym $mod+w layout tabbed
-bindsym $mod+e layout toggle split
+# bindsym $mod+w layout tabbed
+# bindsym $mod+e layout toggle split
 
 # toggle tiling / floating
 bindsym $mod+Shift+space floating toggle
@@ -147,12 +145,22 @@ set $ws4 "4"
 set $ws5 "5"
 set $ws6 "6"
 set $ws7 "7"
-set $ws8 "8"
-set $ws9 "9"
+set $ws8 "8: Meet"
+set $ws9 "9: Chat"
 set $ws10 "10: Music"
 
-assign [class="Spotify"] output nonprimary
-assign [class="Rocket.Chat"] output nonprimary
+workspace $ws1 output primary
+workspace $ws10 output nonprimary
+workspace $ws8 output nonprimary
+workspace $ws9 output nonprimary
+
+assign [class="Rocket.Chat"] $ws9
+assign [class="Spotify"] $ws10
+
+# Common applications
+bindsym $super+1 exec brave-browser
+bindsym $super+2 exec spotify
+bindsym $super+e exec /opt/Rocket.Chat/rocketchat-desktop %U
 
 # switch to workspace
 bindsym $mod+1 workspace number $ws1
@@ -214,9 +222,6 @@ mode "resize" {
 }
 
 bindsym $mod+r mode "resize"
-
-# Configure display
-exec_always --no-startup-id ~/.config/i3/scripts/home-screen-setup.sh
 
 # Keyboard languages
 exec_always --no-startup-id "setxkbmap -model pc105 -layout us\(intl\),br -option 'grp:win_space_toggle'"
