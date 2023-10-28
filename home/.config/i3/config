@@ -216,7 +216,7 @@ mode "resize" {
 bindsym $mod+r mode "resize"
 
 # Configure display
-exec_always --no-startup-id ~/.screenlayout/foo.sh
+exec_always --no-startup-id ~/.config/i3/scripts/home-screen-setup.sh
 
 # Keyboard languages
 exec_always --no-startup-id "setxkbmap -model pc105 -layout us\(intl\),br -option 'grp:win_space_toggle'"
