@@ -1,0 +1,74 @@
+general {
+        colors = true
+        interval = 5
+}
+
+#order += "ipv6" # leaving here but I share screen too much to keep enabled and be giving away non-linklocal ipv6
+order += "wireless _first_"
+#order += "ethernet _first_"
+order += "battery all"
+#order += "disk /"
+order += "load"
+order += "memory"
+order += "cpu_usage"
+order += "cpu_temperature 0"
+#order += "disk /"
+order += "volume master"
+order += "tztime local"
+
+wireless _first_ {
+        format_up = "W: (%quality at %essid )"
+        format_down = "W: down"
+}
+
+ethernet _first_ {
+        format_up = "E: %ip (%speed)"
+        format_down = "E: down"
+}
+
+battery all {
+        format = "%status %percentage %remaining"
+        last_full_capacity = true
+        integer_battery_capacity = true
+        format_down = "No battery"
+        status_chr = "⚡ CHR"
+        status_bat = "🔋 BAT"
+        status_unk = "? UNK"
+        status_full = "☻ FULL"
+}
+
+disk "/" {
+        format = "%avail"
+}
+
+load {
+        format = "%1min"
+}
+
+memory {
+        format = "%used (%percentage_used) / %total"
+        threshold_degraded = "1G"
+        format_degraded = "MEMORY < %available"
+}
+
+cpu_usage {
+  format = "CPU: %usage"
+  separator = false
+}
+
+cpu_temperature 0 {
+    format = "%degrees °C"
+}
+
+disk "/" {
+  format = "/: %percentage_used"
+}
+
+tztime local {
+        format = "%Y-%m-%d %H:%M:%S"
+}
+
+volume master {
+        format = "♪: %volume"
+        format_muted = "♪: muted (%volume)"
+}
