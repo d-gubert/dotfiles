@@ -47,7 +47,7 @@ bindsym $super+l exec --no-startup-id loginctl lock-session
 exec --no-startup-id nm-applet
 
 # Configure display
-exec_always --no-startup-id ~/.config/i3/scripts/home-screen-setup.sh
+exec_always --no-startup-id ~/.config/i3/scripts/hor-home-screen-setup.sh
 
 # Media player controls
 bindsym XF86AudioPlay exec "playerctl -p spotify,brave play-pause"
