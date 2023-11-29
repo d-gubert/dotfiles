@@ -9,3 +9,17 @@ vim.api.nvim_create_user_command('DisableEslintDiagnostics', function()
 	end
 end, {})
 
+vim.api.nvim_create_user_command('DisableTSServer', function()
+	for _, client in pairs(vim.lsp.get_active_clients()) do
+		-- for some reason this is the name of the `tsserver` namespace
+		if client.config.name == 'tsserver' then
+			vim.lsp.stop_client(client.id)
+		end
+	end
+end, {})
+
+-- Project specific command
+vim.api.nvim_create_user_command('DenoRuntimeDisable', function()
+	vim.cmd.DisableTSServer()
+	vim.cmd.DisableEslintDiagnostics()
+end, {})
