@@ -225,6 +225,10 @@ bindsym $mod+r mode "resize"
 
 # Keyboard languages
 exec_always --no-startup-id "setxkbmap -model pc105 -layout us\(intl\),br -option 'grp:win_space_toggle'"
+exec_always --no-startup-id "xmodmap ~/.Xmodmap"
+
+# Swap CTRL and CAPS LOCK
+bindsym $super+k exec --no-startup-id "xmodmap ~/.Xmodmap"
 
 bindsym Print exec ~/.config/i3/scripts/printscreen.sh
 
