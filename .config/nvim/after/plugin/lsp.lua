@@ -6,7 +6,7 @@ lsp.ensure_installed({
 	'denols',
 	'gopls',
 	'lua_ls',
-	'rust-analyzer',
+	'rust_analyzer',
 })
 
 lsp.on_attach(function(client, bufnr)
