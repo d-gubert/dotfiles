@@ -29,7 +29,7 @@ telescope.load_extension('fzf')
 vim.keymap.set('n', '<leader>fw', [[:Telescope workspaces<CR>]], { desc = 'Telescope: Workspaces plugin' })
 
 vim.keymap.set('n', '<leader>ld', builtin.lsp_document_symbols, { desc = 'Telescope: Document symbols' })
-vim.keymap.set('n', '<leader>lw', builtin.lsp_workspace_symbols, { desc = 'Telescope: Workspace symbols' })
+vim.keymap.set('n', '<leader>lw', builtin.lsp_dynamic_workspace_symbols, { desc = 'Telescope: Workspace symbols' })
 
 vim.keymap.set('n', '<leader>fg', builtin.git_files, { desc = 'Telescope: Git files' })
 vim.keymap.set('n', '<leader>fi', builtin.find_files, { desc = 'Telescope: Find files' })
