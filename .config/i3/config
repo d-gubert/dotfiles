@@ -46,8 +46,8 @@ bindsym $super+l exec --no-startup-id loginctl lock-session
 # and nm-applet is a desktop environment-independent system tray GUI for it.
 exec --no-startup-id nm-applet
 
-# Configure display
-exec_always --no-startup-id ~/.config/i3/scripts/single-monitor-setup.sh
+# Configure display - Do I need this now that I have the mode selector below?
+# exec_always --no-startup-id ~/.config/i3/scripts/single-monitor-setup.sh
 
 # Media player controls
 bindsym XF86AudioPlay exec "playerctl -p spotify,brave play-pause"
@@ -243,12 +243,13 @@ mode "resize" {
 
 bindsym $mod+r mode "resize"
 
-set $mode_screen_select "Select monitor setup: (1) Single, (2) Multi-horizontal, (3) Multi-vertical"
+set $mode_screen_select "Select monitor setup: (1) Single External, (2) Single Laptop, (3) Multi-horizontal, (4) Multi-vertical"
 
 mode $mode_screen_select {
-        bindsym 1 exec --no-startup-id ~/.config/i3/scripts/single-monitor-setup.sh, mode "default"
-        bindsym 2 exec --no-startup-id ~/.config/i3/scripts/hor-home-screen-setup.sh, mode "default"
-        bindsym 3 exec --no-startup-id ~/.config/i3/scripts/ver-home-screen-setup.sh, mode "default"
+        bindsym 1 exec --no-startup-id ~/.config/i3/scripts/single-monitor-external.sh, mode "default"
+        bindsym 2 exec --no-startup-id ~/.config/i3/scripts/single-monitor-laptop.sh, mode "default"
+        bindsym 3 exec --no-startup-id ~/.config/i3/scripts/hor-home-screen-setup.sh, mode "default"
+        bindsym 4 exec --no-startup-id ~/.config/i3/scripts/ver-home-screen-setup.sh, mode "default"
 
         bindsym Return mode "default"
         bindsym Escape mode "default"
