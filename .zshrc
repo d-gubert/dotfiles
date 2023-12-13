@@ -77,7 +77,7 @@ ZSH_THEME="powerlevel10k/powerlevel10k"
 # Custom plugins may be added to $ZSH_CUSTOM/plugins/
 # Example format: plugins=(rails git textmate ruby lighthouse)
 # Add wisely, as too many plugins slow down shell startup.
-plugins=(git docker npm zsh-syntax-highlighting zsh-autosuggestions)
+plugins=(git docker npm zsh-syntax-highlighting zsh-autosuggestions z)
 
 # Don't load vim mode if running from Neovim terminal
 if [[ ! -n $NVIM ]]; then
@@ -130,3 +130,37 @@ eval "$(pyenv init -)"
 export DENO_INSTALL="/home/douglas/.deno"
 export PATH="$DENO_INSTALL/bin:$PATH"
 
+# Golang
+
+export PATH="$PATH:/usr/local/go/bin"
+export GOPATH="$HOME/dev/go"
+
+# The plugin will auto execute this zvm_after_init function
+function zvm_after_init() {
+  [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+}
+
+# >>> conda initialize >>>
+# !! Contents within this block are managed by 'conda init' !!
+__conda_setup="$('/home/douglas/miniconda3/bin/conda' 'shell.zsh' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "/home/douglas/miniconda3/etc/profile.d/conda.sh" ]; then
+        . "/home/douglas/miniconda3/etc/profile.d/conda.sh"
+    else
+        export PATH="/home/douglas/miniconda3/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+# <<< conda initialize <<<
+
+# Helm suggestions
+[ -f /home/linuxbrew/.linuxbrew/bin/helm ] && source <(helm completion zsh)
+
+# Kubectl suggestions
+[ -f /usr/local/bin/kubectl ] && source <(kubectl completion zsh)
+alias k=kubectl
+
+# Github CLI tool completion
+[ -f /usr/bin/gh ] && source <(gh completion -s zsh)
