@@ -26,25 +26,29 @@ telescope.setup({
 
 telescope.load_extension('fzf')
 
-vim.keymap.set('n', '<leader>fw', [[:Telescope workspaces<CR>]], { desc = 'Telescope: Workspaces plugin' })
-
 vim.keymap.set('n', '<leader>ls', builtin.lsp_document_symbols, { desc = 'Telescope: Document symbols' })
 vim.keymap.set('n', '<leader>ld', builtin.diagnostics, { desc = 'Telescope: Diagnostics' })
 vim.keymap.set('n', '<leader>lw', builtin.lsp_dynamic_workspace_symbols, { desc = 'Telescope: Workspace symbols' })
+vim.keymap.set('n', '<leader>lz', builtin.current_buffer_fuzzy_find, { desc = 'Telescope: Current Buffer Fuzzy Find' })
+vim.keymap.set('n', '<leader>lt', builtin.treesitter, { desc = 'Telescope: Treesitter' })
 
-vim.keymap.set('n', '<leader>fg', builtin.git_files, { desc = 'Telescope: Git files' })
 vim.keymap.set('n', '<leader>fi', builtin.find_files, { desc = 'Telescope: Find files' })
 vim.keymap.set('n', '<leader>fb', builtin.buffers, { desc = 'Telescope: Buffers' })
+vim.keymap.set('n', '<leader>fm', builtin.marks, { desc = 'Telescope: Marks' })
+vim.keymap.set('n', '<leader>fr', builtin.registers, { desc = 'Telescope: Registers' })
+vim.keymap.set('n', '<leader>fk', builtin.keymaps, { desc = 'Telescope: Keymaps' })
+vim.keymap.set('n', '<leader>fj', builtin.jumplist, { desc = 'Telescope: Jump list' })
+vim.keymap.set('n', '<leader>fq', builtin.quickfix, { desc = 'Telescope: Quick fix list' })
 vim.keymap.set('n', '<leader>fo', function ()
 	-- Only show oldfiles from the current directory
 	builtin.oldfiles({ cwd_only = true })
 end, { desc = 'Telescope: Oldfiles' })
-vim.keymap.set('n', '<leader>fm', builtin.marks, { desc = 'Telescope: Marks' })
 
 -- List all available pickers
-vim.keymap.set('n', '<leader>f,', builtin.builtin, { desc = 'Telescope: Built-in Pickers' })
+vim.keymap.set('n', '<leader>f', builtin.builtin, { desc = 'Telescope: Built-in Pickers' })
 
 -- Git management
+vim.keymap.set('n', '<leader>gf', builtin.git_files, { desc = 'Telescope: Git files' })
 vim.keymap.set('n', '<leader>gs', builtin.git_status, { desc = 'Telescope: Git status' })
 vim.keymap.set('n', '<leader>gb', builtin.git_bcommits, { desc = 'Telescope: Git commits' })
 
