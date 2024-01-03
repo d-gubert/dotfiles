@@ -4,8 +4,6 @@ remove Control = Control_L
 keysym Caps_Lock = Control_L
 keysym Control_L = Caps_Lock
 
-keycode 0x1A =	e	E	e	E	Escape	degree	degree	degree
-keycode 0x1B =	r	R	r	R	Return	registered	registered	registered
 keycode 0x29 =	f	F	f	F	Delete	ordfeminine	dstroke	Dstroke
 keycode 0x28 =	d	D	d	D	BackSpace	ETH	eth	ETH
 
