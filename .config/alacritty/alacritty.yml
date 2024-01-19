@@ -170,7 +170,7 @@ font:
     #style: Bold Italic
 
   # Point size
-  size: 8
+  size: 7
 
   # Offset is the extra space around each character. `offset.y` can be thought
   # of as modifying the line spacing, and `offset.x` as modifying the letter
@@ -768,7 +768,7 @@ font:
 #
 # If the same trigger is assigned to multiple actions, all of them are executed
 # in the order they were defined in.
-#key_bindings:
+key_bindings:
   #- { key: Paste,                                       action: Paste          }
   #- { key: Copy,                                        action: Copy           }
   #- { key: L,         mods: Control,                    action: ClearLogNotice }
@@ -779,6 +779,7 @@ font:
   #- { key: End,       mods: Shift,   mode: ~Alt,        action: ScrollToBottom }
 
   # Vi Mode
+  - { key: LBracket, mods: Control, mode: Vi, chars: "^[" }
   #- { key: Space,  mods: Shift|Control, mode: ~Search,    action: ToggleViMode            }
   #- { key: Space,  mods: Shift|Control, mode: Vi|~Search, action: ScrollToBottom          }
   #- { key: Escape,                      mode: Vi|~Search, action: ClearSelection          }
@@ -829,6 +830,8 @@ font:
   #- { key: N,      mods: Shift,         mode: Vi|~Search, action: SearchPrevious          }
 
   # Search Mode
+  - { key: LBracket, mods: Control, mode: Search, action: SearchCancel }
+  - { key: M, mods: Control, mode: Search, action: SearchConfirm }
   #- { key: Return,                mode: Search|Vi,  action: SearchConfirm         }
   #- { key: Escape,                mode: Search,     action: SearchCancel          }
   #- { key: C,      mods: Control, mode: Search,     action: SearchCancel          }
