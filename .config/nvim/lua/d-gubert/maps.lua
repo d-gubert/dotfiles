@@ -7,8 +7,9 @@ vim.g.mapleader = ' '
 -- Open Netrw
 vim.keymap.set('n', '<leader>e', vim.cmd.Ex, { desc = 'Open Netrw' })
 
--- Tab navigation
+-- Tabs
 vim.keymap.set('n', '<Tab>', function () vim.cmd('tabnext') end, { desc = 'Cycle Tab' })
+vim.keymap.set('n', '<leader>tn', function () vim.cmd('tabnew') end, { desc = 'New tab' })
 
 -- Easy window handling (pressing ctrl is too much wrist displacement)
 vim.keymap.set('n', '<leader>w', '<C-w>', { desc = 'Window handling' })
@@ -19,13 +20,14 @@ vim.keymap.set('i', 'jk', '<ESC>', { desc = 'Easy escape (pressing ESC is too mu
 vim.keymap.set('i', 'kj', '<ESC>', { desc = 'Easy escape (pressing ESC is too much wrist displacement)' })
 
 -- Better horizontal navigation on insert mode
-vim.keymap.set('i', '<C-h>', '<Left>', { desc = 'Better horizontal navigation on insert mode' })
-vim.keymap.set('i', '<C-l>', '<Right>', { desc = 'Better horizontal navigation on insert mode' })
+-- Reconsidering my life choices...
+-- vim.keymap.set('i', '<C-h>', '<Left>', { desc = 'Better horizontal navigation on insert mode' })
+-- vim.keymap.set('i', '<C-l>', '<Right>', { desc = 'Better horizontal navigation on insert mode' })
 
 -- Quick saving, faster than typing the commands
 vim.keymap.set('n', '<leader>s', vim.cmd.write, { remap = false, desc = 'Save' })
 vim.keymap.set('n', '<leader>qs', function () vim.cmd [[wq]] end, { remap = false, desc = 'Save and quit' })
-vim.keymap.set('n', '<leader>qx', function () vim.cmd [[w!]] end, { remap = false, desc = 'Force quit' })
+vim.keymap.set('n', '<leader>qf', function () vim.cmd [[w!]] end, { remap = false, desc = 'Force quit' })
 
 -- Toggle relative number if sharing screen so others don't get confusion
 vim.keymap.set('n', '<leader><leader>n', function()
@@ -54,12 +56,13 @@ vim.keymap.set("n", "<A-d>", "<C-d>zz", { desc = 'Page scroll and centralize' })
 vim.keymap.set("n", "<A-u>", "<C-u>zz", { desc = 'Page scroll and centralize' })
 
 -- Alt is closer than CTRL (less wrist displacement)
-vim.keymap.set("", "<A-p>", "<C-p>")
-vim.keymap.set("", "<A-n>", "<C-n>")
-vim.keymap.set("", "<A-m>", "<C-m>")
-vim.keymap.set("i", "<A-c>", "<ESC>")
-vim.keymap.set("i", "<A-w>", "<C-w>")
-vim.keymap.set("i", "<A-u>", "<C-u>")
+-- Obsolete since I've remapped my capslock to CTRL
+-- vim.keymap.set("", "<A-p>", "<C-p>")
+-- vim.keymap.set("", "<A-n>", "<C-n>")
+-- vim.keymap.set("", "<A-m>", "<C-m>")
+-- vim.keymap.set("i", "<A-c>", "<ESC>")
+-- vim.keymap.set("i", "<A-w>", "<C-w>")
+-- vim.keymap.set("i", "<A-u>", "<C-u>")
 
 -- Join lines without moving cursor (as the default would do)
 vim.keymap.set("n", "J", "mzJ`z", { desc = 'Join lines without moving cursor' })
