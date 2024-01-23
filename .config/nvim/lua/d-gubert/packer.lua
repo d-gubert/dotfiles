@@ -22,7 +22,7 @@ return require("packer").startup(function(use)
 
 	use({
 		"nvim-telescope/telescope.nvim",
-		tag = "0.1.2",
+		tag = "0.1.5",
 		-- or                            , branch = '0.1.x',
 		requires = { { "nvim-lua/plenary.nvim" } },
 	})
@@ -41,7 +41,7 @@ return require("packer").startup(function(use)
 	use("nvim-treesitter/playground")
 	use("nvim-treesitter/nvim-treesitter-textobjects") -- OMG
 	use("nvim-treesitter/nvim-treesitter-context") -- sweet
-	-- use("mbbill/undotree")
+	use("mbbill/undotree")
 
 	-- Movement goodness
 	use({
@@ -54,6 +54,18 @@ return require("packer").startup(function(use)
 	})
 
 	use("github/copilot.vim")
+
+	use({
+		"L3MON4D3/LuaSnip",
+		-- follow latest release.
+		tag = "v2.*", -- Replace <CurrentMajor> by the latest released major (first number of latest release)
+		-- install jsregexp (optional!:).
+		run = "make install_jsregexp",
+		requires = "rafamadriz/friendly-snippets",
+		config = function()
+			require("luasnip.loaders.from_vscode").load()
+		end,
+	})
 
 	-- LSP crazyness
 	use({
@@ -101,14 +113,15 @@ return require("packer").startup(function(use)
 	use("tpope/vim-surround")
 	use("tpope/vim-commentary")
 	use("lukas-reineke/indent-blankline.nvim")
-	use({
-		"windwp/nvim-autopairs",
-		config = function()
-			require("nvim-autopairs").setup({
-				map_c_w = true,
-			})
-		end,
-	})
+	-- Prime said this sucks. I'm on the fence. So I'll comment it out and see if I miss it
+	-- use({
+	-- 	"windwp/nvim-autopairs",
+	-- 	config = function()
+	-- 		require("nvim-autopairs").setup({
+	-- 			map_c_w = true,
+	-- 		})
+	-- 	end,
+	-- })
 
 	-- use("natecraddock/workspaces.nvim")
 	use("natecraddock/sessions.nvim")
