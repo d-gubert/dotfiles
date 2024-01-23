@@ -108,6 +108,12 @@ return require("packer").startup(function(use)
 		end,
 	})
 
+	-- Status line
+	use({
+		"nvim-lualine/lualine.nvim",
+		requires = { "nvim-tree/nvim-web-devicons" },
+	})
+
 	-- Editing goodness
 	use("tpope/vim-sleuth")
 	use("tpope/vim-surround")
