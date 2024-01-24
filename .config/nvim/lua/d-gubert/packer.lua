@@ -129,6 +129,9 @@ return require("packer").startup(function(use)
 	-- 	end,
 	-- })
 
+	-- Is this man really what he seems to be?
+	use("ThePrimeagen/git-worktree.nvim")
+
 	-- use("natecraddock/workspaces.nvim")
 	use("natecraddock/sessions.nvim")
 
