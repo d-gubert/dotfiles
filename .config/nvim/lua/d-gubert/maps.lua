@@ -10,6 +10,7 @@ vim.keymap.set('n', '<leader>e', vim.cmd.Ex, { desc = 'Open Netrw' })
 -- Tabs
 vim.keymap.set('n', '<Tab>', function () vim.cmd('tabnext') end, { desc = 'Cycle Tab' })
 vim.keymap.set('n', '<leader>tn', function () vim.cmd('tabnew') end, { desc = 'New tab' })
+vim.keymap.set('n', '<leader>tc', function () vim.cmd('tabclose') end, { desc = 'Close current tab' })
 
 -- Easy window handling (pressing ctrl is too much wrist displacement)
 vim.keymap.set('n', '<leader>w', '<C-w>', { desc = 'Window handling' })
