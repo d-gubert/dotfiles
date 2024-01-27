@@ -2,11 +2,11 @@ local lsp = require("lsp-zero").preset({})
 local nvim_lsp = require("lspconfig")
 
 lsp.ensure_installed({
-	'tsserver',
-	'denols',
-	'gopls',
-	'lua_ls',
-	'rust_analyzer',
+	"tsserver",
+	"denols",
+	"gopls",
+	"lua_ls",
+	"rust_analyzer",
 })
 
 lsp.on_attach(function(client, bufnr)
@@ -26,7 +26,9 @@ lsp.on_attach(function(client, bufnr)
 	vim.keymap.set("n", "]d", vim.diagnostic.goto_next, getOpts("Next diagnostic"))
 	vim.keymap.set({ "n", "v" }, "<leader>ca", vim.lsp.buf.code_action, getOpts("Code Actions"))
 	vim.keymap.set("n", "<leader>cm", vim.lsp.buf.rename, getOpts("Rename symbol"))
-	vim.keymap.set({ "n", "x" }, "<leader>cx", function() vim.lsp.buf.format({ async = true }) end, getOpts("Run LSP formatter"))
+	vim.keymap.set({ "n", "x" }, "<leader>cx", function()
+		vim.lsp.buf.format({ async = true })
+	end, getOpts("Run LSP formatter"))
 	vim.keymap.set("i", "<C-k>", vim.lsp.buf.signature_help, getOpts("Signature Help"))
 end)
 
