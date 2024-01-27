@@ -62,9 +62,6 @@ return require("packer").startup(function(use)
 		-- install jsregexp (optional!:).
 		run = "make install_jsregexp",
 		requires = "rafamadriz/friendly-snippets",
-		config = function()
-			require("luasnip.loaders.from_vscode").load()
-		end,
 	})
 
 	-- LSP crazyness
@@ -88,6 +85,7 @@ return require("packer").startup(function(use)
 			{ "L3MON4D3/LuaSnip" }, -- Required
 
 			{ "saadparwaiz1/cmp_luasnip" },
+			{ "hrsh7th/cmp-nvim-lua" },
 			{ "hrsh7th/cmp-buffer" },
 			{ "hrsh7th/cmp-path" },
 		},
