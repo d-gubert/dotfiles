@@ -49,6 +49,10 @@ lsp.setup()
 local cmp = require("cmp")
 
 cmp.setup({
+	window = {
+		completion = cmp.config.window.bordered(),
+		documentation = cmp.config.window.bordered(),
+	},
 	snippet = {
 		-- REQUIRED - you must specify a snippet engine
 		expand = function(args)
@@ -58,17 +62,20 @@ cmp.setup({
 			-- vim.fn["UltiSnips#Anon"](args.body) -- For `ultisnips` users.
 		end,
 	},
-	mapping = {
+	mapping = cmp.mapping.preset.insert({
 		["<Tab>"] = nil,
 		["<S-Tab>"] = nil,
-	},
+		["<C-m>"] = cmp.mapping.confirm(),
+	}),
 	preselect = cmp.PreselectMode.Item,
-	sources = {
+	sources = cmp.config.sources({
 		{ name = "nvim_lsp" },
+		{ name = "nvim_lua" },
 		{ name = "luasnip" },
 		{ name = "path" },
+	}, {
 		{ name = "buffer" },
-	},
+	}),
 })
 
 -- If you want insert `(` after select function or method item
