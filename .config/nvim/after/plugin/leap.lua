@@ -4,7 +4,10 @@ if not ok then
   return
 end
 
-leap.create_default_mappings()
+-- leap.create_default_mappings()
+vim.keymap.set({'n', 'x', 'o'}, 'f', function() leap.leap() end, { desc = 'Leap forward' })
+vim.keymap.set({'n', 'x', 'o'}, 'F', function() leap.leap({ backward = true }) end, { desc = 'Leap backward' })
+vim.keymap.set({'n', 'x', 'o'}, 'gx', '<Plug>(leap-from-window)', { desc = 'Leap from window' })
 
 -- Until https://github.com/neovim/neovim/issues/20793 is fixed, we need to
 -- Hide the (real) cursor when leaping, and restore it afterwards.

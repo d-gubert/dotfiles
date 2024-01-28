@@ -103,6 +103,7 @@ return require("packer").startup(function(use)
 
 	use("jay-babu/mason-null-ls.nvim")
 
+	-- Copy to the clipboard a link to the current line in the current file on github
 	use({
 		"ruifm/gitlinker.nvim",
 		requires = "nvim-lua/plenary.nvim",
