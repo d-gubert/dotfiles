@@ -103,6 +103,8 @@ return require("packer").startup(function(use)
 
 	use("jay-babu/mason-null-ls.nvim")
 
+	-- Git stuff
+
 	-- Copy to the clipboard a link to the current line in the current file on github
 	use({
 		"ruifm/gitlinker.nvim",
@@ -110,6 +112,17 @@ return require("packer").startup(function(use)
 		config = function()
 			require("gitlinker").setup()
 		end,
+	})
+	-- Is this man really what he seems to be?
+	use("ThePrimeagen/git-worktree.nvim")
+	use({
+		"chrisgrieser/nvim-tinygit",
+		requires = {
+			"stevearc/dressing.nvim",
+			"nvim-telescope/telescope.nvim",
+			-- This looks too distracting
+			-- "rcarriga/nvim-notify", -- optional, but will lack some features without it
+		},
 	})
 
 	-- Status line
@@ -136,7 +149,6 @@ return require("packer").startup(function(use)
 	-- Is this man really what he seems to be?
 	use("ThePrimeagen/git-worktree.nvim")
 
-	-- use("natecraddock/workspaces.nvim")
 	use("natecraddock/sessions.nvim")
 
 	-- Themes
