@@ -53,7 +53,7 @@ return require("packer").startup(function(use)
 	-- 	end,
 	-- })
 
-	use('ggandor/leap.nvim')
+	use("ggandor/leap.nvim")
 
 	use("github/copilot.vim")
 
@@ -65,6 +65,9 @@ return require("packer").startup(function(use)
 		run = "make install_jsregexp",
 		requires = "rafamadriz/friendly-snippets",
 	})
+
+	-- File navigation
+	use("stevearc/oil.nvim")
 
 	-- LSP crazyness
 	use({
