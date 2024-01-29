@@ -24,23 +24,27 @@ return require("packer").startup(function(use)
 		"nvim-telescope/telescope.nvim",
 		tag = "0.1.5",
 		-- or                            , branch = '0.1.x',
-		requires = { { "nvim-lua/plenary.nvim" } },
-	})
-
-	-- REQUIRED! This allows for further refinement of search results
-	use({
-		"nvim-telescope/telescope-fzf-native.nvim",
-		run = "cmake -S. -Bbuild -DCMAKE_BUILD_TYPE=Release && cmake --build build --config Release && cmake --install build --prefix build",
+		requires = {
+			{ "nvim-lua/plenary.nvim" },
+			-- REQUIRED! This allows for further refinement of search results
+			{
+				"nvim-telescope/telescope-fzf-native.nvim",
+				run = "cmake -S. -Bbuild -DCMAKE_BUILD_TYPE=Release && cmake --build build --config Release && cmake --install build --prefix build",
+			},
+		},
 	})
 
 	use({
 		"nvim-treesitter/nvim-treesitter",
 		run = ":TSUpdate",
+		requires = {
+			"nvim-treesitter/playground",
+			"nvim-treesitter/nvim-treesitter-refactor",
+			"nvim-treesitter/nvim-treesitter-textobjects", -- OMG
+			"nvim-treesitter/nvim-treesitter-context", -- Sweet
+		},
 	})
 
-	use("nvim-treesitter/playground")
-	use("nvim-treesitter/nvim-treesitter-textobjects") -- OMG
-	use("nvim-treesitter/nvim-treesitter-context") -- sweet
 	use("mbbill/undotree")
 
 	-- Movement goodness
@@ -124,7 +128,7 @@ return require("packer").startup(function(use)
 			-- "rcarriga/nvim-notify", -- optional, but will lack some features without it
 		},
 	})
-	use('lewis6991/gitsigns.nvim')
+	use("lewis6991/gitsigns.nvim")
 
 	-- Status line
 	use({
