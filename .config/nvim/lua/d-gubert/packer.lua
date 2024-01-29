@@ -137,18 +137,15 @@ return require("packer").startup(function(use)
 	use("tpope/vim-surround")
 	use("tpope/vim-commentary")
 	use("lukas-reineke/indent-blankline.nvim")
-	-- Prime said this sucks. I'm on the fence. So I'll comment it out and see if I miss it
-	-- use({
-	-- 	"windwp/nvim-autopairs",
-	-- 	config = function()
-	-- 		require("nvim-autopairs").setup({
-	-- 			map_c_w = true,
-	-- 		})
-	-- 	end,
-	-- })
-
-	-- Is this man really what he seems to be?
-	use("ThePrimeagen/git-worktree.nvim")
+	-- Prime said this sucks. I disagree
+	use({
+		"windwp/nvim-autopairs",
+		config = function()
+			require("nvim-autopairs").setup({
+				map_c_w = true,
+			})
+		end,
+	})
 
 	use("natecraddock/sessions.nvim")
 
