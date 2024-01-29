@@ -18,7 +18,6 @@ vim.keymap.set('n', '<A-w>', '<C-w>', { desc = 'Window handling' })
 
 -- Pressing ESC is too much wrist displacement
 vim.keymap.set('i', 'jk', '<ESC>', { desc = 'Easy escape (pressing ESC is too much wrist displacement)' })
-vim.keymap.set('i', 'kj', '<ESC>', { desc = 'Easy escape (pressing ESC is too much wrist displacement)' })
 
 -- Better horizontal navigation on insert mode
 -- Reconsidering my life choices...
