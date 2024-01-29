@@ -42,10 +42,10 @@ require("nvim-treesitter.configs").setup({
 	incremental_selection = {
 		enable = true,
 		keymaps = {
-			init_selection = "<leader>t",
-			node_incremental = "<A-k>",
-			scope_incremental = "<A-K>",
-			node_decremental = "<A-j>",
+			init_selection = "<leader>ln",
+			node_incremental = "<C-k>",
+			scope_incremental = "<C-K>",
+			node_decremental = "<C-j>",
 		},
 	},
 
@@ -69,10 +69,10 @@ require("nvim-treesitter.configs").setup({
 			lookahead = true, -- Automatically jump forward to textobj, similar to targets.vim
 			keymaps = {
 				-- You can use the capture groups defined in textobjects.scm
-				["a="] = { query = "@assignment.outer", desc = "Select outer assignment" },
-				["i="] = { query = "@assignment.inner", desc = "Select inner assignment" },
-				["l="] = { query = "@assignment.lhs", desc = "Select assignment left-hand part" },
-				["r="] = { query = "@assignment.rhs", desc = "Select assignment right-hand part" },
+				["=a"] = { query = "@assignment.outer", desc = "Select outer assignment" },
+				["=i"] = { query = "@assignment.inner", desc = "Select inner assignment" },
+				["=l"] = { query = "@assignment.lhs", desc = "Select assignment left-hand part" },
+				["=r"] = { query = "@assignment.rhs", desc = "Select assignment right-hand part" },
 
 				["a:"] = { query = "@statement.outer", desc = "Select outer statement" },
 				["i:"] = { query = "@statement.inner", desc = "Select inner statement" },
