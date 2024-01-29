@@ -5,8 +5,8 @@ if not ok then
 end
 
 -- leap.create_default_mappings()
-vim.keymap.set({ "n", "x", "o" }, "f", "<Plug>(leap-forward)", { desc = "Leap forward", noremap = true })
-vim.keymap.set({ "n", "x", "o" }, "F", "<Plug>(leap-backwards)", { desc = "Leap backward", noremap = true })
+vim.keymap.set({ "n", "x", "o" }, "s", "<Plug>(leap-forward)", { desc = "Leap forward", noremap = true })
+vim.keymap.set({ "n", "x", "o" }, "S", "<Plug>(leap-backward)", { desc = "Leap backward", noremap = true })
 vim.keymap.set({ "n", "x", "o" }, "gx", "<Plug>(leap-from-window)", { desc = "Leap from window" })
 
 -- Until https://github.com/neovim/neovim/issues/20793 is fixed, we need to
