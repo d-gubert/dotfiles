@@ -16,8 +16,8 @@ vim.keymap.set('n', '<leader>tc', function () vim.cmd('tabclose') end, { desc = 
 vim.keymap.set('n', '<leader>w', '<C-w>', { desc = 'Window handling' })
 vim.keymap.set('n', '<A-w>', '<C-w>', { desc = 'Window handling' })
 
--- Pressing ESC is too much wrist displacement
-vim.keymap.set('i', 'jk', '<ESC>', { desc = 'Easy escape (pressing ESC is too much wrist displacement)' })
+-- Pressing ESC is too much wrist displacement - not a problem when using capslock as CTRL?
+-- vim.keymap.set('i', 'jk', '<ESC>', { desc = 'Easy escape (pressing ESC is too much wrist displacement)' })
 
 -- Better horizontal navigation on insert mode
 -- Reconsidering my life choices...
