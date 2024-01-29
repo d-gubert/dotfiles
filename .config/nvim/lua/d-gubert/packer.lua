@@ -124,6 +124,7 @@ return require("packer").startup(function(use)
 			-- "rcarriga/nvim-notify", -- optional, but will lack some features without it
 		},
 	})
+	use('lewis6991/gitsigns.nvim')
 
 	-- Status line
 	use({
