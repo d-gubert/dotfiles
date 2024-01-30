@@ -119,16 +119,7 @@ return require("packer").startup(function(use)
 	})
 	-- Is this man really what he seems to be?
 	use("ThePrimeagen/git-worktree.nvim")
-	use({
-		"chrisgrieser/nvim-tinygit",
-		requires = {
-			"stevearc/dressing.nvim",
-			"nvim-telescope/telescope.nvim",
-			-- This looks too distracting
-			-- "rcarriga/nvim-notify", -- optional, but will lack some features without it
-		},
-	})
-	use("lewis6991/gitsigns.nvim")
+	use("tpope/vim-fugitive")
 
 	-- Status line
 	use({
