@@ -86,6 +86,9 @@ fi
 
 source $ZSH/oh-my-zsh.sh
 
+# I don't want shared history
+setopt no_share_history
+
 # User configuration
 
 # export MANPATH="/usr/local/man:$MANPATH"
