@@ -258,11 +258,13 @@ mode $mode_screen_select {
 
 bindsym $super+m mode $mode_screen_select
 
-# Keyboard languages
+# Keyboard languages - Win + Space to toggle (resets xmodmap)
 exec_always --no-startup-id "setxkbmap -model pc105 -layout us\(intl\),br -option 'grp:win_space_toggle'"
 
-# Swap CTRL and CAPS LOCK
+# Swap CTRL and CAPS LOCK - When it's reset by the language change
 bindsym $super+k exec "xmodmap ~/.Xmodmap"
+
+exec unclutter -root -idle 1 &
 
 bindsym Print exec ~/.config/i3/scripts/printscreen.sh
 
