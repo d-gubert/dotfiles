@@ -79,9 +79,11 @@ cmp.setup({
 })
 
 -- If you want insert `(` after select function or method item
--- local cmp_autopairs = require("nvim-autopairs.completion.cmp")
+local ok, cmp_autopairs = pcall(require,"nvim-autopairs.completion.cmp")
 
--- cmp.event:on("confirm_done", cmp_autopairs.on_confirm_done())
+if ok then
+	cmp.event:on("confirm_done", cmp_autopairs.on_confirm_done())
+end
 
 vim.diagnostic.config({
 	virtual_text = true,

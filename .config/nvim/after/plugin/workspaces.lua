@@ -1,6 +1,6 @@
-local e, workspaces = pcall(require, 'workspaces')
+local ok, workspaces = pcall(require, 'workspaces')
 
-if not e then
+if not ok then
 	return
 end
 

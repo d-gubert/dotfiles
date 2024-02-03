@@ -1,4 +1,8 @@
-vim.api.nvim_command([[ autocmd BufWritePre * :%s/\s\+$//e ]])
+-- vim.api.nvim_command([[ autocmd BufWritePre * :%s/\s\+$//e ]])
+vim.api.nvim_create_autocmd('BufWritePre', {
+	pattern = '*',
+	command = [[ %s/\s\+$//e ]]
+})
 
 vim.api.nvim_create_user_command('DisableEslintDiagnostics', function()
 	for id, namespace in pairs(vim.diagnostic.get_namespaces()) do

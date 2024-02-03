@@ -1,4 +1,4 @@
-local ok, leap = pcall(require, "leap")
+local ok, _ = pcall(require, "leap")
 
 if not ok then
 	return
