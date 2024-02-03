@@ -72,6 +72,11 @@ return require("packer").startup(function(use)
 
 	-- File navigation
 	use("stevearc/oil.nvim")
+	use({
+		"ThePrimeagen/harpoon",
+		branch = "harpoon2",
+		requires = { { "nvim-lua/plenary.nvim" } },
+	})
 
 	-- LSP crazyness
 	use({
