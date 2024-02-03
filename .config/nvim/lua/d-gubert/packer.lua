@@ -26,6 +26,7 @@ return require("packer").startup(function(use)
 		-- or                            , branch = '0.1.x',
 		requires = {
 			{ "nvim-lua/plenary.nvim" },
+			{ "nvim-telescope/telescope-ui-select.nvim" },
 			-- REQUIRED! This allows for further refinement of search results
 			{
 				"nvim-telescope/telescope-fzf-native.nvim",
