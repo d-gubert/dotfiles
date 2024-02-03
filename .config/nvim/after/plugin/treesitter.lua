@@ -86,8 +86,8 @@ require("nvim-treesitter.configs").setup({
 				["a'"] = { query = "@string.outer", desc = "Select outer string" },
 				["i'"] = { query = "@string.inner", desc = "Select inner string" },
 
-				["a{"] = { query = "@block.outer", desc = "Select outer block" },
-				["i{"] = { query = "@block.inner", desc = "Select inner block" },
+				["ab"] = { query = "@block.outer", desc = "Select outer block" },
+				["ib"] = { query = "@block.inner", desc = "Select inner block" },
 
 				["aa"] = { query = "@parameter.outer", desc = "Select outer argument/parameter" },
 				["ia"] = { query = "@parameter.inner", desc = "Select inner argument/parameter" },
