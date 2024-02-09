@@ -4,11 +4,11 @@
 
 vim.g.mapleader = " "
 
--- Open Netrw
+-- Open Netrw - currently being overwritten by Oil.nvim
 vim.keymap.set("n", "<leader>e", vim.cmd.Ex, { desc = "Open Netrw" })
 
 -- Tabs
-vim.keymap.set("n", "<Tab>", function()
+vim.keymap.set("n", "<leader>t]", function()
 	vim.cmd("tabnext")
 end, { desc = "Cycle Tab" })
 
@@ -20,7 +20,7 @@ vim.keymap.set("n", "<leader>tc", function()
 	vim.cmd("tabclose")
 end, { desc = "Close current tab" })
 
--- Easy window handling (pressing ctrl is too much wrist displacement)
+-- Easy window handling (pressing ctrl is too much wrist displacement) - been using this even with capslock as CTRL
 vim.keymap.set("n", "<leader>w", "<C-w>", { desc = "Window handling" })
 vim.keymap.set("n", "<A-w>", "<C-w>", { desc = "Window handling" })
 
@@ -115,6 +115,10 @@ end, { desc = "Close location window" })
 vim.keymap.set("n", "<leader>ccq", function()
 	vim.cmd("cclose")
 end, { desc = "Close quickfix window" })
+
+vim.keymap.set("n", "<leader>ccp", function()
+	vim.cmd("pclose")
+end, { desc = "Close preview window" })
 
 -- Terminal emulator
 vim.keymap.set("t", "<ESC>", "<C-\\><C-n>", { desc = "Terminal: Escape" })
