@@ -35,6 +35,9 @@ opt.clipboard = ''
 opt.splitbelow = true
 opt.splitright = true
 
+opt.cursorline = true
+
+-- Show invisible characters
 opt.list = true
 opt.listchars:append("space:⋅")
 opt.listchars:append("eol:↴")
