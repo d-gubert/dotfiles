@@ -53,8 +53,8 @@ vim.keymap.set({ "n", "v" }, "<A-y>", '"+y', { desc = "Copy to clipboard" })
 vim.keymap.set({ "n", "v" }, "<A-p>", '"+p', { desc = "Paste from clipboard" })
 
 -- Move highlighted lines on visual mode
-vim.keymap.set("v", "J", ":m '>+1<CR>gv=gv", { desc = "Move highlighted lines down on visual mode" })
-vim.keymap.set("v", "K", ":m '<-2<CR>gv=gv", { desc = "Move highlighted lines up on visual mode" })
+vim.keymap.set("v", "J", ":m '>+1<CR>gv=gv", { silent = true, desc = "Move highlighted lines down on visual mode" })
+vim.keymap.set("v", "K", ":m '<-2<CR>gv=gv", { silent = true, desc = "Move highlighted lines up on visual mode" })
 
 -- Move to search result and centralize viewport
 vim.keymap.set("n", "n", "nzzzv")

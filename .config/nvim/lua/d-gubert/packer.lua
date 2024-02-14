@@ -58,6 +58,17 @@ return require("packer").startup(function(use)
 		},
 	})
 
+	-- Open cmdline in a float - don't have to look down after pressing ":"
+	use({
+		"folke/noice.nvim",
+		requires = {
+			"MunifTanjim/nui.nvim",
+		},
+		config = function()
+			require("noice").setup()
+		end,
+	})
+
 	use("mbbill/undotree")
 
 	-- Movement goodness
