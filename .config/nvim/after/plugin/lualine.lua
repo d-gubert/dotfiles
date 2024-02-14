@@ -5,6 +5,7 @@ if not ok then
 end
 
 lualine.setup({
+	extensions = { "fugitive" },
 	sections = {
 		lualine_c = {
 			{
