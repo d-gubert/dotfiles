@@ -21,6 +21,18 @@ return require("packer").startup(function(use)
 	use("wbthomason/packer.nvim")
 
 	use({
+		"epwalsh/obsidian.nvim",
+		tag = "*", -- recommended, use latest release instead of latest commit
+		requires = {
+			-- Required.
+			"nvim-lua/plenary.nvim",
+			"nvim-telescope/telescope.nvim",
+			"nvim-treesitter/nvim-treesitter",
+			"hrsh7th/nvim-cmp",
+		},
+	})
+
+	use({
 		"nvim-telescope/telescope.nvim",
 		tag = "0.1.5",
 		-- or                            , branch = '0.1.x',

@@ -156,12 +156,9 @@ workspace $ws10 output nonprimary
 
 assign [class="Rocket.Chat"] $ws9
 assign [class="Spotify"] $ws10
-assign [class="obsidian"] $ws1
 
 for_window [class="Windscribe2"] floating enable
 for_window [class="gnome-calculator"] floating enable
-
-exec obsidian
 
 # Common applications
 bindsym $super+1 exec brave-browser
@@ -264,6 +261,7 @@ exec_always --no-startup-id "setxkbmap -model pc105 -layout us\(intl\),br -optio
 # Swap CTRL and CAPS LOCK - When it's reset by the language change
 bindsym $super+k exec "xmodmap ~/.Xmodmap"
 
+# Hides the mouse cursor after 1 second of inactivity
 exec unclutter -root -idle 1 &
 
 bindsym Print exec ~/.config/i3/scripts/printscreen.sh
