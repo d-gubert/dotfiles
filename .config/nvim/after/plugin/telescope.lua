@@ -62,7 +62,9 @@ vim.keymap.set("n", "<leader>fo", function()
 end, { desc = "Telescope: Oldfiles" })
 
 -- List all available pickers
-vim.keymap.set("n", "<leader>f", builtin.builtin, { desc = "Telescope: Built-in Pickers" })
+vim.keymap.set("n", "<leader>f", function()
+	builtin.builtin({ include_extensions = true })
+end, { desc = "Telescope: Built-in Pickers" })
 
 -- Git management
 vim.keymap.set("n", "<leader>gf", builtin.git_files, { desc = "Telescope: Git files" })
@@ -70,7 +72,10 @@ vim.keymap.set("n", "<leader>gs", builtin.git_status, { desc = "Telescope: Git s
 vim.keymap.set("n", "<leader>gb", builtin.git_bcommits, { desc = "Telescope: Git commits" })
 
 vim.keymap.set("n", "<leader>fs", function()
-	builtin.grep_string({ search = vim.fn.input("Grep > ") })
+	builtin.grep_string({
+		search = vim.fn.input("Grep > "),
+		use_regex = true,
+	})
 end, { desc = "Telescope: Grep string" })
 
 local is_inside_work_tree = {}
