@@ -1,9 +1,10 @@
 local telescope = require("telescope")
-local telescopeConfig = require("telescope.config")
+local config = require("telescope.config")
 local builtin = require("telescope.builtin")
+local actions = require("telescope.actions")
 
 -- Clone the default Telescope configuration
-local vimgrep_arguments = { unpack(telescopeConfig.values.vimgrep_arguments) }
+local vimgrep_arguments = { unpack(config.values.vimgrep_arguments) }
 
 -- I want to search in hidden/dot files.
 table.insert(vimgrep_arguments, "--hidden")
@@ -15,6 +16,16 @@ telescope.setup({
 	defaults = {
 		-- `hidden = true` is not supported in text grep commands.
 		vimgrep_arguments = vimgrep_arguments,
+		mappings = {
+			i = {
+				-- Center cursor in the window after selecting a value
+				["<CR>"] = actions.select_default + actions.center,
+			},
+			n = {
+				-- Center cursor in the window after selecting a value
+				["<CR>"] = actions.select_default + actions.center,
+			},
+		}
 	},
 	pickers = {
 		find_files = {
