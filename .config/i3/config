@@ -209,6 +209,7 @@ mode "$mode_system" {
         # exit system mode: "Enter" or "Escape"
         bindsym Return mode "default"
         bindsym Escape mode "default"
+        bindsym Control+[ mode "default"
         bindsym $mod+Shift+e mode "default"
 }
 
@@ -234,13 +235,14 @@ mode "resize" {
         # back to normal: Enter or Escape or $mod+r
         bindsym Return mode "default"
         bindsym Escape mode "default"
+        bindsym Control+[ mode "default"
         bindsym Control+m mode "default"
         bindsym $mod+r mode "default"
 }
 
 bindsym $mod+r mode "resize"
 
-set $mode_screen_select "Select monitor setup: (1) Single External, (2) Single Laptop, (3) Multi-horizontal, (4) Multi-vertical"
+set $mode_screen_select "Select monitor setup: Single External (1), Single Laptop (2), Multi-horizontal (3), Multi-vertical (4)"
 
 mode $mode_screen_select {
         bindsym 1 exec --no-startup-id ~/.config/i3/scripts/single-monitor-external.sh, mode "default"
@@ -251,6 +253,8 @@ mode $mode_screen_select {
         bindsym Return mode "default"
         bindsym Escape mode "default"
         bindsym Control+m mode "default"
+        bindsym Control+[ mode "default"
+        bindsym $mod+m mode "default"
 }
 
 bindsym $super+m mode $mode_screen_select
