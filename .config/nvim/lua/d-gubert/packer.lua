@@ -23,6 +23,7 @@ return require("packer").startup(function(use)
 	-- Let's take care of our time
 	use("wakatime/vim-wakatime")
 
+
 	use({
 		"epwalsh/obsidian.nvim",
 		tag = "*", -- recommended, use latest release instead of latest commit
@@ -165,14 +166,14 @@ return require("packer").startup(function(use)
 	use("tpope/vim-commentary")
 	use("lukas-reineke/indent-blankline.nvim")
 	-- Prime said this sucks. I disagree
-	use({
-		"windwp/nvim-autopairs",
-		config = function()
-			require("nvim-autopairs").setup({
-				map_c_w = true,
-			})
-		end,
-	})
+	-- use({
+	-- 	"windwp/nvim-autopairs",
+	-- 	config = function()
+	-- 		require("nvim-autopairs").setup({
+	-- 			map_c_w = true,
+	-- 		})
+	-- 	end,
+	-- })
 
 	use("natecraddock/sessions.nvim")
 

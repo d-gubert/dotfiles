@@ -65,7 +65,6 @@ cmp.setup({
 	mapping = cmp.mapping.preset.insert({
 		["<Tab>"] = nil,
 		["<S-Tab>"] = nil,
-		["<C-m>"] = cmp.mapping.confirm(),
 	}),
 	preselect = cmp.PreselectMode.Item,
 	sources = cmp.config.sources({
@@ -79,11 +78,11 @@ cmp.setup({
 })
 
 -- If you want insert `(` after select function or method item
-local ok, cmp_autopairs = pcall(require,"nvim-autopairs.completion.cmp")
+-- local ok, cmp_autopairs = pcall(require,"nvim-autopairs.completion.cmp")
 
-if ok then
-	cmp.event:on("confirm_done", cmp_autopairs.on_confirm_done())
-end
+-- if ok then
+-- 	cmp.event:on("confirm_done", cmp_autopairs.on_confirm_done())
+-- end
 
 vim.diagnostic.config({
 	virtual_text = true,
