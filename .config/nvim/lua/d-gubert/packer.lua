@@ -20,6 +20,9 @@ return require("packer").startup(function(use)
 	-- Packer can manage itself
 	use("wbthomason/packer.nvim")
 
+	-- Let's take care of our time
+	use("wakatime/vim-wakatime")
+
 	use({
 		"epwalsh/obsidian.nvim",
 		tag = "*", -- recommended, use latest release instead of latest commit
