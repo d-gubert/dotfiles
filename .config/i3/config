@@ -201,11 +201,12 @@ bindsym $mod+Shift+r restart
 # Set shut down, restart and locking features
 bindsym $mod+Shift+e mode "$mode_system"
 
-set $mode_system (e)xit, (r)eboot, (s)hutdown
+set $mode_system (e)xit, (r)eboot, (s)uspend, s(h)utdown
 mode "$mode_system" {
         bindsym e exec --no-startup-id i3-msg exit, mode "default"
         bindsym r exec --no-startup-id shutdown -r 0, mode "default"
-        bindsym s exec --no-startup-id shutdown 0, mode "default"
+        bindsym h exec --no-startup-id shutdown 0, mode "default"
+        bindsym s exec --no-startup-id systemctl suspend, mode "default"
         # exit system mode: "Enter" or "Escape"
         bindsym Return mode "default"
         bindsym Escape mode "default"
@@ -216,7 +217,6 @@ mode "$mode_system" {
 # resize window (you can also use the mouse for that)
 mode "resize" {
         # These bindings trigger as soon as you enter the resize mode
-
         # Pressing left will shrink the window’s width.
         # Pressing right will grow the window’s width.
         # Pressing up will shrink the window’s height.
