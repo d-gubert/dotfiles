@@ -46,3 +46,9 @@ opt.listchars:append("tab:▸ ")
 vim.g.netrw_liststyle = 3
 
 -- opt.colorcolumn = "80"
+
+-- For markdown files
+vim.api.nvim_create_autocmd("BufEnter", {
+	pattern = "*.md",
+	command = [[set wrap linebreak conceallevel=1]],
+})
