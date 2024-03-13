@@ -23,7 +23,6 @@ return require("packer").startup(function(use)
 	-- Let's take care of our time
 	use("wakatime/vim-wakatime")
 
-
 	use({
 		"epwalsh/obsidian.nvim",
 		tag = "*", -- recommended, use latest release instead of latest commit
@@ -76,16 +75,16 @@ return require("packer").startup(function(use)
 	use("mbbill/undotree")
 
 	-- Movement goodness
-	-- use({
-	-- 	"phaazon/hop.nvim",
-	-- 	branch = "v2", -- optional but strongly recommended
+	use({
+		"phaazon/hop.nvim",
+		branch = "v2", -- optional but strongly recommended
 	-- 	config = function()
 	-- 		-- you can configure Hop the way you like here; see :h hop-config
 	-- 		require("hop").setup()
 	-- 	end,
-	-- })
+	})
 
-	use("ggandor/leap.nvim")
+	-- use("ggandor/leap.nvim")
 
 	use("github/copilot.vim")
 
