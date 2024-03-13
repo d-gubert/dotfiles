@@ -18,3 +18,11 @@ vim.keymap.set("n", "<leader>5", function() harpoon:list():select(5) end, { desc
 -- Toggle previous & next buffers stored within Harpoon list
 vim.keymap.set("n", "<leader>[", function() harpoon:list():prev() end, { desc = "Harpoon select previous file" })
 vim.keymap.set("n", "<leader>]", function() harpoon:list():next() end, { desc = "Harpoon select next file" })
+
+vim.api.nvim_create_autocmd("BufEnter", {
+	pattern = "harpoon",
+	callback = function()
+		vim.notify("harpoon buffer")
+		vim.keymap.set("n", "<C-c>", "<Esc>", { buffer = true })
+	end,
+})
