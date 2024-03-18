@@ -43,6 +43,8 @@ nvim_lsp.tsserver.setup({
 	single_file_support = false,
 })
 
+nvim_lsp.ccls.setup({})
+
 lsp.setup()
 
 -- Make sure to configure cmp AFTER lsp-zero

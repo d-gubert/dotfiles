@@ -78,6 +78,9 @@ vim.keymap.set("n", "<A-u>", "<C-u>zz", { desc = "Page scroll and centralize" })
 -- vim.keymap.set("i", "<A-w>", "<C-w>")
 -- vim.keymap.set("i", "<A-u>", "<C-u>")
 
+-- Better <Del>
+vim.keymap.set("i", "<C-l>", "<Del>", { desc = "Better <Del>" })
+
 -- Join lines without moving cursor (as the default would do)
 vim.keymap.set("n", "J", "mzJ`z", { desc = "Join lines without moving cursor" })
 
