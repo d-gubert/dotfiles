@@ -138,24 +138,28 @@ bindsym $mod+a focus parent
 
 # Define names for default workspaces for which we configure key bindings later on.
 # We use variables to avoid repeating the names in multiple places.
-set $ws1 "1"
-set $ws2 "2"
-set $ws3 "3"
+set $ws1 "1: Browser"
+set $ws2 "2: Chat/Music"
+set $ws3 "3: Code"
 set $ws4 "4"
 set $ws5 "5"
 set $ws6 "6"
 set $ws7 "7"
-set $ws8 "8: Meet"
-set $ws9 "9: Chat"
-set $ws10 "10: Music"
+set $ws8 "8"
+set $ws9 "9"
+set $ws10 "10: Meet"
 
 workspace $ws1  output primary
+workspace $ws2  output primary
+workspace $ws3  output primary
+workspace $ws4  output primary
+workspace $ws5  output primary
+workspace $ws10 output nonprimary
 workspace $ws8  output nonprimary
 workspace $ws9  output nonprimary
-workspace $ws10 output nonprimary
 
-assign [class="Rocket.Chat"] $ws9
-assign [class="Spotify"] $ws10
+assign [class="Rocket.Chat"] $ws2
+assign [class="Spotify"] $ws2
 
 for_window [class="Windscribe2"] floating enable
 for_window [class="gnome-calculator"] floating enable
@@ -163,7 +167,7 @@ for_window [class="gnome-calculator"] floating enable
 # Common applications
 bindsym $super+1 exec brave-browser
 bindsym $super+2 exec spotify
-bindsym $super+e exec /opt/Rocket.Chat/rocketchat-desktop %U
+bindsym $super+w exec /opt/Rocket.Chat/rocketchat-desktop %U
 
 # switch to workspace
 bindsym $mod+1 workspace number $ws1
