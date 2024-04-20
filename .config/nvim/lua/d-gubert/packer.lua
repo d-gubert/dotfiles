@@ -78,15 +78,17 @@ return require("packer").startup(function(use)
 	use({
 		"phaazon/hop.nvim",
 		branch = "v2", -- optional but strongly recommended
-	-- 	config = function()
-	-- 		-- you can configure Hop the way you like here; see :h hop-config
-	-- 		require("hop").setup()
-	-- 	end,
+		-- 	config = function()
+		-- 		-- you can configure Hop the way you like here; see :h hop-config
+		-- 		require("hop").setup()
+		-- 	end,
 	})
 
+	-- I prefer using hop
 	-- use("ggandor/leap.nvim")
 
-	use("github/copilot.vim")
+	-- Ain't free for me no mo :(
+	-- use("github/copilot.vim")
 
 	use({
 		"L3MON4D3/LuaSnip",
@@ -165,16 +167,23 @@ return require("packer").startup(function(use)
 	use("tpope/vim-commentary")
 	use("lukas-reineke/indent-blankline.nvim")
 	-- Prime said this sucks. I disagree
-	-- use({
-	-- 	"windwp/nvim-autopairs",
-	-- 	config = function()
-	-- 		require("nvim-autopairs").setup({
-	-- 			map_c_w = true,
-	-- 		})
-	-- 	end,
-	-- })
+	use({
+		"windwp/nvim-autopairs",
+		config = function()
+			require("nvim-autopairs").setup({
+				map_c_w = true,
+			})
+		end,
+	})
 
 	use("natecraddock/sessions.nvim")
+
+	use({
+		"glacambre/firenvim",
+		config = function()
+			vim.fn["firenvim#install"](0)
+		end,
+	})
 
 	-- Themes
 	use("folke/tokyonight.nvim")
