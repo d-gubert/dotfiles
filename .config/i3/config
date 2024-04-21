@@ -266,8 +266,9 @@ bindsym $super+m mode $mode_screen_select
 # Keyboard languages - Win + Space to toggle (resets xmodmap)
 exec_always --no-startup-id "setxkbmap -model pc105 -layout us\(intl\),br -option 'grp:win_space_toggle'"
 
+# This became somewhat obsolete with the glove 80
 # Swap CTRL and CAPS LOCK - When it's reset by the language change
-bindsym $super+k exec "xmodmap ~/.Xmodmap"
+# bindsym $super+k exec "xmodmap ~/.Xmodmap"
 
 # Hides the mouse cursor after 1 second of inactivity
 exec unclutter -root -idle 1 &
