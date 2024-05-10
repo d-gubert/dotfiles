@@ -65,9 +65,59 @@ cmp.setup({
 		end,
 	},
 	mapping = cmp.mapping.preset.insert({
-		["<Tab>"] = nil,
 		["<S-Tab>"] = nil,
+		["<Tab>"] = {
+			i = cmp.mapping.confirm({ select = true }),
+		},
+		["<C-y>"] = {
+			i = cmp.mapping.confirm({ select = true }),
+		},
+		["."] = {
+			i = function ()
+				cmp.confirm({ select = true }, function () vim.api.nvim_put({'.'}, 'c', true, true) end);
+			end,
+		},
+		[","] = {
+			i = function ()
+				cmp.confirm({ select = true }, function () vim.api.nvim_put({','}, 'c', true, true) end);
+			end,
+		},
+		[";"] = {
+			i = function ()
+				cmp.confirm({ select = true }, function () vim.api.nvim_put({';'}, 'c', true, true) end);
+			end,
+		},
+		[":"] = {
+			i = function ()
+				cmp.confirm({ select = true }, function () vim.api.nvim_put({':'}, 'c', true, true) end);
+			end,
+		},
+		["("] = {
+			i = function ()
+				cmp.confirm({ select = true }, function () vim.api.nvim_put({'()'}, 'c', true, false) end);
+			end,
+		},
+		["<Up>"] = {
+			i = cmp.mapping.select_prev_item({ behavior = cmp.SelectBehavior.Insert })
+		},
+		["<Down>"] = {
+			i = cmp.mapping.select_next_item({ behavior = cmp.SelectBehavior.Insert })
+		},
 	}),
+	view = {
+		docs = {
+			auto_open = true,
+		}
+	},
+	confirmation = {
+		get_commit_characters = function (commit_characters)
+			table.insert(commit_characters, ',');
+			table.insert(commit_characters, '.');
+			table.insert(commit_characters, ';');
+			print(commit_characters)
+			return commit_characters
+		end
+	},
 	preselect = cmp.PreselectMode.Item,
 	sources = cmp.config.sources({
 		{ name = "nvim_lsp" },
@@ -77,6 +127,9 @@ cmp.setup({
 	}, {
 		{ name = "buffer" },
 	}),
+	experimental = {
+		ghost_text = true,
+	}
 })
 
 -- If you want insert `(` after select function or method item
