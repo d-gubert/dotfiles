@@ -72,31 +72,39 @@ cmp.setup({
 		["<C-y>"] = {
 			i = cmp.mapping.confirm({ select = true }),
 		},
-		["."] = {
-			i = function ()
-				cmp.confirm({ select = true }, function () vim.api.nvim_put({'.'}, 'c', true, true) end);
-			end,
-		},
-		[","] = {
-			i = function ()
-				cmp.confirm({ select = true }, function () vim.api.nvim_put({','}, 'c', true, true) end);
-			end,
-		},
-		[";"] = {
-			i = function ()
-				cmp.confirm({ select = true }, function () vim.api.nvim_put({';'}, 'c', true, true) end);
-			end,
-		},
-		[":"] = {
-			i = function ()
-				cmp.confirm({ select = true }, function () vim.api.nvim_put({':'}, 'c', true, true) end);
-			end,
-		},
-		["("] = {
-			i = function ()
-				cmp.confirm({ select = true }, function () vim.api.nvim_put({'()'}, 'c', true, false) end);
-			end,
-		},
+		-- ["."] = {
+		-- 	i = function ()
+		-- 		local callback = function () vim.api.nvim_put({'.'}, 'c', true, true) end
+
+		-- 		vim.print("cmp mapping " .. cmp.visible())
+
+		-- 		if not cmp.visible() then
+		-- 			return callback()
+		-- 		end
+
+		-- 		cmp.confirm({ select = true }, callback)
+		-- 	end,
+		-- },
+		-- [","] = {
+		-- 	i = function ()
+		-- 		cmp.confirm({ select = true }, function () vim.api.nvim_put({','}, 'c', true, true) end);
+		-- 	end,
+		-- },
+		-- [";"] = {
+		-- 	i = function ()
+		-- 		cmp.confirm({ select = true }, function () vim.api.nvim_put({';'}, 'c', true, true) end);
+		-- 	end,
+		-- },
+		-- [":"] = {
+		-- 	i = function ()
+		-- 		cmp.confirm({ select = true }, function () vim.api.nvim_put({':'}, 'c', true, true) end);
+		-- 	end,
+		-- },
+		-- ["("] = {
+		-- 	i = function ()
+		-- 		cmp.confirm({ select = true }, function () vim.api.nvim_put({'()'}, 'c', true, false) end);
+		-- 	end,
+		-- },
 		["<Up>"] = {
 			i = cmp.mapping.select_prev_item({ behavior = cmp.SelectBehavior.Insert })
 		},
