@@ -169,3 +169,6 @@ alias k=kubectl
 
 # Github CLI tool completion
 [ -f /usr/bin/gh ] && source <(gh completion -s zsh)
+
+# Identification for self signed certificates via mkcert
+[ -f /home/linuxbrew/.linuxbrew/bin/mkcert ] && export NODE_EXTRA_CA_CERTS="$(mkcert -CAROOT)/rootCA.pem"
