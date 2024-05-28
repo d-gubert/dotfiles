@@ -126,3 +126,8 @@ end, { desc = "Close preview window" })
 -- Terminal emulator
 vim.keymap.set("t", "<ESC>", "<C-\\><C-n>", { desc = "Terminal: Escape" })
 -- vim.keymap.set("t", "<C-[>", "<C-\\><C-n>", { desc = "Terminal: Escape" })
+
+-- Custom Line Highlights
+local customHighlight = require "d-gubert.custom-highlight"
+
+vim.keymap.set("n", "<leader>lh", function() customHighlight.highlight() end, { desc = "Line highlight" })
