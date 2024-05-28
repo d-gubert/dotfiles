@@ -4,7 +4,7 @@ local M = {}
 local namespace_id
 
 function M.init_highlights()
-   vim.api.nvim_command('highlight default HighlightLine ctermbg=darkcyan guibg=darkcyan')
+   vim.api.nvim_command('highlight default HighlightLine ctermbg=darkcyan cterm=bold gui=bold guibg=#494d64')
    -- vim.api.nvim_command('highlight default HighlightLine guifg=#ff007c gui=bold ctermfg=198 cterm=bold ctermbg=darkgreen')
    namespace_id = vim.api.nvim_create_namespace('HighlightLineNamespace')
 end
