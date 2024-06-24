@@ -23,6 +23,8 @@ return require("packer").startup(function(use)
 	-- Let's take care of our time
 	use("wakatime/vim-wakatime")
 
+	use({ "iamcco/markdown-preview.nvim", run = "cd app && npm install", setup = function() vim.g.mkdp_filetypes = { "markdown" } end, ft = { "markdown" } })
+
 	use({
 		"epwalsh/obsidian.nvim",
 		tag = "*", -- recommended, use latest release instead of latest commit
@@ -177,13 +179,6 @@ return require("packer").startup(function(use)
 	})
 
 	use("natecraddock/sessions.nvim")
-
-	use({
-		"glacambre/firenvim",
-		config = function()
-			vim.fn["firenvim#install"](0)
-		end,
-	})
 
 	-- Themes
 	use("folke/tokyonight.nvim")
