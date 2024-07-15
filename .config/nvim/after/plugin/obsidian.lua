@@ -9,6 +9,11 @@ obsidian.setup({
 		{
 			name = "personal",
 			path = "~/dev/obsidian-vaults/Perosnal",
+			overrides = {
+				daily_notes = {
+					folder = "00 Dailies",
+				},
+			},
 		},
 	},
 })
