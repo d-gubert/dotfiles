@@ -3,6 +3,7 @@ Me dotfiles
 
 ## Required tools
 
+- [zsh/Oh-My-Zsh](https://github.com/ohmyzsh/ohmyzsh/wiki/Installing-ZSH)
 - [fzf](https://github.com/junegunn/fzf)
 - [ripgrep](https://github.com/BurntSushi/ripgrep#installation)
 - [nvm](https://github.com/nvm-sh/nvm)
