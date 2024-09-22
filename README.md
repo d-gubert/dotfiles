@@ -10,3 +10,4 @@ Me dotfiles
 - [meteor](https://v3-docs.meteor.com/about/install.html#installation)
 - [pyenv](https://github.com/pyenv/pyenv#installation)
 - [golang](https://go.dev/doc/install)
+- [Docker Engine](https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository)
