@@ -2,7 +2,7 @@ local lsp = require("lsp-zero").preset({})
 local nvim_lsp = require("lspconfig")
 
 lsp.ensure_installed({
-	"tsserver",
+	"ts_ls",
 	"denols",
 	"gopls",
 	"lua_ls",
@@ -38,8 +38,7 @@ nvim_lsp.denols.setup({
 	root_dir = nvim_lsp.util.root_pattern("deno.json", "deno.jsonc"),
 })
 
-nvim_lsp.tsserver.setup({
-	root_dir = nvim_lsp.util.root_pattern("package.json"),
+nvim_lsp.ts_ls.setup({
 	single_file_support = false,
 })
 
