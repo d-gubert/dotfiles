@@ -1,0 +1,30 @@
+import = [ 
+    "~/.config/alacritty/catppuccin-mocha.toml" 
+]
+
+[font]
+size = 10
+
+[font.normal]
+family = "MesloLGS NF"
+
+[[keyboard.bindings]]
+chars = "^["
+key = "LBracket"
+mode = "Vi"
+mods = "Control"
+
+[[keyboard.bindings]]
+action = "SearchCancel"
+key = "LBracket"
+mode = "Search"
+mods = "Control"
+
+[[keyboard.bindings]]
+action = "SearchConfirm"
+key = "M"
+mode = "Search"
+mods = "Control"
+
+[window]
+dimensions = { columns = 200, lines = 50 }
