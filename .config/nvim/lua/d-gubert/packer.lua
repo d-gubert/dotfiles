@@ -23,7 +23,16 @@ return require("packer").startup(function(use)
 	-- Let's take care of our time
 	use("wakatime/vim-wakatime")
 
-	use({ "iamcco/markdown-preview.nvim", run = "cd app && npm install", setup = function() vim.g.mkdp_filetypes = { "markdown" } end, ft = { "markdown" } })
+	use({
+		"iamcco/markdown-preview.nvim",
+		run = "cd app && npm install",
+		setup = function()
+			vim.g.mkdp_filetypes = {
+				"markdown",
+			}
+		end,
+		ft = { "markdown" },
+	})
 
 	use({
 		"epwalsh/obsidian.nvim",
