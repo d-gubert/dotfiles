@@ -163,6 +163,7 @@ assign [class="Spotify"] $ws2
 
 for_window [class="Windscribe2"] floating enable
 for_window [class="gnome-calculator"] floating enable
+for_window [class="dev.zed.Zed"] border none
 
 # Common applications
 bindsym $super+1 exec brave-browser
@@ -272,10 +273,11 @@ exec_always --no-startup-id "setxkbmap -model pc105 -layout us\(intl\),br -optio
 # bindsym $super+k exec "xmodmap ~/.Xmodmap"
 
 # Hides the mouse cursor after 1 second of inactivity
-exec unclutter -root -idle 1 &
+# exec unclutter -root -idle 1 &
 
 # Password manager
-exec enpass
+# This never worked
+# exec enpass
 
 bindsym Print exec ~/.config/i3/scripts/printscreen.sh
 

@@ -8,7 +8,7 @@ obsidian.setup({
 	workspaces = {
 		{
 			name = "personal",
-			path = "~/dev/github.com/d-gubert/personal-obsidian-vault",
+			path = "~/dev/d-gubert/personal-obsidian-vault",
 			overrides = {
 				daily_notes = {
 					folder = "00 Dailies",

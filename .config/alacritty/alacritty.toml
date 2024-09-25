@@ -1,9 +1,9 @@
-import = [ 
-    "~/.config/alacritty/catppuccin-mocha.toml" 
+import = [
+    "~/.config/alacritty/catppuccin-mocha.toml"
 ]
 
 [font]
-size = 10
+size = 7
 
 [font.normal]
 family = "MesloLGS NF"
@@ -28,3 +28,4 @@ mods = "Control"
 
 [window]
 dimensions = { columns = 200, lines = 50 }
+decorations = "None"
