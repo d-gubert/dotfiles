@@ -50,10 +50,10 @@ exec --no-startup-id nm-applet
 # exec_always --no-startup-id ~/.config/i3/scripts/single-monitor-setup.sh
 
 # Media player controls
-bindsym XF86AudioPlay exec "playerctl -p spotify,brave play-pause"
-bindsym XF86AudioPause exec "playerctl -p spotify,brave pause-pause"
-bindsym XF86AudioNext exec "playerctl -p spotify,brave next"
-bindsym XF86AudioPrev exec "playerctl -p spotify,brave previous"
+bindsym XF86AudioPlay exec "playerctl play-pause"
+bindsym XF86AudioPause exec "playerctl pause-pause"
+bindsym XF86AudioNext exec "playerctl next"
+bindsym XF86AudioPrev exec "playerctl previous"
 
 # Pulse Audio controls
 bindsym XF86AudioRaiseVolume exec --no-startup-id pactl set-sink-volume $(pactl get-default-sink) +5% #increase sound volume
