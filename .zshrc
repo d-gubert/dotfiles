@@ -135,8 +135,14 @@ export PATH="$DENO_INSTALL/bin:$PATH"
 
 # Golang
 
-export PATH="$PATH:/usr/local/go/bin"
 export GOPATH="$HOME/dev/go"
+export PATH="$PATH:/usr/local/go/bin:$GOPATH/bin"
+
+# playerctl daemon
+__playerctld="$(which playerctld)"
+if [ $? -eq 0 ]; then
+  playerctld daemon 2> /dev/null
+fi
 
 # The plugin will auto execute this zvm_after_init function
 function zvm_after_init() {
