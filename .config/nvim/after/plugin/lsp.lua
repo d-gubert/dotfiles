@@ -121,25 +121,25 @@ cmp.setup({
 		-- 	end,
 		-- },
 		["<Up>"] = {
-			i = cmp.mapping.select_prev_item({ behavior = cmp.SelectBehavior.Insert })
+			i = cmp.mapping.select_prev_item({ behavior = cmp.SelectBehavior.Insert }),
 		},
 		["<Down>"] = {
-			i = cmp.mapping.select_next_item({ behavior = cmp.SelectBehavior.Insert })
+			i = cmp.mapping.select_next_item({ behavior = cmp.SelectBehavior.Insert }),
 		},
 	}),
 	view = {
 		docs = {
 			auto_open = true,
-		}
+		},
 	},
 	confirmation = {
-		get_commit_characters = function (commit_characters)
-			table.insert(commit_characters, ',');
-			table.insert(commit_characters, '.');
-			table.insert(commit_characters, ';');
+		get_commit_characters = function(commit_characters)
+			table.insert(commit_characters, ",")
+			table.insert(commit_characters, ".")
+			table.insert(commit_characters, ";")
 			print(commit_characters)
 			return commit_characters
-		end
+		end,
 	},
 	preselect = cmp.PreselectMode.Item,
 	sources = cmp.config.sources({
@@ -152,7 +152,7 @@ cmp.setup({
 	}),
 	experimental = {
 		ghost_text = true,
-	}
+	},
 })
 
 -- If you want insert `(` after select function or method item
