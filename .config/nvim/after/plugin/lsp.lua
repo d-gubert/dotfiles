@@ -40,11 +40,27 @@ nvim_lsp.denols.setup({
 
 nvim_lsp.ts_ls.setup({
 	single_file_support = false,
+	init_options = {
+		hostInfo = "neovim",
+		preferences = {
+			includeInlayParameterNameHints = "all", -- 'none' | 'literals' | 'all'
+			includeInlayParameterNameHintsWhenArgumentMatchesName = true,
+			includeInlayVariableTypeHints = false,
+			includeInlayFunctionParameterTypeHints = true,
+			includeInlayVariableTypeHintsWhenTypeMatchesName = true,
+			includeInlayPropertyDeclarationTypeHints = true,
+			includeInlayFunctionLikeReturnTypeHints = false,
+			includeInlayEnumMemberValueHints = true,
+		},
+	},
 })
 
 nvim_lsp.ccls.setup({})
 
 lsp.setup()
+
+-- vim.lsp.set_log_level("debug")
+vim.lsp.inlay_hint.enable()
 
 -- Make sure to configure cmp AFTER lsp-zero
 local cmp = require("cmp")
