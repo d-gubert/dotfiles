@@ -216,7 +216,6 @@ mode "$mode_system" {
         # exit system mode: "Enter" or "Escape"
         bindsym Return mode "default"
         bindsym Escape mode "default"
-        bindsym Control+[ mode "default"
         bindsym $mod+Shift+e mode "default"
 }
 
@@ -241,7 +240,6 @@ mode "resize" {
         # back to normal: Enter or Escape or $mod+r
         bindsym Return mode "default"
         bindsym Escape mode "default"
-        bindsym Control+[ mode "default"
         bindsym Control+m mode "default"
         bindsym $mod+r mode "default"
 }
@@ -259,7 +257,6 @@ mode $mode_screen_select {
         bindsym Return mode "default"
         bindsym Escape mode "default"
         bindsym Control+m mode "default"
-        bindsym Control+[ mode "default"
         bindsym $mod+m mode "default"
 }
 
@@ -273,7 +270,7 @@ exec --no-startup-id ~/.config/i3/scripts/touchpad-fix.sh
 
 # This became somewhat obsolete with the glove 80
 # Swap CTRL and CAPS LOCK - When it's reset by the language change
-# bindsym $super+k exec "xmodmap ~/.Xmodmap"
+bindsym $super+k exec "xmodmap ~/.config/i3/scripts/capslock-2-ctrl.xmodmap"
 
 # Hides the mouse cursor after 1 second of inactivity
 # exec unclutter -root -idle 1 &

@@ -133,6 +133,11 @@ eval "$(pyenv init -)"
 export DENO_INSTALL="/home/douglas-gubert/.deno"
 export PATH="$DENO_INSTALL/bin:$PATH"
 
+# Deno Version Manager
+
+export DVM_DIR="/home/douglas-gubert/.dvm"
+export PATH="$DVM_DIR/bin:$PATH"
+
 # Golang
 
 export GOPATH="$HOME/dev/go"
