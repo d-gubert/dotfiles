@@ -35,7 +35,11 @@ end)
 nvim_lsp.lua_ls.setup(lsp.nvim_lua_ls())
 
 nvim_lsp.denols.setup({
+	init_options = {
+		lint = true
+	},
 	root_dir = nvim_lsp.util.root_pattern("deno.json", "deno.jsonc"),
+	cmd = { "deno", "lsp" }
 })
 
 nvim_lsp.ts_ls.setup({
