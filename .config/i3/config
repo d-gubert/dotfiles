@@ -19,7 +19,7 @@ set $text-color #f3f4f5
 set $inactive-text-color #676E7D
 set $urgent-bg-color #E53935
 
-smart_borders on
+# smart_borders on
 
 # Font for window titles. Will also be used by the bar unless a different font
 # is used in the bar {} block below.
@@ -163,7 +163,8 @@ assign [class="Spotify"] $ws2
 
 for_window [class="Windscribe2"] floating enable
 for_window [class="gnome-calculator"] floating enable
-for_window [class="dev.zed.Zed"] border none
+
+default_border none
 
 # Common applications
 bindsym $super+1 exec brave-browser
