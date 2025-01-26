@@ -69,6 +69,7 @@ return require("packer").startup(function(use)
 			"nvim-treesitter/nvim-treesitter-refactor",
 			"nvim-treesitter/nvim-treesitter-textobjects", -- OMG
 			"nvim-treesitter/nvim-treesitter-context", -- Sweet
+			"nushell/tree-sitter-nu",
 		},
 	})
 
