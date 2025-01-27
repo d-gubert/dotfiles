@@ -1,6 +1,6 @@
 add_newline = false
 
-format = "$directory$character"
+format = "$directory"
 right_format = "$all"
 
 [line_break]

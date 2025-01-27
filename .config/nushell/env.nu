@@ -28,6 +28,8 @@ $env.gopath = "$HOME/dev/go"
 path add "/usr/local/go/bin"
 path add "$env.gopath/bin"
 
+path add ~/.cargo/bin
+
 ## Carapace setup - needs to run before config.nu
 mkdir ~/.cache/carapace
 carapace _carapace nushell | save --force ~/.cache/carapace/init.nu

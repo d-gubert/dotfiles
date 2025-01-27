@@ -17,24 +17,24 @@
 # You can remove these comments if you want or leave
 # them for future reference.
 
-## Config
+## Config - using the object syntax changes the whole config, better to do setting by setting
 
-$env.config = {
-    show_banner: false,
-    buffer_editor: nvim,
-    edit_mode: vi,
-    cursor_shape: {
-        vi_insert: block,
-        vi_normal: underscore,
-    },
-    render_right_prompt_on_last_line: false
+$env.config.show_banner = false
+$env.config.buffer_editor = 'nvim'
+$env.config.edit_mode = 'vi'
+$env.config.render_right_prompt_on_last_line = true
+$env.config.cursor_shape = {
+    vi_insert: line,
+    vi_normal: blink_block,
 }
 
+$env.EDITOR = 'nvim'
 
 ## Aliases
 
 alias l = ls -la
 alias bat = batcat
+alias v = nvim
 
 #### Git
 
@@ -48,7 +48,6 @@ alias ga = git add
 alias gb = git branch
 alias gd = git diff
 alias gp = git push
-#alias gpsup = "git push --set-upstream origin $(git_current_branch)"
 alias glog = git log --oneline --decorate --graph
 alias gl = git pull
 alias gw = git worktree
