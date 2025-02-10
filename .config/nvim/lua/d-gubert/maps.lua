@@ -29,8 +29,8 @@ vim.keymap.set("n", "<A-w>", "<C-w>", { desc = "Window handling" })
 
 -- Reconsidering my life choices...
 -- Better horizontal navigation on insert mode
--- vim.keymap.set('i', '<C-h>', '<Left>', { desc = 'Better horizontal navigation on insert mode' })
--- vim.keymap.set('i', '<C-l>', '<Right>', { desc = 'Better horizontal navigation on insert mode' })
+vim.keymap.set('i', '<C-b>', '<Left>', { desc = 'Better horizontal navigation on insert mode' })
+vim.keymap.set('i', '<C-f>', '<Right>', { desc = 'Better horizontal navigation on insert mode' })
 
 -- Quick saving, faster than typing the commands
 vim.keymap.set("n", "<leader>s", vim.cmd.write, { remap = false, desc = "Save" })
