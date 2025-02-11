@@ -27,10 +27,11 @@ vim.keymap.set("n", "<A-w>", "<C-w>", { desc = "Window handling" })
 -- Pressing ESC is too much wrist displacement - not a problem when using capslock as CTRL?
 -- vim.keymap.set('i', 'jk', '<ESC>', { desc = 'Easy escape (pressing ESC is too much wrist displacement)' })
 
--- Reconsidering my life choices...
--- Better horizontal navigation on insert mode
-vim.keymap.set('i', '<C-b>', '<Left>', { desc = 'Better horizontal navigation on insert mode' })
-vim.keymap.set('i', '<C-f>', '<Right>', { desc = 'Better horizontal navigation on insert mode' })
+-- Better navigation in insert mode. These keymaps mimic shortcuts in the terminal
+vim.keymap.set('i', '<C-b>', '<Left>', { desc = 'Move one character left' })
+vim.keymap.set('i', '<C-f>', '<Right>', { desc = 'Move one character right' })
+vim.keymap.set('i', '<C-e>', '<End>', { desc = 'Move to end of line' })
+vim.keymap.set('i', '<C-a>', '<Home>', { desc = 'Move to beginning of line' })
 
 -- Quick saving, faster than typing the commands
 vim.keymap.set("n", "<leader>s", vim.cmd.write, { remap = false, desc = "Save" })
