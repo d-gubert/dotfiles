@@ -23,6 +23,7 @@ $env.config.show_banner = false
 $env.config.buffer_editor = 'nvim'
 $env.config.edit_mode = 'vi'
 $env.config.render_right_prompt_on_last_line = true
+$env.config.history.isolation = true
 $env.config.cursor_shape = {
     vi_insert: line,
     vi_normal: blink_block,
@@ -65,7 +66,8 @@ alias dv = docker volume
 alias dn = docker network
 alias di = docker image
 
-def ds [] { docker ps -a | detect columns }
+def ds [] { docker ps | detect columns }
+def dsa [] { docker ps -a | detect columns }
 
 #### Kubernetes
 
