@@ -30,6 +30,8 @@ vim.keymap.set("n", "<A-w>", "<C-w>", { desc = "Window handling" })
 -- Better navigation in insert mode. These keymaps mimic shortcuts in the terminal
 vim.keymap.set('i', '<C-b>', '<Left>', { desc = 'Move one character left' })
 vim.keymap.set('i', '<C-f>', '<Right>', { desc = 'Move one character right' })
+vim.keymap.set('i', '<C-j>', '<Down>', { desc = 'Move one line down' })
+vim.keymap.set('i', '<C-k>', '<Up>', { desc = 'Move one line up' })
 vim.keymap.set('i', '<C-e>', '<End>', { desc = 'Move to end of line' })
 vim.keymap.set('i', '<C-a>', '<Home>', { desc = 'Move to beginning of line' })
 
