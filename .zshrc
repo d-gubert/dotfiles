@@ -152,7 +152,9 @@ fi
 
 # The plugin will auto execute this zvm_after_init function
 function zvm_after_init() {
-  [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+  if command -v fzf > /dev/null; then
+    source <(fzf --zsh)
+  fi
 }
 
 # >>> conda initialize >>>
