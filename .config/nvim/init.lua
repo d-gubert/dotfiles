@@ -1,1 +1,2 @@
-require('d-gubert')
+-- bootstrap lazy.nvim, LazyVim and your plugins
+require("config.lazy")
