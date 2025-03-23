@@ -6,7 +6,7 @@ import = [
 size = 8
 
 [font.normal]
-family = "MesloLGS NF"
+family = "FiraCode"
 
 [[keyboard.bindings]]
 chars = "^["

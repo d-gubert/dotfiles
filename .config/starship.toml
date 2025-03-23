@@ -1,6 +1,6 @@
 add_newline = false
 
-format = "$directory"
+format = "$directory$branch"
 right_format = "$all"
 
 [line_break]

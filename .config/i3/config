@@ -111,10 +111,10 @@ bindsym $mod+Shift+semicolon move right
 # bindsym $mod+Shift+Right move right
 
 # split in horizontal orientation
-bindsym $mod+h split h
+# bindsym $mod+h split h
 
 # split in vertical orientation
-bindsym $mod+v split v
+# bindsym $mod+v split v
 
 # enter fullscreen mode for the focused container
 bindsym $mod+f fullscreen toggle
@@ -289,7 +289,7 @@ bar {
         output HDMI-1-0
         position top
         status_command i3status
-        font pango:monospace 11
+        font pango:monospace 8
         tray_output HDMI-1-0
 }
 

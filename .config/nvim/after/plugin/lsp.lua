@@ -55,6 +55,7 @@ nvim_lsp.ts_ls.setup({
 			includeInlayPropertyDeclarationTypeHints = true,
 			includeInlayFunctionLikeReturnTypeHints = false,
 			includeInlayEnumMemberValueHints = true,
+			importModuleSpecifierPreference = "relative",
 		},
 	},
 })
