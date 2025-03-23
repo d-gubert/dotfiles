@@ -24,16 +24,16 @@ end, { desc = "Close current tab" })
 vim.keymap.set("n", "<leader>w", "<C-w>", { desc = "Window handling" })
 vim.keymap.set("n", "<A-w>", "<C-w>", { desc = "Window handling" })
 
--- Pressing ESC is too much wrist displacement - not a problem when using capslock as CTRL?
+-- Pressing ESC is too much wrist displacement - not a problem when using capslock as CTRL - <C-[>
 -- vim.keymap.set('i', 'jk', '<ESC>', { desc = 'Easy escape (pressing ESC is too much wrist displacement)' })
 
 -- Better navigation in insert mode. These keymaps mimic shortcuts in the terminal
-vim.keymap.set('i', '<C-b>', '<Left>', { desc = 'Move one character left' })
-vim.keymap.set('i', '<C-f>', '<Right>', { desc = 'Move one character right' })
-vim.keymap.set('i', '<C-j>', '<Down>', { desc = 'Move one line down' })
-vim.keymap.set('i', '<C-k>', '<Up>', { desc = 'Move one line up' })
-vim.keymap.set('i', '<C-e>', '<End>', { desc = 'Move to end of line' })
-vim.keymap.set('i', '<C-a>', '<Home>', { desc = 'Move to beginning of line' })
+vim.keymap.set("i", "<C-b>", "<Left>", { desc = "Move one character left" })
+vim.keymap.set("i", "<C-f>", "<Right>", { desc = "Move one character right" })
+vim.keymap.set("i", "<C-j>", "<Down>", { desc = "Move one line down" })
+vim.keymap.set("i", "<C-k>", "<Up>", { desc = "Move one line up" })
+vim.keymap.set("i", "<C-e>", "<End>", { desc = "Move to end of line" })
+vim.keymap.set("i", "<C-a>", "<Home>", { desc = "Move to beginning of line" })
 
 -- Quick saving, faster than typing the commands
 vim.keymap.set("n", "<leader>s", vim.cmd.write, { remap = false, desc = "Save" })
@@ -131,6 +131,8 @@ vim.keymap.set("t", "<ESC>", "<C-\\><C-n>", { desc = "Terminal: Escape" })
 -- vim.keymap.set("t", "<C-[>", "<C-\\><C-n>", { desc = "Terminal: Escape" })
 
 -- Custom Line Highlights
-local customHighlight = require "d-gubert.custom-highlight"
+local customHighlight = require("d-gubert.custom-highlight")
 
-vim.keymap.set("n", "<leader>lh", function() customHighlight.highlight() end, { desc = "Line highlight" })
+vim.keymap.set("n", "<leader>lh", function()
+	customHighlight.highlight()
+end, { desc = "Line highlight" })
