@@ -25,3 +25,14 @@ vim.keymap.set("i", "<C-j>", "<Down>", { desc = "Move one line down" })
 vim.keymap.set("i", "<C-k>", "<Up>", { desc = "Move one line up" })
 vim.keymap.set("i", "<C-e>", "<End>", { desc = "Move to end of line" })
 vim.keymap.set("i", "<C-a>", "<Home>", { desc = "Move to beginning of line" })
+
+-- Better <Del>
+vim.keymap.set("i", "<C-l>", "<Del>", { desc = "Better <Del>" })
+
+-- Move to search result and centralize viewport
+vim.keymap.set("n", "n", "nzzzv")
+vim.keymap.set("n", "N", "Nzzzv")
+
+-- Page scroll and centralize
+vim.keymap.set("n", "<C-d>", "<C-d>zz", { desc = "Page scroll and centralize" })
+vim.keymap.set("n", "<C-u>", "<C-u>zz", { desc = "Page scroll and centralize" })
