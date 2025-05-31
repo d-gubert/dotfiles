@@ -176,8 +176,10 @@ unset __conda_setup
 [ -f /home/linuxbrew/.linuxbrew/bin/helm ] && source <(helm completion zsh)
 
 # Kubectl suggestions
-[ -f /usr/local/bin/kubectl ] && source <(kubectl completion zsh)
-alias k=kubectl
+if command -v kubectl > /dev/null; then
+  source <(kubectl completion zsh)
+  alias k=kubectl
+fi
 
 # Github CLI tool completion
 [ -f /usr/bin/gh ] && source <(gh completion -s zsh)

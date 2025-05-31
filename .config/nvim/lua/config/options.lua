@@ -11,8 +11,11 @@ vim.g.snacks_animate = false
 
 local opt = vim.opt
 
-opt.tabstop = 4 -- Number of spaces tabs count for
 opt.smoothscroll = false
+opt.tabstop = 4
+opt.softtabstop = 4
+opt.shiftwidth = 4
+opt.expandtab = true
 
 -- Show invisible characters
 opt.list = true

@@ -36,3 +36,9 @@ vim.keymap.set("n", "N", "Nzzzv")
 -- Page scroll and centralize
 vim.keymap.set("n", "<C-d>", "<C-d>zz", { desc = "Page scroll and centralize" })
 vim.keymap.set("n", "<C-u>", "<C-u>zz", { desc = "Page scroll and centralize" })
+
+-- vim.keymap.del('n', '[[')
+-- vim.keymap.del('n', ']]')
+-- vim.keymap.set("n", "[[", function()
+-- 	require("treesitter-context").go_to_context()
+-- end, { silent = true, desc = "Treesitter: Go to context above" })
