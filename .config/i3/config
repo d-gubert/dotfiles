@@ -9,8 +9,8 @@
 #
 # Please see https://i3wm.org/docs/userguide.html for a complete reference!
 
-set $mod Mod1
-set $super Mod4
+set $mod Mod4
+set $alt Mod1
 
 # colors
 set $bg-color #2f343f
@@ -23,7 +23,7 @@ set $urgent-bg-color #E53935
 
 # Font for window titles. Will also be used by the bar unless a different font
 # is used in the bar {} block below.
-font pango:monospace 9
+font pango:DejaVu Sans Mono 9
 
 # This font is widely installed, provides lots of unicode glyphs, right-to-left
 # text rendering and scalability on retina/hidpi displays (thanks to pango).
@@ -40,7 +40,7 @@ exec --no-startup-id dex --autostart --environment i3
 # screen before suspend. Use loginctl lock-session to lock your screen.
 exec --no-startup-id xss-lock --transfer-sleep-lock -- i3lock --nofork
 
-bindsym $super+l exec --no-startup-id loginctl lock-session
+# bindsym $mod+, exec --no-startup-id loginctl lock-session
 
 # NetworkManager is the most popular way to manage wireless networks on Linux,
 # and nm-applet is a desktop environment-independent system tray GUI for it.
@@ -76,6 +76,7 @@ tiling_drag modifier titlebar
 
 # kill focused window
 bindsym $mod+q kill
+bindsym $alt+q kill
 
 # start dmenu (a program launcher)
 # bindsym $mod+d exec --no-startup-id dmenu_run
@@ -116,7 +117,7 @@ bindsym $mod+Shift+semicolon move right
 # split in vertical orientation
 # bindsym $mod+v split v
 
-# enter fullscreen mode for the focused container
+# enter fullscreen mode for the focused container - zoom into the screen
 bindsym $mod+f fullscreen toggle
 
 # change container layout (stacked, tabbed, toggle split)
@@ -125,13 +126,13 @@ bindsym $mod+f fullscreen toggle
 # bindsym $mod+e layout toggle split
 
 # toggle tiling / floating
-bindsym $mod+Shift+space floating toggle
+bindsym $mod+t floating toggle
 
 # change focus between tiling / floating windows
-bindsym $mod+space focus mode_toggle
+# bindsym $mod+space focus mode_toggle
 
 # focus the parent container
-bindsym $mod+a focus parent
+# bindsym $mod+a focus parent
 
 # focus the child container
 #bindsym $mod+d focus child
@@ -168,10 +169,13 @@ for_window [class="gnome-calculator"] floating enable
 default_border none
 
 # Common applications
-bindsym $super+1 exec brave-browser
-bindsym $super+2 exec spotify
-bindsym $super+w exec /opt/Rocket.Chat/rocketchat-desktop %U
-bindsym $super+3 exec alacritty
+# bindsym $super+1 exec brave-browser
+# bindsym $super+2 exec spotify
+# bindsym $super+w exec /opt/Rocket.Chat/rocketchat-desktop %U
+bindsym $mod+c exec /opt/Rocket.Chat/rocketchat-desktop %U
+bindsym $mod+s exec spotify
+bindsym $mod+b exec brave-browser
+bindsym $mod+Return exec alacritty
 
 # switch to workspace
 bindsym $mod+1 workspace number $ws1
@@ -197,8 +201,7 @@ bindsym $mod+Shift+8 move container to workspace number $ws8,  workspace $ws8
 bindsym $mod+Shift+9 move container to workspace number $ws9,  workspace $ws9
 bindsym $mod+Shift+0 move container to workspace number $ws10, workspace $ws10
 
-bindsym $mod+$super+h move workspace to output next
-bindsym $mod+$super+l move workspace to output right
+bindsym $mod+Shift+h move workspace to output next
 
 # reload the configuration file
 bindsym $mod+Shift+c reload
