@@ -126,8 +126,16 @@ alias bat=batcat
 alias nvim="XDG_CACHE_HOME=/tmp nvim"
 alias claude="/home/douglas-gubert/.claude/local/claude"
 
-# To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
-[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+
+# ~/.zshrc — disable Powerlevel10k when Cursor Agent runs
+if [[ -n "$CURSOR_AGENT" ]]; then
+  # Skip theme initialization for better compatibility
+else
+  # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
+  [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+fi
+
+export PLAYWRIGHT_BROWSERS_PATH=/work/.cache/playwright
 
 # Load pyenv automatically
 
