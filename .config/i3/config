@@ -251,21 +251,21 @@ mode "resize" {
 
 bindsym $mod+r mode "resize"
 
-set $mode_screen_select "Select monitor setup: Single External (1), Single Laptop (2), Multi-horizontal (3), Multi-vertical (4)"
-
-mode $mode_screen_select {
-        bindsym 1 exec --no-startup-id ~/.config/i3/scripts/single-monitor-external.sh, mode "default"
-        bindsym 2 exec --no-startup-id ~/.config/i3/scripts/single-monitor-laptop.sh, mode "default"
-        bindsym 3 exec --no-startup-id ~/.config/i3/scripts/hor-home-screen-setup.sh, mode "default"
-        bindsym 4 exec --no-startup-id ~/.config/i3/scripts/ver-home-screen-setup.sh, mode "default"
-
-        bindsym Return mode "default"
-        bindsym Escape mode "default"
-        bindsym Control+m mode "default"
-        bindsym $mod+m mode "default"
-}
-
-bindsym $super+m mode $mode_screen_select
+# set $mode_screen_select "Select monitor setup: Single External (1), Single Laptop (2), Multi-horizontal (3), Multi-vertical (4)"
+#
+# mode $mode_screen_select {
+#         bindsym 1 exec --no-startup-id ~/.config/i3/scripts/single-monitor-external.sh, mode "default"
+#         bindsym 2 exec --no-startup-id ~/.config/i3/scripts/single-monitor-laptop.sh, mode "default"
+#         bindsym 3 exec --no-startup-id ~/.config/i3/scripts/hor-home-screen-setup.sh, mode "default"
+#         bindsym 4 exec --no-startup-id ~/.config/i3/scripts/ver-home-screen-setup.sh, mode "default"
+#
+#         bindsym Return mode "default"
+#         bindsym Escape mode "default"
+#         bindsym Control+m mode "default"
+#         bindsym $mod+m mode "default"
+# }
+#
+# bindsym $super+m mode $mode_screen_select
 
 # Keyboard languages - Win + Space to toggle (resets xmodmap)
 exec_always --no-startup-id "setxkbmap -model pc105 -layout us\(intl\),br -option 'grp:win_space_toggle'"
