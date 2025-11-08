@@ -82,7 +82,7 @@ fi
 # Custom plugins may be added to $ZSH_CUSTOM/plugins/
 # Example format: plugins=(rails git textmate ruby lighthouse)
 # Add wisely, as too many plugins slow down shell startup.
-plugins=(git docker npm zsh-syntax-highlighting zsh-autosuggestions z)
+plugins=(git docker npm zsh-syntax-highlighting zsh-autosuggestions z web-search)
 
 # Don't load vim mode if running from Neovim terminal
 if [[ ! -n $NVIM ]]; then
