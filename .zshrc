@@ -17,7 +17,10 @@ export ZSH="$HOME/.oh-my-zsh"
 # load a random theme each time oh-my-zsh is loaded, in which case,
 # to know which specific one was loaded, run: echo $RANDOM_THEME
 # See https://github.com/ohmyzsh/ohmyzsh/wiki/Themes
-ZSH_THEME="powerlevel10k/powerlevel10k"
+# Cursor dislikes p10k for some reason
+if [[ -z $CURSOR_CLI_MODE ]]; then
+    ZSH_THEME="powerlevel10k/powerlevel10k"
+fi
 
 # Set list of themes to pick from when loading at random
 # Setting this variable when ZSH_THEME=random will cause zsh to load
@@ -187,3 +190,10 @@ fi
 # Identification for self signed certificates via mkcert
 [ -f /home/linuxbrew/.linuxbrew/bin/mkcert ] && export NODE_EXTRA_CA_CERTS="$(mkcert -CAROOT)/rootCA.pem"
 . "/home/douglas-gubert/.deno/env"
+
+# bun completions
+[ -s "/home/douglas-gubert/.bun/_bun" ] && source "/home/douglas-gubert/.bun/_bun"
+
+# bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
