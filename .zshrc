@@ -105,7 +105,7 @@ setopt no_share_history
 if [[ -n $SSH_CONNECTION ]]; then
   export EDITOR='vi'
 else
-  export EDITOR='nvim'
+  export EDITOR='XDG_CACHE_HOME=/tmp nvim'
 fi
 
 export ZVM_VI_EDITOR=$EDITOR
@@ -122,6 +122,9 @@ export ZVM_VI_EDITOR=$EDITOR
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 alias bat=batcat
+# Home dir encryption does not like long file names, so we override for nvim
+alias nvim="XDG_CACHE_HOME=/tmp nvim"
+alias claude="/home/douglas-gubert/.claude/local/claude"
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
