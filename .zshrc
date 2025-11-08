@@ -187,6 +187,12 @@ fi
 # Github CLI tool completion
 [ -f /usr/bin/gh ] && source <(gh completion -s zsh)
 
+# Carapace
+if command -v carapace > /dev/null; then
+    zstyle ':completion:*' format $'\e[2;37mCompleting %d\e[m'
+    source <(carapace _carapace)
+fi
+
 # Identification for self signed certificates via mkcert
 [ -f /home/linuxbrew/.linuxbrew/bin/mkcert ] && export NODE_EXTRA_CA_CERTS="$(mkcert -CAROOT)/rootCA.pem"
 . "/home/douglas-gubert/.deno/env"
