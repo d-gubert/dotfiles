@@ -4,6 +4,7 @@
 
 -- LazyVim auto format
 vim.g.autoformat = false
+-- vim.g.lazyvim_eslint_auto_format = true
 
 -- Snacks animations
 -- Set to `false` to globally disable all snacks animations
@@ -15,7 +16,7 @@ opt.smoothscroll = false
 opt.tabstop = 4
 opt.softtabstop = 4
 opt.shiftwidth = 4
-opt.expandtab = true
+opt.expandtab = false
 
 -- Show invisible characters
 opt.list = true
