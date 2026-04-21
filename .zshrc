@@ -121,11 +121,15 @@ export ZVM_VI_EDITOR=$EDITOR
 # Example aliases
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
-alias bat=batcat
+if command -v jiratui > /dev/null; then
+	alias jira="jiratui ui"
+fi
+
 # Home dir encryption does not like long file names, so we override for nvim
 alias nvim="XDG_CACHE_HOME=/tmp nvim"
-alias claude="/home/douglas-gubert/.claude/local/claude"
 
+# Home dir encryption long file restriction messes up with this too
+export PLAYWRIGHT_BROWSERS_PATH=/work/.cache/playwright
 
 # ~/.zshrc — disable Powerlevel10k when Cursor Agent runs
 if [[ -n "$CURSOR_AGENT" ]]; then
@@ -134,8 +138,6 @@ else
   # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
   [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 fi
-
-export PLAYWRIGHT_BROWSERS_PATH=/work/.cache/playwright
 
 # Load pyenv automatically
 
@@ -214,3 +216,31 @@ fi
 # bun
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
+
+# opencode
+export PATH=/home/douglas-gubert/.opencode/bin:$PATH
+
+[ -f /work/scripts/watch_rocket.sh ] && zsh -c "/work/scripts/watch_rocket.sh start" &|
+
+###### PERSONAL ALIASES ######
+
+alias prview='gh pr view --web'
+alias praction='gh pr check --watch'
+alias prco='gh pr checkout'
+
+###### TESTING DENO ######
+
+# function deno () {
+# 	DIR=${DENO_DIR:-$HOME/.deno}
+# 	echo "DOCKER DENO - $@ - \$DENO_DIR is $DIR"
+# 	docker run \
+# 		--interactive \
+# 		--tty \
+# 		--rm \
+# 		--volume /work:/work \
+# 		--volume $DIR:/deno-dir \
+# 		--workdir $PWD \
+# 		--entrypoint deno \
+# 		custom-deno \
+# 		"$@"
+# }
