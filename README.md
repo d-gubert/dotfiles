@@ -42,11 +42,11 @@ make install-zsh     # also installs oh-my-zsh and all plugins
 
 ##### 2.1 Stow
 
-Stow would error out if directories already exist and are not owned by it, so we
-actually run stow as the first step in `make`.
+Stow would error out if directories already exist and are not owned by it, so we actually run stow as the first step in `make`.
 
-If you add other configuration files to the `ubuntu` directory, you can get stow
-to manage them as well by running `make stow`.
+If you add other configuration files to the `ubuntu` directory, you can get stow to manage them as well by running `make stow`.
+
+Stow is usually used by having one directory for each software you want to manage, with the internal structure of that directory being mirrored in the `target`. I didn't like that, so I just threw all config files into the `ubuntu` directory, then I can stow everything there to my home directory.
 
 ---
 
