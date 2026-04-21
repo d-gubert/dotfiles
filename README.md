@@ -4,14 +4,24 @@ Me dotfiles.
 
 ## Quick start on a new machine
 
-### 1. Clone this repo
+### One-liner bootstrap
 
 ```sh
-git clone https://github.com/d-gubert/dotfiles.git ~/dev/d-gubert/dotfiles
-cd ~/dev/d-gubert/dotfiles
+wget -qO- https://raw.githubusercontent.com/d-gubert/dotfiles/main/bootstrap.sh | bash
 ```
 
-### 2. Install software
+This clones the repo to `~/dev/dotfiles`, installs git first if needed, and runs `make all`.
+
+### Manual setup
+
+#### 1. Clone this repo
+
+```sh
+git clone https://github.com/d-gubert/dotfiles.git ~/dev/dotfiles
+cd ~/dev/dotfiles
+```
+
+#### 2. Install software
 
 ```sh
 # Install everything
@@ -30,11 +40,13 @@ make install-neovim
 make install-zsh     # also installs oh-my-zsh and all plugins
 ```
 
-### 3. Apply dotfiles with stow
+##### 2.1 Stow
 
-```sh
-stow .
-```
+Stow would error out if directories already exist and are not owned by it, so we
+actually run stow as the first step in `make`.
+
+If you add other configuration files to the `ubuntu` directory, you can get stow
+to manage them as well by running `make stow`.
 
 ---
 
