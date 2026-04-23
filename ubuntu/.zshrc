@@ -1,10 +1,10 @@
 # Add deno completions to search path
-if [[ ":$FPATH:" != *":/home/douglas-gubert/.zsh/completions:"* ]]; then export FPATH="/home/douglas-gubert/.zsh/completions:$FPATH"; fi
+if [[ ":$FPATH:" != *":$HOME/.zsh/completions:"* ]]; then export FPATH="$HOME/.zsh/completions:$FPATH"; fi
 # Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
 # Initialization code that may require console input (password prompts, [y/n]
 # confirmations, etc.) must go above this block; everything else may go below.
 if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
-  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+	source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
 fi
 
 # If you come from bash you might have to change your $PATH.
@@ -19,7 +19,7 @@ export ZSH="$HOME/.oh-my-zsh"
 # See https://github.com/ohmyzsh/ohmyzsh/wiki/Themes
 # Cursor dislikes p10k for some reason
 if [[ -z $CURSOR_CLI_MODE ]]; then
-    ZSH_THEME="powerlevel10k/powerlevel10k"
+	ZSH_THEME="powerlevel10k/powerlevel10k"
 fi
 
 # Set list of themes to pick from when loading at random
@@ -86,7 +86,7 @@ plugins=(git docker npm zsh-syntax-highlighting zsh-autosuggestions z web-search
 
 # Don't load vim mode if running from Neovim terminal
 if [[ ! -n $NVIM ]]; then
-  plugins+=(zsh-vi-mode)
+	plugins+=(zsh-vi-mode)
 fi
 
 source $ZSH/oh-my-zsh.sh
@@ -101,13 +101,17 @@ setopt no_share_history
 # You may need to manually set your language environment
 # export LANG=en_US.UTF-8
 
+# Change XDG_CACHE_HOME due to home encryption limitations
+export XDG_CACHE_HOME=/work/.cache/xdg
+
 # Preferred editor for local and remote sessions
 if [[ -n $SSH_CONNECTION ]]; then
-  export EDITOR='vi'
+	export EDITOR='vi'
 else
-  export EDITOR='XDG_CACHE_HOME=/tmp nvim'
+	export EDITOR='nvim'
 fi
 
+export SUDO_EDITOR="$(which $EDITOR)"
 export ZVM_VI_EDITOR=$EDITOR
 
 # Compilation flags
@@ -121,38 +125,45 @@ export ZVM_VI_EDITOR=$EDITOR
 # Example aliases
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
+
+alias prview='gh pr view --web'
+alias praction='gh pr checks --watch'
+alias prco='gh pr checkout'
+alias gw='git worktree'
+alias gwl='git worktree list'
+
 if command -v jiratui > /dev/null; then
 	alias jira="jiratui ui"
 fi
 
 # Home dir encryption does not like long file names, so we override for nvim
-alias nvim="XDG_CACHE_HOME=/tmp nvim"
+# alias nvim="nvim"
 
 # Home dir encryption long file restriction messes up with this too
 export PLAYWRIGHT_BROWSERS_PATH=/work/.cache/playwright
 
 # ~/.zshrc — disable Powerlevel10k when Cursor Agent runs
 if [[ -n "$CURSOR_AGENT" ]]; then
-  # Skip theme initialization for better compatibility
+	# Skip theme initialization for better compatibility
 else
-  # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
-  [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+	# To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
+	[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 fi
 
 # Load pyenv automatically
 
 export PYENV_ROOT="$HOME/.pyenv"
 command -v pyenv >/dev/null || export PATH="$PYENV_ROOT/bin:$PATH"
-eval "$(pyenv init -)"
+source <(pyenv init -)
 
 # Deno
 
-export DENO_INSTALL="/home/douglas-gubert/.deno"
+export DENO_INSTALL="$HOME/.deno"
 export PATH="$DENO_INSTALL/bin:$PATH"
 
 # Deno Version Manager
 
-export DVM_DIR="/home/douglas-gubert/.dvm"
+export DVM_DIR="$HOME/.dvm"
 export PATH="$DVM_DIR/bin:$PATH"
 
 # Golang
@@ -161,74 +172,55 @@ export GOPATH="$HOME/dev/go"
 export PATH="$PATH:/usr/local/go/bin:$GOPATH/bin"
 
 # playerctl daemon
-__playerctld="$(which playerctld)"
-if [ $? -eq 0 ]; then
-  playerctld daemon 2> /dev/null
+if command -v playerctld >/dev/null; then
+	playerctld daemon 2> /dev/null
 fi
-
-# The plugin will auto execute this zvm_after_init function
-function zvm_after_init() {
-  if command -v fzf > /dev/null; then
-    source <(fzf --zsh)
-  fi
-}
-
-# >>> conda initialize >>>
-# !! Contents within this block are managed by 'conda init' !!
-__conda_setup="$('/home/douglas/miniconda3/bin/conda' 'shell.zsh' 'hook' 2> /dev/null)"
-if [ $? -eq 0 ]; then
-    eval "$__conda_setup"
-else
-    if [ -f "/home/douglas/miniconda3/etc/profile.d/conda.sh" ]; then
-        . "/home/douglas/miniconda3/etc/profile.d/conda.sh"
-    else
-        export PATH="/home/douglas/miniconda3/bin:$PATH"
-    fi
-fi
-unset __conda_setup
-# <<< conda initialize <<<
 
 # Helm suggestions
-[ -f /home/linuxbrew/.linuxbrew/bin/helm ] && source <(helm completion zsh)
+if command -v helm >/dev/null; then
+	source <(helm completion zsh)
+fi
 
 # Kubectl suggestions
 if command -v kubectl > /dev/null; then
-  source <(kubectl completion zsh)
-  alias k=kubectl
+	source <(kubectl completion zsh)
+	alias k=kubectl
 fi
 
 # Github CLI tool completion
-[ -f /usr/bin/gh ] && source <(gh completion -s zsh)
-
-# Carapace
-if command -v carapace > /dev/null; then
-    zstyle ':completion:*' format $'\e[2;37mCompleting %d\e[m'
-    source <(carapace _carapace)
+if command -v gh >/dev/null; then
+	source <(gh completion -s zsh)
 fi
-
-# Identification for self signed certificates via mkcert
-[ -f /home/linuxbrew/.linuxbrew/bin/mkcert ] && export NODE_EXTRA_CA_CERTS="$(mkcert -CAROOT)/rootCA.pem"
-. "/home/douglas-gubert/.deno/env"
-
-# bun completions
-[ -s "/home/douglas-gubert/.bun/_bun" ] && source "/home/douglas-gubert/.bun/_bun"
 
 # bun
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
 
+# bun completions
+[ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
+
+# Carapace
+if command -v carapace > /dev/null; then
+	zstyle ':completion:*' format $'\e[2;37mCompleting %d\e[m'
+	source <(carapace _carapace)
+fi
+
+# Identification for self signed certificates via mkcert
+if command -v mkcert >/dev/null; then
+	export NODE_EXTRA_CA_CERTS="$(mkcert -CAROOT)/rootCA.pem"
+fi
+
 # opencode
-export PATH=/home/douglas-gubert/.opencode/bin:$PATH
+export PATH=$HOME/.opencode/bin:$PATH
+
+# The plugin will auto execute this zvm_after_init function
+function zvm_after_init() {
+	if command -v fzf > /dev/null; then
+		source <(fzf --zsh)
+	fi
+}
 
 [ -f /work/scripts/watch_rocket.sh ] && zsh -c "/work/scripts/watch_rocket.sh start" &|
-
-###### PERSONAL ALIASES ######
-
-alias prview='gh pr view --web'
-alias praction='gh pr checks --watch'
-alias prco='gh pr checkout'
-alias gw='git worktree'
-alias gwl='git worktree list'
 
 ###### TESTING DENO ######
 
