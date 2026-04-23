@@ -225,8 +225,10 @@ export PATH=/home/douglas-gubert/.opencode/bin:$PATH
 ###### PERSONAL ALIASES ######
 
 alias prview='gh pr view --web'
-alias praction='gh pr check --watch'
+alias praction='gh pr checks --watch'
 alias prco='gh pr checkout'
+alias gw='git worktree'
+alias gwl='git worktree list'
 
 ###### TESTING DENO ######
 
