@@ -10,6 +10,9 @@ fi
 # If you come from bash you might have to change your $PATH.
 export PATH=/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:$HOME/bin:$HOME/.local/bin:$PATH
 
+# cargo binaries (rust)
+export PATH=$HOME/.cargo/bin:$PATH
+
 # Path to your oh-my-zsh installation.
 export ZSH="$HOME/.oh-my-zsh"
 
