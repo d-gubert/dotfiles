@@ -16,6 +16,11 @@
 # 	done
 # }
 
+yarnrc="plugins:
+	- path: $HOME/scripts/rc_watcher_yarn_plugin.cjs
+"
+yarnrc_sha=$(sha256sum <(echo $yarnrc) | awk '{ print $1 }')
+
 _WATCHRC_rcWatcherPath=/tmp/rc-watcher
 _WATCHRC_pipe=$_WATCHRC_rcWatcherPath.pipe
 _WATCHRC_status=$_WATCHRC_rcWatcherPath.status
@@ -105,6 +110,19 @@ function _WATCHRC_startAndPipeToRCWatcher() {
 	"${cmd[@]}" | tee "$_WATCHRC_pipe"
 }
 
+function _WATCHRC_writeYarnConfig() {
+	if [[ ! -f "$HOME/.yarnrc.yml" ]]; then
+		echo $yarnrc > "$HOME/.yarnrc.yml"
+	else
+		sha=$(sha256sum "$HOME/.yarnrc.yml" | awk '{ print $1 }')
+		if [[ $sha != $yarnrc_sha ]]; then
+			echo "Yarn config file is different! Watcher may misbehave"
+		fi
+	fi
+
+}
+
 if [[ "$1" == "start" ]]; then
+	_WATCHRC_writeYarnConfig
 	_WATCHRC_start
 fi
