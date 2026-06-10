@@ -46,6 +46,7 @@ all: essential development utilities
 
 .PHONY: essential
 essential: homebrew \
+	stow \
 	install-alacritty \
 	install-arandr \
 	install-bat \
@@ -60,7 +61,6 @@ essential: homebrew \
 	install-kanata \
 	install-neovim \
 	install-ripgrep \
-	install-stow \
 	install-xclip \
 	install-zellij \
 	install-zsh
@@ -77,6 +77,7 @@ essential: homebrew \
 
 .PHONY: development
 development: homebrew \
+	stow \
 	install-ast-grep \
 	install-dvm \
 	install-lazygit \
@@ -94,6 +95,7 @@ development: homebrew \
 
 .PHONY: utilities
 utilities: homebrew \
+	stow \
 	install-carapace \
 	install-jiratui \
 	install-tealdeer \
@@ -106,7 +108,7 @@ utilities: homebrew \
 # stow would fail due to content already existing
 
 .PHONY: stow
-stow:
+stow: install-stow
 	@echo "Stowing dotfiles..."
 	@echo
 	@stow -t ~ ubuntu
@@ -116,7 +118,7 @@ stow:
 # ─────────────────────────────────────────────────────────────────────────────
 
 .PHONY: homebrew
-homebrew: stow
+homebrew:
 	@if command -v brew >/dev/null 2>&1; then \
 		echo "[homebrew] already installed"; \
 	else \
