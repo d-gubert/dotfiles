@@ -129,7 +129,9 @@ export ZVM_VI_EDITOR=$EDITOR
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 
-alias prview='gh pr view --web'
+alias repovw='gh repo view --web'
+alias prvw='gh pr view --web'
+alias prv='gh pr view'
 alias praction='gh pr checks --watch'
 alias prco='gh pr checkout'
 alias gw='git worktree'
