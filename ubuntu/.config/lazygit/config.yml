@@ -1,0 +1,3 @@
+gui:
+  # Really appreciate the line mode here
+  useHunkModeInStagingView: false
