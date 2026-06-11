@@ -225,10 +225,10 @@ function zvm_after_init() {
 	fi
 }
 
-# A prompt expansion that prints the current script name, then resolves it to absolute path `:A` (following symlinks)
-export DOTFILES_PATH=${${(%):-%N}:A}
+# Prompt expansion that prints the current script name, then resolves it to absolute path `:A` (following symlinks)
+export DOTFILES_PATH=$(dirname ${${(%):-%N}:A})
 
-[ -f "$DOTFILES_PATH/scripts/watch_rocket" ] && zsh -c "$DOTFILES_PATH/scripts/watch_rocket start" &|
+[ -f "$DOTFILES_PATH/scripts/watch_rocket.sh" ] && zsh -c "$DOTFILES_PATH/scripts/watch_rocket.sh start" &|
 
 ###### TESTING DENO ######
 
