@@ -104,8 +104,8 @@ setopt no_share_history
 # You may need to manually set your language environment
 # export LANG=en_US.UTF-8
 
-# Change XDG_CACHE_HOME due to home encryption limitations
-export XDG_CACHE_HOME=/work/.cache/xdg
+# Change XDG_CACHE_HOME due to home encryption limitations (defined in .xprofile)
+[ -f ~/.xprofile ] && source ~/.xprofile
 
 # Preferred editor for local and remote sessions
 if [[ -n $SSH_CONNECTION ]]; then

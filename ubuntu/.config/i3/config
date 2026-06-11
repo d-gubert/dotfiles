@@ -45,6 +45,7 @@ exec --no-startup-id xss-lock --transfer-sleep-lock -- i3lock --nofork
 # NetworkManager is the most popular way to manage wireless networks on Linux,
 # and nm-applet is a desktop environment-independent system tray GUI for it.
 exec --no-startup-id nm-applet
+exec --no-startup-id ~/.config/i3/scripts/dmenu-cliphist.sh start
 
 # Configure display - Do I need this now that I have the mode selector below?
 # exec_always --no-startup-id ~/.config/i3/scripts/single-monitor-setup.sh
@@ -176,6 +177,7 @@ bindsym $mod+c exec /opt/Rocket.Chat/rocketchat-desktop %U
 bindsym $mod+s exec spotify
 bindsym $mod+b exec brave-browser
 bindsym $mod+Return exec alacritty
+bindsym $mod+v exec --no-startup-id ~/.config/i3/scripts/dmenu-cliphist.sh sel
 
 # switch to workspace
 bindsym $mod+1 workspace number $ws1
