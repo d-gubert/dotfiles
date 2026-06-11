@@ -16,7 +16,6 @@ function ch_highlight() {
 
 function ch_clipboard() {
 	res=$(xclip -o -selection clipboard 2>/dev/null)
-	ch_log "ch_output $res"
 	if [[ "$clip" != "$res" ]]; then
 		clip=$res
 		return 0
@@ -29,15 +28,40 @@ function ch_writeHistory() {
 	[ -f "$histfile" ] || notify-send "Creating $histfile"; touch $histfile
 	[ -z "$clip" ] && exit 0
 
-	multiline=$(echo "$clip" | sed ':a;N;$!ba;s/\n/'"$placeholder"'/g')
+	multiline=$(printf '%s' "$clip" | sed ':a;N;$!ba;s/\n/'"$placeholder"'/g')
 
 	# Avoid duplicating the content inside the file
 	grep -Fxq "$multiline" "$histfile" || echo "$multiline" >> "$histfile"
 }
 
+function ch_editor() {
+	local session
+	session=$(zellij list-sessions -n 2>/dev/null | grep -v "EXITED" | awk 'NR==1{print $1}')
+
+	if [[ -n "$session" ]]; then
+		zellij --session "$session" action edit -f "$histfile"
+	else
+		alacritty -e $EDITOR "$histfile"
+	fi
+}
+
 function ch_sel() {
-	selection=$(tac "$histfile" | rofi -dmenu -p "> ")
-	[ -n "$selection" ] && echo "$selection" | sed "s/$placeholder/\n/g" | xclip -i -selection clipboard && notify-send "Copied to clipboard!" ;
+	selection=$(tac "$histfile" | rofi -dmenu -p "Clipboard >" -matching fuzzy -sort \
+		-kb-remove-to-eol "" \
+		-kb-cancel "Control+c,Escape,Control+g,Control+bracketleft" \
+		-kb-accept-entry "Control+m,Return,KP_Enter" \
+		-kb-row-up "Control+k,Up,Control+p" \
+		-kb-row-down "Control+j,Down,Control+n" \
+		-kb-custom-1 "Alt+e")
+
+	local rofi_exit=$?
+
+	if [[ $rofi_exit -eq 10 ]]; then
+		ch_editor
+	elif [[ -n "$selection" ]]; then
+		printf '%s' "$(printf '%s' "$selection" | sed "s/$placeholder/\n/g")" | xclip -i -selection clipboard
+		notify-send "Copied to clipboard!"
+	fi
 }
 
 function ch_checkRunning() {
@@ -63,11 +87,3 @@ elif [[ "$1" == "sel" ]]; then
 	ch_sel
 fi
 
-# case "$1" in
-#   add) highlight && write ;;
-#   out) output && write ;;
-#   sel) sel ;;
-#   *) printf "$0 | File: $histfile\n\nadd - copies primary selection to clipboard, and adds to history file\nout - pipe commands to copy output to clipboard, and add to history file\nsel - select from history file with dmenu and recopy!\n" ; exit 0 ;;
-# esac
-#
-# [ -z "$notification" ] || notify-send "$notification"

@@ -3,3 +3,5 @@
 
 # Home dir encryption does not like long file names
 export XDG_CACHE_HOME=/work/.cache/xdg
+
+export EDITOR=nvim
