@@ -72,11 +72,11 @@ Stow is usually used by having one directory for each software you want to manag
 | [glow](https://github.com/charmbracelet/glow) | Markdown renderer for the terminal | brew |
 | [jq](https://jqlang.org) | JSON processor | brew |
 | [arandr](https://christian.amsuess.com/tools/arandr/) | GUI front-end for xrandr (display configuration) | apt |
-| [bat](https://github.com/sharkdp/bat) | `cat` with syntax highlighting | apt |
+| [bat](https://github.com/sharkdp/bat) | `cat` with syntax highlighting | brew |
 | [xclip](https://github.com/astrand/xclip) | Clipboard CLI tool | apt |
 | [docker](https://docs.docker.com/engine) | Container runtime | install script |
-| [btop](https://github.com/aristocratsbit/btop) | System resource monitor | apt |
-| [ffmpeg](https://ffmpeg.org) | Audio/video processing | apt |
+| [btop](https://github.com/aristocratsbit/btop) | System resource monitor | brew |
+| [ffmpeg](https://ffmpeg.org) | Audio/video processing | brew |
 
 #### Oh-My-Zsh plugins
 

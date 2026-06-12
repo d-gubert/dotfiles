@@ -27,10 +27,10 @@ all: essential development utilities
 # ─────────────────────────────────────────────────────────────────────────────
 # alacritty  — not in brew (deprecated/Linux); use apt
 # arandr     — apt
-# bat        — apt
-# btop       — apt
+# bat        — brew
+# btop       — brew
 # docker     — official script (docker-ce, not the apt docker.io snap)
-# ffmpeg     — apt
+# ffmpeg     — brew
 # fzf        — brew
 # gh         — brew
 # glow       — brew
@@ -42,7 +42,7 @@ all: essential development utilities
 # stow       — brew
 # xclip      — apt
 # zellij     — brew
-# zsh        — apt
+# zsh        — brew
 
 .PHONY: essential
 essential: homebrew \
@@ -214,25 +214,11 @@ install-zsh:
 # APT managed packages
 # ─────────────────────────────────────────────────────────────────────────────
 
-.PHONY: install-bat
-install-bat:
-	@if command -v bat >/dev/null 2>&1; then echo "[bat] already installed"; else \
-		echo "[bat] installing via apt..."; \
-		sudo apt-get install -y bat; \
-	fi
-
 .PHONY: install-xclip
 install-xclip:
 	@if command -v xclip >/dev/null 2>&1; then echo "[xclip] already installed"; else \
 		echo "[xclip] installing via apt..."; \
 		sudo apt-get install -y xclip; \
-	fi
-
-.PHONY: install-btop
-install-btop:
-	@if command -v btop >/dev/null 2>&1; then echo "[btop] already installed"; else \
-		echo "[btop] installing via apt..."; \
-		sudo apt-get install -y btop; \
 	fi
 
 .PHONY: install-arandr
@@ -249,13 +235,6 @@ install-alacritty:
 		sudo apt-get install -y alacritty; \
 	fi
 
-.PHONY: install-ffmpeg
-install-ffmpeg:
-	@if command -v ffmpeg >/dev/null 2>&1; then echo "[ffmpeg] already installed"; else \
-		echo "[ffmpeg] installing via apt..."; \
-		sudo apt-get install -y ffmpeg; \
-	fi
-
 .PHONY: install-i3
 install-i3:
 	@if command -v i3 >/dev/null 2>&1; then echo "[i3] already installed"; else \
@@ -266,6 +245,20 @@ install-i3:
 # ─────────────────────────────────────────────────────────────────────────────
 # Homebrew managed packages
 # ─────────────────────────────────────────────────────────────────────────────
+
+.PHONY: install-bat
+install-bat: homebrew
+	@if command -v bat >/dev/null 2>&1; then echo "[bat] already installed"; else \
+		echo "[bat] installing via brew..."; \
+		$(BREW_INSTALL) bat; \
+	fi
+
+.PHONY: install-btop
+install-btop: homebrew
+	@if command -v btop >/dev/null 2>&1; then echo "[btop] already installed"; else \
+		echo "[btop] installing via brew..."; \
+		$(BREW_INSTALL) btop; \
+	fi
 
 .PHONY: install-jq
 install-jq: homebrew
@@ -286,6 +279,13 @@ install-kanata: homebrew
 	@if command -v kanata >/dev/null 2>&1; then echo "[kanata] already installed"; else \
 		echo "[kanata] installing via brew..."; \
 		$(BREW_INSTALL) kanata; \
+	fi
+
+.PHONY: install-ffmpeg
+install-ffmpeg: homebrew
+	@if command -v ffmpeg >/dev/null 2>&1; then echo "[ffmpeg] already installed"; else \
+		echo "[ffmpeg] installing via apt..."; \
+		$(BREW_INSTALL) ffmpeg; \
 	fi
 
 .PHONY: install-fzf
