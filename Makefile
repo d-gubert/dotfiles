@@ -163,8 +163,8 @@ install-meteor:
 .PHONY: install-zsh
 install-zsh:
 	@if ! command -v zsh >/dev/null 2>&1; then \
-		echo "[zsh] installing via apt..."; \
-		sudo apt-get install -y zsh; \
+		echo "[zsh] installing via brew..."; \
+		$(BREW_INSTALL) zsh; \
 	else \
 		echo "[zsh] already installed"; \
 	fi
@@ -183,24 +183,31 @@ install-zsh:
 	fi
 	@if [ ! -d "$$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions" ]; then \
 		echo "[zsh:zsh-autosuggestions] installing..."; \
-		git clone https://github.com/zsh-users/zsh-autosuggestions \
+		git clone --depth=1 https://github.com/zsh-users/zsh-autosuggestions \
 			"$$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions"; \
 	else \
 		echo "[zsh:zsh-autosuggestions] already installed"; \
 	fi
 	@if [ ! -d "$$HOME/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting" ]; then \
 		echo "[zsh:zsh-syntax-highlighting] installing..."; \
-		git clone https://github.com/zsh-users/zsh-syntax-highlighting \
+		git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting \
 			"$$HOME/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting"; \
 	else \
 		echo "[zsh:zsh-syntax-highlighting] already installed"; \
 	fi
 	@if [ ! -d "$$HOME/.oh-my-zsh/custom/plugins/zsh-vi-mode" ]; then \
 		echo "[zsh:zsh-vi-mode] installing..."; \
-		git clone https://github.com/jeffreytse/zsh-vi-mode \
+		git clone --depth=1 https://github.com/jeffreytse/zsh-vi-mode \
 			"$$HOME/.oh-my-zsh/custom/plugins/zsh-vi-mode"; \
 	else \
 		echo "[zsh:zsh-vi-mode] already installed"; \
+	fi
+	@if [ ! -d "$$HOME/.oh-my-zsh/custom/plugins/zsh-autopair" ]; then \
+		echo "[zsh:zsh-autopair] installing..."; \
+		git clone --depth=1 https://github.com/hlissner/zsh-autopair \
+			"$$HOME/.oh-my-zsh/custom/plugins/zsh-autopair"; \
+	else \
+		echo "[zsh:zsh-autopair] already installed"; \
 	fi
 
 # ─────────────────────────────────────────────────────────────────────────────

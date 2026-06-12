@@ -58,7 +58,7 @@ Stow is usually used by having one directory for each software you want to manag
 | ------ | ------------- | --------------- |
 | [alacritty](https://github.com/alacritty/alacritty) | GPU-accelerated terminal emulator | apt |
 | [homebrew](https://brew.sh) | Package manager | install script |
-| [zsh](https://www.zsh.org) | Shell | apt |
+| [zsh](https://www.zsh.org) | Shell | brew |
 | [oh-my-zsh](https://ohmyz.sh) | Zsh framework | install script |
 | [powerlevel10k](https://github.com/romkatv/powerlevel10k) | Zsh theme | git |
 | [zellij](https://zellij.dev) | Terminal multiplexer | brew |
@@ -85,6 +85,7 @@ Stow is usually used by having one directory for each software you want to manag
 | [zsh-autosuggestions](https://github.com/zsh-users/zsh-autosuggestions) | Fish-like command suggestions |
 | [zsh-syntax-highlighting](https://github.com/zsh-users/zsh-syntax-highlighting) | Shell syntax highlighting |
 | [zsh-vi-mode](https://github.com/jeffreytse/zsh-vi-mode) | Better vi mode for zsh |
+| [zsh-autopair](https://github.com/jeffreytse/zsh-autopair) | Auto closes pairs of symbols |
 
 ### Development
 
