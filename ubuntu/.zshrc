@@ -147,7 +147,7 @@ alias prco='gh pr checkout'
 alias gw='git worktree'
 alias gwl='git worktree list'
 
-if command -v jiratui > /dev/null; then
+if command -v jiratui >/dev/null; then
 	alias jira="jiratui ui"
 fi
 
@@ -168,8 +168,11 @@ fi
 # Load pyenv automatically
 
 export PYENV_ROOT="$HOME/.pyenv"
-command -v pyenv >/dev/null || export PATH="$PYENV_ROOT/bin:$PATH"
-source <(pyenv init -)
+
+if command -v pyenv >/dev/null; then
+	export PATH="$PYENV_ROOT/bin:$PATH"
+	source <(pyenv init -)
+fi
 
 # Deno
 
@@ -197,7 +200,7 @@ if command -v helm >/dev/null; then
 fi
 
 # Kubectl suggestions
-if command -v kubectl > /dev/null; then
+if command -v kubectl >/dev/null; then
 	source <(kubectl completion zsh)
 	alias k=kubectl
 fi
@@ -215,7 +218,7 @@ export PATH="$BUN_INSTALL/bin:$PATH"
 [ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
 
 # Carapace
-if command -v carapace > /dev/null; then
+if command -v carapace >/dev/null; then
 	zstyle ':completion:*' format $'\e[2;37mCompleting %d\e[m'
 	source <(carapace _carapace)
 fi
@@ -230,7 +233,7 @@ export PATH=$HOME/.opencode/bin:$PATH
 
 # The plugin will auto execute this zvm_after_init function
 function zvm_after_init() {
-	if command -v fzf > /dev/null; then
+	if command -v fzf >/dev/null; then
 		source <(fzf --zsh)
 	fi
 }
