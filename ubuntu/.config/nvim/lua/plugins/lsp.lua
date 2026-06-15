@@ -33,6 +33,34 @@ return {
 						end
 					end
 				end
+			},
+			servers = {
+				vtsls = {
+					experimental = {
+						enableServerSideFuzzyMatch = true,
+					},
+					settings = {
+						["js/ts.hover.maximumLength"] = 10000,
+						typescript = {
+							preferences = {
+								preferTypeOnlyAutoImports = true,
+								importModuleSpecifier = "relative",
+							},
+							-- preferGoToSourceDefinition = true,
+							tsserver = {
+								-- From docs: To use a memory limit greater than 4 GB, use `#typescript.tsserver.nodePath#` to run TS Server with a custom Node installation.
+								maxTsServerMemory = 8192,
+								nodePath = 'node',
+							}
+						},
+						javascript = {
+							preferences = {
+								importModuleSpecifier = "relative",
+							},
+							-- preferGoToSourceDefinition = true,
+						}
+					}
+				}
 			}
 		}
 	}
