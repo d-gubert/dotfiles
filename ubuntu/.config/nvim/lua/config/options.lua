@@ -10,6 +10,8 @@ vim.g.autoformat = false
 -- Set to `false` to globally disable all snacks animations
 vim.g.snacks_animate = false
 
+vim.o.winborder = 'rounded'
+
 local opt = vim.opt
 
 opt.smoothscroll = false
