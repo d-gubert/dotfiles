@@ -139,11 +139,6 @@ export ZVM_VI_EDITOR=$EDITOR
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 
-alias repovw='gh repo view --web'
-alias prvw='gh pr view --web'
-alias prv='gh pr view'
-alias praction='gh pr checks --watch'
-alias prco='gh pr checkout'
 alias gw='git worktree'
 alias gwl='git worktree list'
 
@@ -151,8 +146,10 @@ if command -v jiratui >/dev/null; then
 	alias jira="jiratui ui"
 fi
 
-# Home dir encryption does not like long file names, so we override for nvim
-# alias nvim="nvim"
+if command -v lazygit >/dev/null; then
+	source <(lazygit completion zsh)
+	alias lg='lazygit'
+fi
 
 # Home dir encryption long file restriction messes up with this too
 export PLAYWRIGHT_BROWSERS_PATH=/work/.cache/playwright
@@ -166,7 +163,6 @@ else
 fi
 
 # Load pyenv automatically
-
 export PYENV_ROOT="$HOME/.pyenv"
 
 if command -v pyenv >/dev/null; then
@@ -175,17 +171,14 @@ if command -v pyenv >/dev/null; then
 fi
 
 # Deno
-
 export DENO_INSTALL="$HOME/.deno"
 export PATH="$DENO_INSTALL/bin:$PATH"
 
 # Deno Version Manager
-
 export DVM_DIR="$HOME/.dvm"
 export PATH="$DVM_DIR/bin:$PATH"
 
 # Golang
-
 export GOPATH="$HOME/dev/go"
 export PATH="$PATH:/usr/local/go/bin:$GOPATH/bin"
 
@@ -208,6 +201,11 @@ fi
 # Github CLI tool completion
 if command -v gh >/dev/null; then
 	source <(gh completion -s zsh)
+	alias prvw='gh pr view --web'
+	alias prv='gh pr view'
+	alias praction='gh pr checks --watch'
+	alias prco='gh pr checkout'
+	alias repovw='gh repo view --web'
 fi
 
 # bun
