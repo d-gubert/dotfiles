@@ -130,6 +130,36 @@ export ZVM_VI_EDITOR=$EDITOR
 # Compilation flags
 # export ARCHFLAGS="-arch x86_64"
 
+# Custom functions
+#
+# Functionality that can't live in a standalone script to be executed.
+# Maybe move to a sourced script in the future?
+
+# Switch git worktrees
+gwl() {
+	local target
+	local filter="${1}"
+
+	if [ -n "${filter}" ]; then
+		target=$(
+			git worktree list |
+			fzf --filter "${filter}" |
+			head -1 |
+			awk '{ print $1 }'
+		) || return
+
+		echo "Changing working directory to ${target}"
+	else
+		target=$(
+			git worktree list |
+			fzf --prompt='Worktree > ' --height=~15 --layout=reverse --border |
+			awk '{ print $1 }'
+		) || return
+	fi
+
+	[[ -n "${target}" ]] && cd "${target}"
+}
+
 # Set personal aliases, overriding those provided by oh-my-zsh libs,
 # plugins, and themes. Aliases can be placed here, though oh-my-zsh
 # users are encouraged to define aliases within the ZSH_CUSTOM folder.
@@ -140,7 +170,6 @@ export ZVM_VI_EDITOR=$EDITOR
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 
 alias gw='git worktree'
-alias gwl='git worktree list'
 
 if command -v jiratui >/dev/null; then
 	alias jira="jiratui ui"
