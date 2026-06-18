@@ -89,16 +89,16 @@ development: homebrew \
 # Utilities (Optional)
 # ─────────────────────────────────────────────────────────────────────────────
 # carapace    — brew
-# jiratui     — brew
 # tealdeer    — brew
+# lazyjira    — brew
 # tree-sitter — brew
 
 .PHONY: utilities
 utilities: homebrew \
 	stow \
 	install-carapace \
-	install-jiratui \
 	install-tealdeer \
+	install-lazyjira \
 	install-tree-sitter
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -351,11 +351,11 @@ install-ast-grep:
 		$(BREW_INSTALL) ast-grep; \
 	fi
 
-.PHONY: install-jiratui
-install-jiratui: homebrew
-	@if command -v jiratui >/dev/null 2>&1; then echo "[jiratui] already installed"; else \
-		echo "[jiratui] installing via brew..."; \
-		$(BREW_INSTALL) jiratui; \
+.PHONY: install-lazyjira
+install-lazyjira: homebrew
+	@if command -v lazyjira >/dev/null 2>&1; then echo "[lazyjira] already installed"; else \
+		echo "[lazyjira] installing via brew..."; \
+		$(BREW_INSTALL) textfuel/tap/lazyjira; \
 	fi
 
 .PHONY: install-tealdeer

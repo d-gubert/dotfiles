@@ -195,6 +195,10 @@ if command -v lazygit >/dev/null; then
 	alias lg='lazygit'
 fi
 
+if command -v lazyjira >/dev/null; then
+	alias lj='lazyjira'
+fi
+
 # Home dir encryption long file restriction messes up with this too
 export PLAYWRIGHT_BROWSERS_PATH=/work/.cache/playwright
 

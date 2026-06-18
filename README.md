@@ -102,7 +102,7 @@ Stow is usually used by having one directory for each software you want to manag
 
 | Tool | Description | Installed via |
 | ------ | ------------- | --------------- |
-| [jiratui](https://github.com/sosukesuzuki/jiratui) | Jira TUI client | brew |
 | [tealdeer](https://github.com/dbrgn/tealdeer) | Fast `tldr` client | brew |
+| [lazyjira](https://github.com/textfuel/jiratui) | Jira TUI client | brew |
 | [carapace](https://carapace.sh) | Multi-shell completion generator | brew |
 | [tree-sitter](https://tree-sitter.github.io) | Parser generator and incremental parsing | brew |
