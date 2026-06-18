@@ -152,12 +152,27 @@ gwl() {
 	else
 		target=$(
 			git worktree list |
-			fzf --prompt='Worktree > ' --height=~15 --layout=reverse --border |
+			fzf --prompt='Worktree > ' --height=~15 --layout=reverse --border --cycle |
 			awk '{ print $1 }'
 		) || return
 	fi
 
 	[[ -n "${target}" ]] && cd "${target}"
+}
+
+# List my open PRs
+mypr() {
+	local target
+
+	target=$(
+		gh search prs --author '@me' --state open --sort updated --order desc --json repository,number,state,title,updatedAt,url \
+			--jq '.[] | [.url,.repository.nameWithOwner,("#"+(.number|tostring)),.state,.title,.updatedAt] | @tsv' |
+		column -t -s $'\t' |
+		fzf --prompt='PR > ' --height=~100% --layout=reverse --with-nth=2.. --accept-nth=1 --border --cycle
+	) || return
+
+	xdg-open "${target}"
+	echo "${target}"
 }
 
 # Set personal aliases, overriding those provided by oh-my-zsh libs,
