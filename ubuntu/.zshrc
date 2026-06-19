@@ -186,6 +186,15 @@ mypr() {
 
 alias gw='git worktree'
 
+# Home dir encryption long file restriction messes up with this too
+export PLAYWRIGHT_BROWSERS_PATH=/work/.cache/playwright
+
+# Prompt expansion that prints the current script name, then resolves it to absolute path `:A` (following symlinks)
+export DOTFILES_PATH=$(dirname ${${(%):-%N}:A})
+export DOTFILES_SCRIPTS="${DOTFILES_PATH}/scripts"
+
+export PATH=$DOTFILES_SCRIPTS:$PATH
+
 if command -v jiratui >/dev/null; then
 	alias jira="jiratui ui"
 fi
@@ -193,21 +202,20 @@ fi
 if command -v lazygit >/dev/null; then
 	source <(lazygit completion zsh)
 	alias lg='lazygit'
+	alias lgs='lazygit stash'
+	alias lgl='lazygit log'
 fi
 
 if command -v lazyjira >/dev/null; then
 	alias lj='lazyjira'
 fi
 
-# Home dir encryption long file restriction messes up with this too
-export PLAYWRIGHT_BROWSERS_PATH=/work/.cache/playwright
-
 # ~/.zshrc — disable Powerlevel10k when Cursor Agent runs
 if [[ -n "$CURSOR_AGENT" ]]; then
 	# Skip theme initialization for better compatibility
 else
 	# To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
-	[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+	[[ -f ~/.p10k.zsh ]] && source ~/.p10k.zsh
 fi
 
 # Load pyenv automatically
@@ -229,6 +237,12 @@ export PATH="$DVM_DIR/bin:$PATH"
 # Golang
 export GOPATH="$HOME/dev/go"
 export PATH="$PATH:/usr/local/go/bin:$GOPATH/bin"
+
+# Carapace
+if command -v carapace >/dev/null; then
+	zstyle ':completion:*' format $'\e[2;37mCompleting %d\e[m'
+	source <(carapace _carapace)
+fi
 
 # playerctl daemon
 if command -v playerctld >/dev/null; then
@@ -263,12 +277,6 @@ export PATH="$BUN_INSTALL/bin:$PATH"
 # bun completions
 [ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
 
-# Carapace
-if command -v carapace >/dev/null; then
-	zstyle ':completion:*' format $'\e[2;37mCompleting %d\e[m'
-	source <(carapace _carapace)
-fi
-
 # Identification for self signed certificates via mkcert
 if command -v mkcert >/dev/null; then
 	export NODE_EXTRA_CA_CERTS="$(mkcert -CAROOT)/rootCA.pem"
@@ -283,12 +291,6 @@ function zvm_after_init() {
 		source <(fzf --zsh)
 	fi
 }
-
-# Prompt expansion that prints the current script name, then resolves it to absolute path `:A` (following symlinks)
-export DOTFILES_PATH=$(dirname ${${(%):-%N}:A})
-export DOTFILES_SCRIPTS="${DOTFILES_PATH}/scripts"
-
-export PATH=$DOTFILES_SCRIPTS:$PATH
 
 [ -f "$DOTFILES_SCRIPTS/watch_rocket.sh" ] && zsh -c "$DOTFILES_SCRIPTS/watch_rocket.sh start" &|
 
