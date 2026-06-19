@@ -162,17 +162,15 @@ gwl() {
 
 # List my open PRs
 mypr() {
-	local target
-
-	target=$(
-		gh search prs --author '@me' --state open --sort updated --order desc --json repository,number,state,title,updatedAt,url \
-			--jq '.[] | [.url,.repository.nameWithOwner,("#"+(.number|tostring)),.state,.title,.updatedAt] | @tsv' |
-		column -t -s $'\t' |
-		fzf --prompt='PR > ' --height=~100% --layout=reverse --with-nth=2.. --accept-nth=1 --border --cycle
-	) || return
-
-	xdg-open "${target}"
-	echo "${target}"
+	gh search prs --author '@me' --state open --sort updated --order desc --json repository,number,state,title,updatedAt,url \
+		--jq '.[] | [.url,.repository.nameWithOwner,("#"+(.number|tostring)),.state,.title,.updatedAt] | @tsv' |
+	column -t -s $'\t' |
+	fzf --prompt='PR > ' --height=~100% --layout=reverse --with-nth=2.. --accept-nth=1 --border --cycle \
+		--header=$'\n[ENTER]/[CTRL-O] Open | [CTRL-Y] Copy to clipboard\n\n' \
+		--bind 'enter:execute(xdg-open {1})+accept' \
+		--bind 'ctrl-o:execute-silent(xdg-open {1})' \
+		--bind 'ctrl-y:execute-silent(echo {1} | xclip -selection clipboard)' \
+		2>&1 >/dev/null
 }
 
 # Set personal aliases, overriding those provided by oh-my-zsh libs,
