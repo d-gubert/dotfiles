@@ -173,6 +173,44 @@ mypr() {
 		2>&1 >/dev/null
 }
 
+# Claude code dev-tools
+ccd() {
+	local profile="~/.claude"
+	local port=3456
+
+	while (( $# )); do
+		case "$1" in
+			-p|--profile)
+				shift
+				profile="$1"
+				;;
+			-e|--port) # -e as in "expose port"
+				shift
+				port="$1"
+				;;
+			*)
+				print -u2 "Unknown option or argument: $1"
+				print "Fuck you"
+				return 1;
+				;;
+		esac
+		shift
+	done
+
+	if [[ "$profile[1]" != "/" ]]; then
+		profile=${~profile}
+	fi
+
+	if [[ ! -d $profile ]]; then
+		print "Profile directory not found: $profile"
+		print "Fuck you"
+		return 1
+	fi
+
+	# Image is not published in the registry, needs to be built locally - https://github.com/matt1398/claude-devtools
+	docker run --rm -e NODE_ENV=development -p "${port}:3456" -v "$profile:/data/.claude:ro" claude-devtools
+}
+
 # Set personal aliases, overriding those provided by oh-my-zsh libs,
 # plugins, and themes. Aliases can be placed here, though oh-my-zsh
 # users are encouraged to define aliases within the ZSH_CUSTOM folder.
