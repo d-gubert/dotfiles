@@ -247,6 +247,25 @@ if command -v playerctld >/dev/null; then
 	playerctld daemon 2> /dev/null
 fi
 
+# Zellij
+if command -v zellij >/dev/null; then
+	local zcomp="$HOME/.config/zellij/compdef"
+	# zellij setup --generate-completion zsh > $zcomp
+	fpath=($zcomp $fpath)
+	# Run command in new pane
+	function zr () { zellij run --name "$*" -- zsh -ic "$*";}
+	# Run command in new floating pane
+	function zrf () { zellij run --name "$*" --floating -- zsh -ic "$*";}
+	# Run command in current pane
+	function zri () { zellij run --name "$*" --in-place -- zsh -ic "$*";}
+	# Edit file in new pane
+	function ze () { zellij edit "$*";}
+	# Edit file in new floating pane
+	function zef () { zellij edit --floating "$*";}
+	# Edit file in current pane
+	function zei () { zellij edit --in-place "$*";}
+fi
+
 # Helm suggestions
 if command -v helm >/dev/null; then
 	source <(helm completion zsh)
