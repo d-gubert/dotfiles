@@ -91,18 +91,20 @@ Stow is usually used by having one directory for each software you want to manag
 
 | Tool | Description | Installed via |
 | ------ | ------------- | --------------- |
-| [volta](https://volta.sh) | Node.js toolchain manager | install script |
-| [dvm](https://github.com/justjavac/dvm) | Deno version manager | install script |
-| [meteor](https://www.meteor.com) | Full-stack JavaScript framework | install script |
-| [vi-mongo](https://github.com/nicholasgasior/vi-mongo) | MongoDB TUI | brew |
-| [lazygit](https://github.com/jesseduffield/lazygit) | Terminal UI for git | brew |
 | [ast-grep](https://ast-grep.github.io) | AST-based code search and rewrite (`sg`) | brew |
+| [dvm](https://github.com/justjavac/dvm) | Deno version manager | install script |
+| [lazygit](https://github.com/jesseduffield/lazygit) | Terminal UI for git | brew |
+| [meteor](https://www.meteor.com) | Full-stack JavaScript framework | install script |
+| [tealdeer](https://github.com/dbrgn/tealdeer) | Fast `tldr` client | brew |
+| [vi-mongo](https://github.com/nicholasgasior/vi-mongo) | MongoDB TUI | brew |
+| [volta](https://volta.sh) | Node.js toolchain manager | install script |
 
 ### Utilities (Optional)
 
 | Tool | Description | Installed via |
 | ------ | ------------- | --------------- |
-| [tealdeer](https://github.com/dbrgn/tealdeer) | Fast `tldr` client | brew |
+| [jwt-ui](https://github.com/jwt-rs/jwt-ui) | JWT TUI codec | brew |
 | [lazyjira](https://github.com/textfuel/jiratui) | Jira TUI client | brew |
+| [spotatui](https://github.com/LargeModGames/spotatui) | Spotify TUI | brew |
 | [carapace](https://carapace.sh) | Multi-shell completion generator | brew |
 | [tree-sitter](https://tree-sitter.github.io) | Parser generator and incremental parsing | brew |

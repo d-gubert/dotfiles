@@ -60,6 +60,7 @@ essential: homebrew \
 	install-jq \
 	install-kanata \
 	install-neovim \
+	install-rofi \
 	install-ripgrep \
 	install-xclip \
 	install-zellij \
@@ -73,6 +74,7 @@ essential: homebrew \
 # lazygit  — brew
 # meteor   — official install script (https://www.meteor.com/developers/install)
 # vi-mongo — brew
+# tealdeer — brew
 # volta    — official install script (https://volta.sh)
 
 .PHONY: development
@@ -82,6 +84,7 @@ development: homebrew \
 	install-dvm \
 	install-lazygit \
 	install-meteor \
+	install-tealdeer \
 	install-vi-mongo \
 	install-volta
 
@@ -89,16 +92,18 @@ development: homebrew \
 # Utilities (Optional)
 # ─────────────────────────────────────────────────────────────────────────────
 # carapace    — brew
-# tealdeer    — brew
+# jwt-ui      — brew
 # lazyjira    — brew
 # tree-sitter — brew
+# spotatui    - brew
 
 .PHONY: utilities
 utilities: homebrew \
 	stow \
 	install-carapace \
-	install-tealdeer \
+	install-jwt-ui \
 	install-lazyjira \
+	install-spotatui \
 	install-tree-sitter
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -242,6 +247,13 @@ install-i3:
 		sudo apt-get install -y i3; \
 	fi
 
+.PHONY: install-rofi
+install-rofi:
+	@if command -v rofi >/dev/null 2>&1; then echo "[rofi] already installed"; else \
+		echo "[rofi] installing via apt..."; \
+		sudo apt-get install -y rofi; \
+	fi
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Homebrew managed packages
 # ─────────────────────────────────────────────────────────────────────────────
@@ -265,6 +277,13 @@ install-jq: homebrew
 	@if command -v jq >/dev/null 2>&1; then echo "[jq] already installed"; else \
 		echo "[jq] installing via brew..."; \
 		$(BREW_INSTALL) jq; \
+	fi
+
+.PHONY: install-jwt-ui
+install-jwt-ui: homebrew
+	@if command -v jwt-ui >/dev/null 2>&1; then echo "[jwt-ui] already installed"; else \
+		echo "[jwt-ui] installing via brew..."; \
+		$(BREW_INSTALL) jwt-rs/jwt-ui/jwt-ui; \
 	fi
 
 .PHONY: install-zellij
@@ -356,6 +375,27 @@ install-lazyjira: homebrew
 	@if command -v lazyjira >/dev/null 2>&1; then echo "[lazyjira] already installed"; else \
 		echo "[lazyjira] installing via brew..."; \
 		$(BREW_INSTALL) textfuel/tap/lazyjira; \
+	fi
+
+.PHONY: install-rgx
+install-rgx: homebrew
+	@if command -v rgx >/dev/null 2>&1; then echo "[rgx] already installed"; else \
+		echo "[rgx] installing via brew..."; \
+		$(BREW_INSTALL) brevity1swos/tap/rgx; \
+	fi
+
+.PHONY: install-spotatui
+install-spotatui: homebrew
+	@if command -v spotatui >/dev/null 2>&1; then echo "[spotatui] already installed"; else \
+		echo "[spotatui] installing via brew..."; \
+		$(BREW_INSTALL) spotatui; \
+	fi
+
+.PHONY: install-sttr
+install-sttr: homebrew
+	@if command -v sttr >/dev/null 2>&1; then echo "[sttr] already installed"; else \
+		echo "[sttr] installing via brew..."; \
+		$(BREW_INSTALL) sttr; \
 	fi
 
 .PHONY: install-tealdeer
