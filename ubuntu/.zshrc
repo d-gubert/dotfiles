@@ -105,7 +105,8 @@ fi
 source $ZSH/oh-my-zsh.sh
 
 # I don't want shared history
-setopt no_share_history
+setopt NO_SHARE_HISTORY
+setopt HIST_IGNORE_SPACE
 
 # User configuration
 

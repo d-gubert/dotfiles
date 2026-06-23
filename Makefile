@@ -40,6 +40,7 @@ all: essential development utilities
 # neovim     — brew
 # ripgrep    — brew
 # stow       — brew
+# tmux       - brew
 # xclip      — apt
 # zellij     — brew
 # zsh        — brew
@@ -62,6 +63,7 @@ essential: homebrew \
 	install-neovim \
 	install-rofi \
 	install-ripgrep \
+	install-tmux \
 	install-xclip \
 	install-zellij \
 	install-zsh
@@ -213,6 +215,27 @@ install-zsh:
 			"$$HOME/.oh-my-zsh/custom/plugins/zsh-autopair"; \
 	else \
 		echo "[zsh:zsh-autopair] already installed"; \
+	fi
+
+.PHONY: install-tmux
+install-tmux: homebrew
+	@if command -v tmux >/dev/null 2>&1; then echo "[tmux] already installed"; else \
+		echo "[tmux] installing via brew..."; \
+		$(BREW_INSTALL) tmux; \
+		sudo ln -s "$$(which tmux)" /usr/bin/tmux; \
+	fi
+	@if [ -d "$$HOME/.tmux/plugins/tpm" ]; then echo "[tmux:tpm] already installed"; else \
+		echo "[tmux:tpm] installing with git..."; \
+		mkdir -p "$$HOME/.tmux/plugins/tpm"; \
+		git clone --depth=1 --branch v3.1.0 https://github.com/tmux-plugins/tpm "$HOME/.tmux/plugins/tpm"; \
+		tmux new-session -d -s bootstrap_tpm; \
+		"$$HOME/.tmux/plugins/tpm/bin/install_plugins"; \
+		tmux kill-session bootstrap_tpm; \
+	fi
+	@if [ -d "$$HOME/.tmux/plugins/catppuccin" ]; then echo "[tmux:catppuccin] already installed"; else \
+		echo "[tmux:catppuccin] installing with git..."; \
+		mkdir -p "$$HOME/.tmux/plugins/catppuccin"; \
+		git clone --depth 1 --branch v2.3.0 https://github.com/catppuccin/tmux.git "$$HOME/.tmux/plugins/catppuccin"; \
 	fi
 
 # ─────────────────────────────────────────────────────────────────────────────

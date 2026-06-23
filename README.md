@@ -76,6 +76,7 @@ Stow is usually used by having one directory for each software you want to manag
 | [xclip](https://github.com/astrand/xclip) | Clipboard CLI tool | apt |
 | [docker](https://docs.docker.com/engine) | Container runtime | install script |
 | [btop](https://github.com/aristocratsbit/btop) | System resource monitor | brew |
+| [tmux](https://github.com/tmux/tmux) | The OG terminal multiplexer | brew |
 | [ffmpeg](https://ffmpeg.org) | Audio/video processing | brew |
 
 #### Oh-My-Zsh plugins
@@ -86,6 +87,16 @@ Stow is usually used by having one directory for each software you want to manag
 | [zsh-syntax-highlighting](https://github.com/zsh-users/zsh-syntax-highlighting) | Shell syntax highlighting |
 | [zsh-vi-mode](https://github.com/jeffreytse/zsh-vi-mode) | Better vi mode for zsh |
 | [zsh-autopair](https://github.com/jeffreytse/zsh-autopair) | Auto closes pairs of symbols |
+
+#### Tmux plugins
+
+| Plugin | Description |
+| -------- | ------------- |
+| [TPM](https://github.com/tmux-plugins/tpm) | Tmux Plugin Manager |
+| [tmux-sensible](https://github.com/tmux-plugins/tmux-sensible) | Sensible defaults for Tmux |
+| [tmux-resurrect](https://github.com/tmux-plugins/tmux-resurrect) | Save and restore sessions |
+| [tmux-yank](https://github.com/tmux-plugins/tmux-yank) | Better copy-mode |
+| [catppuccin](https://github.com/catppuccin/tmux) | Catppuccin for Tmux |
 
 ### Development
 
