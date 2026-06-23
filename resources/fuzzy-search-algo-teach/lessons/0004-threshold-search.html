@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 4 — From Distance to Search</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <style>
+    .char-span {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 1rem;
+      padding: 0.05em 0.1em;
+      border-radius: 2px;
+    }
+    .char-span.matched {
+      background: #fef9c3;
+      color: #92400e;
+      font-weight: 700;
+    }
+    .threshold-demo { margin: 1.2rem 0; }
+    .threshold-demo label {
+      font-family: var(--sans);
+      font-size: 0.88rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.5rem;
+    }
+    .threshold-demo input[type=range] { flex: 1; max-width: 200px; }
+    .result-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin-top: 0.75rem; }
+    .result-table th { text-align: left; font-family: var(--sans); font-weight: 600; padding: 0.4rem 0.5rem; border-bottom: 2px solid var(--rule); }
+    .result-table td { padding: 0.35rem 0.5rem; border-bottom: 1px solid var(--rule); font-family: var(--mono); }
+    .result-table tr.pass td { background: var(--success-bg); }
+    .result-table tr.fail td { color: var(--faint); }
+    .result-table td.dist { text-align: center; }
+    .result-table td.norm { text-align: center; }
+    .verdict { font-weight: 700; }
+    .verdict.yes { color: var(--success); }
+    .verdict.no  { color: var(--danger); }
+    .subseq-input { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.85rem; }
+    .subseq-input > div { flex: 1; min-width: 130px; }
+    .subseq-input label { font-family: var(--sans); font-size: 0.78rem; color: var(--muted); display: block; margin-bottom: 0.25rem; }
+    #subseq-visual { font-size: 1.05rem; margin: 0.75rem 0; min-height: 2rem; word-break: break-all; }
+    #subseq-result { font-family: var(--sans); font-size: 0.9rem; min-height: 1.5rem; }
+  </style>
+</head>
+<body>
+
+<div class="lesson-header">
+  <div class="lesson-meta">Fuzzy Search · Lesson 4 of 6</div>
+  <h1>From Distance to Search</h1>
+  <p class="lesson-subtitle">The design decision: choose the right matching model for your query type</p>
+</div>
+
+<h2>The problem this lesson solves</h2>
+
+<p>
+  We can now compute edit distance. But a distance number alone is not a
+  search algorithm. We need to decide: <em>which candidates are matches?</em>
+  And we need to do it fast enough to run on every candidate in a large list.
+</p>
+
+<p>
+  This lesson covers two design decisions made at this junction — and one
+  key pivot that explains why tools like fzy and fzf use a <em>different
+  matching model</em> than edit distance entirely.
+</p>
+
+<h2>Approach 1: Fixed threshold k</h2>
+
+<p>
+  The obvious first step: accept a candidate if its edit distance from the
+  query is ≤ k. Choose k based on how permissive you want to be.
+</p>
+
+<div class="demo threshold-demo">
+  <h3>Fixed-threshold demo</h3>
+  <p style="font-family:var(--sans);font-size:0.88rem;color:var(--muted);margin-bottom:0.85rem;">
+    Query: <code id="thresh-query">cfg</code> — drag the threshold and watch which candidates pass.
+  </p>
+  <label>
+    Threshold k = <strong id="k-val">2</strong>
+    <input type="range" id="k-slider" min="0" max="8" value="2" oninput="updateThreshold()">
+  </label>
+  <table class="result-table" id="thresh-table"></table>
+</div>
+
+<div class="callout warn">
+  <span class="callout-label">The problem with fixed k</span>
+  At k=2, <code>cfg.ts</code> (dist 3) is rejected while <code>xx</code> (dist 3 too) passes
+  because it is shorter. The <em>same absolute distance</em> means very different
+  things depending on candidate length. A distance of 3 on a 4-character string
+  is devastating; on a 40-character string it barely matters.
+</div>
+
+<h2>Approach 2: Normalised distance</h2>
+
+<p>
+  Divide the edit distance by the length of the longer string. This gives a
+  similarity ratio between 0 (identical) and 1 (completely different).
+</p>
+
+<pre>normalised_distance(A, B) = edit_distance(A, B) / max(len(A), len(B))</pre>
+
+<p>
+  A threshold of 0.3 means "accept if fewer than 30% of characters differ."
+  This scales gracefully with string length.
+</p>
+
+<div class="callout insight">
+  <span class="callout-label">Better, but not sufficient</span>
+  Normalised distance solves the length problem for typo-style queries.
+  But it still fails for abbreviation queries like <code>authcfg</code> →
+  <code>auth_config_loader.ts</code>, where edit distance is large (11)
+  but the user's intent is obvious. The characters are all there — just
+  not contiguous.
+</div>
+
+<h2>The pivot: subsequence matching</h2>
+
+<p>
+  This is the key insight behind fzy, fzf, and most modern command-palette
+  and file-finder tools:
+</p>
+
+<div class="callout note">
+  <span class="callout-label">Design decision</span>
+  For interactive file/command search, the user is almost always
+  <em>abbreviating</em>, not misspelling. They type the first letters of
+  words, or the distinctive characters. The right matching model is
+  therefore <strong>subsequence matching</strong> — not edit distance.
+  <br><br>
+  A query Q is a <strong>subsequence</strong> of candidate C if all characters
+  of Q appear in C in the same order (but not necessarily contiguously).
+</div>
+
+<p>
+  This is a stricter gate than edit distance in one sense (you must have
+  all characters, in order) but far more permissive in another (gaps are
+  free — you can skip any number of characters in the candidate).
+</p>
+
+<h3>Why subsequence beats edit distance for this use case</h3>
+
+<table class="dp-table" style="margin:1rem 0;width:100%">
+  <thead>
+    <tr><th>Query</th><th>Candidate</th><th>Edit dist</th><th>Subsequence?</th><th>Is it a match?</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>authcfg</code></td><td><code>auth_config_loader.ts</code></td><td>13</td><td>✓ yes</td><td>Yes — user abbreviated</td></tr>
+    <tr><td><code>MC</code></td><td><code>MyComponent.tsx</code></td><td>13</td><td>✓ yes</td><td>Yes — initials</td></tr>
+    <tr><td><code>comit</code></td><td><code>commit</code></td><td>1</td><td>✓ yes</td><td>Yes — typo</td></tr>
+    <tr><td><code>xqz</code></td><td><code>commit</code></td><td>6</td><td>✗ no</td><td>No — random characters</td></tr>
+  </tbody>
+</table>
+
+<p>
+  Edit distance gives large, meaningless numbers for abbreviation queries.
+  Subsequence gives a clean binary: either all your characters are present
+  in order, or they aren't.
+</p>
+
+<h2>The subsequence check algorithm</h2>
+
+<p>
+  Checking whether Q is a subsequence of C is a simple greedy scan in
+  O(|C|) time — much faster than the O(|Q| × |C|) DP table:
+</p>
+
+<pre>function isSubsequence(query, candidate):
+  qi = 0                       // pointer into query
+  for each character c in candidate:
+    if c == query[qi]:
+      qi++                     // advance query pointer on match
+    if qi == query.length:
+      return true              // all query chars found in order
+  return false                 // ran out of candidate chars</pre>
+
+<div class="callout note">
+  <span class="callout-label">Why this matters for performance</span>
+  In a fuzzy finder scanning thousands of filenames, the subsequence check
+  runs first. Only candidates that pass it proceed to the expensive scoring
+  step. Most candidates are eliminated in O(n) time, making the overall
+  system feel instant.
+</div>
+
+<h2>Try it: Subsequence finder</h2>
+
+<div class="demo">
+  <h3>Is query a subsequence of candidate?</h3>
+  <div class="subseq-input">
+    <div>
+      <label>Query</label>
+      <input type="text" id="sq-query" value="authcfg" autocomplete="off" spellcheck="false" style="width:100%;">
+    </div>
+    <div>
+      <label>Candidate</label>
+      <input type="text" id="sq-candidate" value="auth_config_loader.ts" autocomplete="off" spellcheck="false" style="width:100%;">
+    </div>
+  </div>
+  <div id="subseq-visual"></div>
+  <div id="subseq-result"></div>
+</div>
+
+<h2>The complete matching pipeline</h2>
+
+<p>
+  Putting it together, here is the pipeline that fzy-style tools use:
+</p>
+
+<ol>
+  <li>
+    <strong>Subsequence gate</strong> (O(n) per candidate) — if the query
+    is not a subsequence of the candidate, reject immediately. No score computed.
+  </li>
+  <li>
+    <strong>Score</strong> (O(|Q| × |C|) per surviving candidate) — run the
+    scoring DP to assign a rank. This is what Lesson 5 covers.
+  </li>
+  <li>
+    <strong>Sort by score</strong> — the highest-scoring candidate is the
+    top result.
+  </li>
+</ol>
+
+<div class="callout insight">
+  <span class="callout-label">The key shift</span>
+  fzy does not use edit distance at all. The subsequence check replaces
+  the threshold step entirely. The scoring model (next lesson) replaces the
+  "which edit is cheapest?" question with "which match position feels most
+  intentional?"
+</div>
+
+<h2>Quiz: Check your understanding</h2>
+
+<div class="quiz" id="q1">
+  <p class="quiz-question">Q1. Is <code>usr</code> a subsequence of <code>usr_config.ts</code>?</p>
+  <ul class="quiz-options">
+    <li><label><input type="radio" name="q1" value="a"> No — usr does not appear as a contiguous substring</label></li>
+    <li><label><input type="radio" name="q1" value="b"> Yes — u, s, r all appear in order at positions 0, 1, 2</label></li>
+    <li><label><input type="radio" name="q1" value="c"> Only if edit distance is less than 3</label></li>
+    <li><label><input type="radio" name="q1" value="d"> No — subsequence requires exact contiguous matching</label></li>
+  </ul>
+  <button class="btn btn-primary" onclick="checkQ('q1','b','Correct. u-s-r appear at the very start of usr_config.ts in order. Gaps are free in subsequence matching — contiguity is not required.')">Check</button>
+  <p class="quiz-feedback" id="q1-feedback"></p>
+</div>
+
+<div class="quiz" id="q2">
+  <p class="quiz-question">Q2. Why is the subsequence check run <em>before</em> the scoring DP in fzy's pipeline?</p>
+  <ul class="quiz-options">
+    <li><label><input type="radio" name="q2" value="a"> Because scoring requires the subsequence positions as input</label></li>
+    <li><label><input type="radio" name="q2" value="b"> Because it eliminates non-matches cheaply in O(n), avoiding the costly O(mn) scoring step</label></li>
+    <li><label><input type="radio" name="q2" value="c"> Because subsequence distance is more accurate than the scoring model</label></li>
+    <li><label><input type="radio" name="q2" value="d"> Because it converts the query to lowercase before scoring begins</label></li>
+  </ul>
+  <button class="btn btn-primary" onclick="checkQ('q2','b','Correct. The subsequence check is O(n) — very cheap. It eliminates the majority of candidates before the O(mn) scoring DP runs, keeping the system fast.')">Check</button>
+  <p class="quiz-feedback" id="q2-feedback"></p>
+</div>
+
+<div class="quiz" id="q3">
+  <p class="quiz-question">Q3. What is the fundamental reason why edit distance is a poor matching model for abbreviation queries like <code>MC</code> → <code>MyComponent.tsx</code>?</p>
+  <ul class="quiz-options">
+    <li><label><input type="radio" name="q3" value="a"> Edit distance is too slow to compute for short queries</label></li>
+    <li><label><input type="radio" name="q3" value="b"> Edit distance penalises gaps between matched characters, making abbreviations appear far away</label></li>
+    <li><label><input type="radio" name="q3" value="c"> Edit distance requires both strings to be the same length</label></li>
+    <li><label><input type="radio" name="q3" value="d"> Edit distance cannot handle uppercase letters</label></li>
+  </ul>
+  <button class="btn btn-primary" onclick="checkQ('q3','b','Correct. To go from MC to MyComponent.tsx by edits, you need many insertions — one for every skipped character. Subsequence matching treats those gaps as free, which better models the user\'s intent.')">Check</button>
+  <p class="quiz-feedback" id="q3-feedback"></p>
+</div>
+
+<div class="quiz" id="q4">
+  <p class="quiz-question">Q4. In fzy's pipeline, after a candidate passes the subsequence gate, what determines its final rank in the results?</p>
+  <ul class="quiz-options">
+    <li><label><input type="radio" name="q4" value="a"> Its edit distance from the query</label></li>
+    <li><label><input type="radio" name="q4" value="b"> The alphabetical order of the candidate string</label></li>
+    <li><label><input type="radio" name="q4" value="c"> A scoring model that rewards compact and boundary-aligned matches</label></li>
+    <li><label><input type="radio" name="q4" value="d"> The length of the candidate — shorter candidates always rank higher</label></li>
+  </ul>
+  <button class="btn btn-primary" onclick="checkQ('q4','c','Correct. The scoring model is what Lesson 5 covers. It assigns higher scores to matches that are consecutive, start at word/path boundaries, and are compact relative to candidate length.')">Check</button>
+  <p class="quiz-feedback" id="q4-feedback"></p>
+</div>
+
+<hr>
+
+<div class="primary-source">
+  <span class="label">Primary source for this lesson</span>
+  <a href="https://github.com/jhawthorn/fzy/blob/master/ALGORITHM.md" target="_blank">
+    fzy ALGORITHM.md — jhawthorn (GitHub)
+  </a>
+  — Read the opening paragraphs up through "Scoring." It describes exactly
+  the pipeline covered in this lesson: subsequence gate first, then a scoring
+  DP. This is the document you will fully understand by the end of Lesson 5.
+</div>
+
+<div class="ask-teacher">
+  💬 <strong>Have a question?</strong> Ask your teacher — type in the chat and I'll explain, rephrase, or go deeper on anything from this lesson.
+</div>
+
+<div class="lesson-nav">
+  <a href="0003-dp-table.html">← Lesson 3: The DP Table</a>
+  <span class="center">Fuzzy Search · Lesson 4 of 6</span>
+  <a href="0005-scoring-model.html">Next: The Scoring Model →</a>
+</div>
+
+<script>
+// ── Threshold demo ──────────────────────────────────────────────────────────
+
+function editDistance(a, b) {
+  const m = a.length, n = b.length;
+  const dp = Array.from({length: m+1}, (_, i) =>
+    Array.from({length: n+1}, (_, j) => i===0 ? j : j===0 ? i : 0)
+  );
+  for (let i = 1; i <= m; i++)
+    for (let j = 1; j <= n; j++) {
+      if (a[i-1] === b[j-1]) dp[i][j] = dp[i-1][j-1];
+      else dp[i][j] = 1 + Math.min(dp[i-1][j-1], dp[i-1][j], dp[i][j-1]);
+    }
+  return dp[m][n];
+}
+
+const CANDIDATES = [
+  'cfg.ts',
+  'config.json',
+  'auth_config_loader.ts',
+  'package.json',
+  'xx',
+  'cfg',
+  'app_configuration_manager.ts',
+  'index.ts',
+];
+
+const QUERY = 'cfg';
+
+function updateThreshold() {
+  const k = parseInt(document.getElementById('k-slider').value);
+  document.getElementById('k-val').textContent = k;
+  const rows = CANDIDATES.map(c => {
+    const d = editDistance(QUERY, c.toLowerCase());
+    const norm = (d / Math.max(QUERY.length, c.length)).toFixed(2);
+    const pass = d <= k;
+    return `<tr class="${pass ? 'pass' : 'fail'}">
+      <td>${c}</td>
+      <td class="dist">${d}</td>
+      <td class="norm">${norm}</td>
+      <td class="verdict ${pass ? 'yes' : 'no'}">${pass ? '✓ match' : '✗ reject'}</td>
+    </tr>`;
+  });
+  document.getElementById('thresh-table').innerHTML = `
+    <thead><tr><th>Candidate</th><th>Edit dist</th><th>Normalised</th><th>Result (k=${k})</th></tr></thead>
+    <tbody>${rows.join('')}</tbody>`;
+}
+updateThreshold();
+
+// ── Subsequence finder ──────────────────────────────────────────────────────
+
+function findSubseq(query, candidate) {
+  const q = query.toLowerCase();
+  const c = candidate.toLowerCase();
+  const positions = [];
+  let qi = 0;
+  for (let ci = 0; ci < c.length && qi < q.length; ci++) {
+    if (c[ci] === q[qi]) { positions.push(ci); qi++; }
+  }
+  return qi === q.length ? positions : null;
+}
+
+function updateSubseq() {
+  const query     = document.getElementById('sq-query').value;
+  const candidate = document.getElementById('sq-candidate').value;
+  const visual    = document.getElementById('subseq-visual');
+  const result    = document.getElementById('subseq-result');
+
+  if (!query || !candidate) { visual.innerHTML = ''; result.textContent = ''; return; }
+
+  const positions = findSubseq(query, candidate);
+
+  const spans = candidate.split('').map((ch, i) => {
+    const cls = positions && positions.includes(i) ? 'char-span matched' : 'char-span';
+    return `<span class="${cls}">${ch === ' ' ? '&nbsp;' : ch}</span>`;
+  }).join('');
+  visual.innerHTML = spans;
+
+  if (positions) {
+    result.innerHTML = `<span style="color:var(--success);font-weight:700;">✓ Subsequence match</span>
+      — all ${query.length} query characters found in order (highlighted).`;
+  } else {
+    result.innerHTML = `<span style="color:var(--danger);font-weight:700;">✗ Not a subsequence</span>
+      — not all query characters appear in order in the candidate.`;
+  }
+}
+
+document.getElementById('sq-query').addEventListener('input', updateSubseq);
+document.getElementById('sq-candidate').addEventListener('input', updateSubseq);
+updateSubseq();
+
+// ── Quiz logic ──────────────────────────────────────────────────────────────
+
+function checkQ(id, correct, explanation) {
+  const selected = document.querySelector(`input[name="${id}"]:checked`);
+  const feedback = document.getElementById(`${id}-feedback`);
+  if (!selected) { feedback.textContent = 'Please select an answer.'; feedback.className = 'quiz-feedback'; return; }
+  document.querySelectorAll(`input[name="${id}"]`).forEach(r => {
+    const lbl = r.closest('label');
+    if (r.value === correct) lbl.classList.add('correct');
+    else if (r.checked)      lbl.classList.add('wrong');
+    r.disabled = true;
+  });
+  if (selected.value === correct) {
+    feedback.textContent = '✓ ' + explanation;
+    feedback.className = 'quiz-feedback correct';
+  } else {
+    feedback.textContent = '✗ Not quite. ' + explanation;
+    feedback.className = 'quiz-feedback wrong';
+  }
+}
+</script>
+
+</body>
+</html>

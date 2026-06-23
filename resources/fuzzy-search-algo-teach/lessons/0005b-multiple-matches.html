@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 5b — Competing Alignments</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <style>
+    .ch { display: inline-block; padding: 0 0.05em; border-radius: 2px; font-family: var(--mono); }
+    .ch.m-consec   { background: #dcfce7; color: #166534; font-weight: 800; }
+    .ch.m-boundary { background: #dbeafe; color: #1e40af; font-weight: 800; }
+    .ch.m-plain    { background: #fef9c3; color: #92400e; font-weight: 700; }
+    .ch.gap-inner  { color: #dc2626; }
+    .ch.gap-outer  { color: #bbb; }
+
+    .alignment-card {
+      border: 1px solid var(--rule);
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 0.55rem;
+      background: #fafafa;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .alignment-card.winner {
+      border-color: var(--success);
+      background: var(--success-bg);
+    }
+    .alignment-card .rank {
+      font-family: var(--sans);
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--muted);
+      min-width: 1.8rem;
+      flex-shrink: 0;
+    }
+    .alignment-card.winner .rank { color: var(--success); }
+    .alignment-card .cand-render {
+      font-size: 1rem;
+      flex: 1;
+      word-break: break-all;
+      line-height: 1.8;
+    }
+    .alignment-card .score-col {
+      font-family: var(--mono);
+      font-size: 0.88rem;
+      color: var(--muted);
+      flex-shrink: 0;
+      text-align: right;
+    }
+    .alignment-card.winner .score-col { color: var(--success); font-weight: 700; }
+    .why-tag {
+      font-family: var(--sans);
+      font-size: 0.72rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 3px;
+      margin-left: 0.3rem;
+      font-weight: 600;
+    }
+    .why-consec  { background: #dcfce7; color: #166534; }
+    .why-bound   { background: #dbeafe; color: #1e40af; }
+    .why-gap     { background: #fee2e2; color: #dc2626; }
+    .why-start   { background: #f3e8ff; color: #7e22ce; }
+
+    #no-alignments {
+      font-family: var(--sans);
+      color: var(--danger);
+      font-size: 0.9rem;
+      margin: 0.75rem 0;
+    }
+  </style>
+</head>
+<body>
+
+<div class="lesson-header">
+  <div class="lesson-meta">Fuzzy Search · Lesson 5b — Sublesson</div>
+  <h1>Competing Alignments</h1>
+  <p class="lesson-subtitle">When a query can match in multiple places, how does scoring choose?</p>
+</div>
+
+<h2>The hidden complexity of subsequence matching</h2>
+
+<p>
+  Lesson 5 described the scoring rules in isolation. But there is a subtlety
+  we glossed over: for a given query and candidate, there may be
+  <strong>many valid subsequence alignments</strong> — many different ways to
+  assign each query character to a candidate position.
+</p>
+
+<p>
+  The scoring DP does not pick one alignment upfront. It evaluates
+  <em>all of them simultaneously</em> by filling the M and D matrices,
+  and the winner emerges from the recurrence naturally.
+</p>
+
+<div class="callout note">
+  <span class="callout-label">The motivating example</span>
+  Query <code>ts</code>, candidate <code>timestamp.ts</code>.<br><br>
+  The characters <code>t</code> and <code>s</code> both appear multiple times.
+  <code>t</code> is at positions 0, 5, 10 — and <code>s</code> is at positions 4
+  and 11. That gives <strong>four valid alignments</strong>. Which one should win?
+</div>
+
+<h2>Enumerating the alignments</h2>
+
+<p>
+  Let's lay out every valid alignment for <code>ts</code> in
+  <code>timestamp.ts</code> and score each one manually before looking at
+  what the algorithm picks.
+</p>
+
+<table class="dp-table" style="width:100%;margin:1rem 0;font-size:0.85rem;">
+  <thead>
+    <tr><th>t position</th><th>s position</th><th>t bonus</th><th>s bonus</th><th>Consec?</th><th>Gap penalty</th><th>Approx score</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>0 — start of string</td><td>4 — mid-word</td>
+      <td>+0.90</td><td>+0.00</td><td>✗</td>
+      <td>−0.03 (3 inner)</td><td>≈ 0.87</td>
+    </tr>
+    <tr>
+      <td>0 — start of string</td><td>11 — after dot</td>
+      <td>+0.90</td><td>+0.00</td><td>✗</td>
+      <td>−0.10 (10 inner)</td><td>≈ 0.80</td>
+    </tr>
+    <tr>
+      <td>5 — mid-word</td><td>11 — after dot</td>
+      <td>+0.00</td><td>+0.00</td><td>✗</td>
+      <td>−0.025 leading + −0.05 inner</td><td>≈ −0.08</td>
+    </tr>
+    <tr style="background:var(--success-bg);font-weight:600;">
+      <td>10 — after dot</td><td>11 — consecutive</td>
+      <td>+0.60</td><td>+1.00 consecutive</td><td>✓</td>
+      <td>−0.05 leading</td><td>≈ 1.55</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>
+  The alignment that matches <code>.ts</code> at the end wins — by a large
+  margin. The consecutive bonus (+1.0) and dot boundary bonus (+0.6) together
+  dominate the leading gap penalty (−0.05 for 10 skipped chars).
+</p>
+
+<div class="callout insight">
+  <span class="callout-label">This is the right answer</span>
+  A user who types <code>ts</code> in a file picker almost certainly wants
+  TypeScript files ending in <code>.ts</code>. The scoring model reaches
+  this conclusion automatically — not through hardcoded file-extension logic,
+  but through the interaction of the consecutive bonus and boundary bonus.
+</div>
+
+<h2>Why the DP finds this without enumerating explicitly</h2>
+
+<p>
+  The matrix recurrence means the DP "tries" all alignments at once.
+  At each cell <code>M[i][j]</code>, it considers:
+</p>
+
+<ul>
+  <li>Arriving <strong>consecutively</strong> from the previous match (via <code>D[i-1][j-1]</code>)</li>
+  <li>Arriving <strong>after a gap</strong> from the best earlier match (via <code>prevScore</code>)</li>
+</ul>
+
+<p>
+  The cell simply keeps whichever is larger. No explicit enumeration. By the
+  time we reach the last query character, the cell with the highest value
+  represents the best alignment — whatever it turned out to be.
+</p>
+
+<h2>Explore: all alignments for any query and candidate</h2>
+
+<p>
+  The demo below enumerates every valid alignment explicitly, scores each one,
+  and sorts them. You can see exactly which alignment the algorithm would choose
+  and why it beats the alternatives.
+</p>
+
+<div class="demo">
+  <h3>Alignment explorer</h3>
+  <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-bottom:0.85rem;">
+    <div style="flex:1;min-width:100px;">
+      <label style="font-family:var(--sans);font-size:0.78rem;color:var(--muted);display:block;margin-bottom:0.25rem;">Query</label>
+      <input type="text" id="al-query" value="ts" maxlength="6" autocomplete="off" spellcheck="false" style="width:100%;">
+    </div>
+    <div style="flex:3;min-width:200px;">
+      <label style="font-family:var(--sans);font-size:0.78rem;color:var(--muted);display:block;margin-bottom:0.25rem;">Candidate</label>
+      <input type="text" id="al-candidate" value="timestamp.ts" autocomplete="off" spellcheck="false" style="width:100%;">
+    </div>
+  </div>
+  <div id="no-alignments" style="display:none;">No subsequence match — query characters don't all appear in order.</div>
+  <div id="alignment-count" style="font-family:var(--sans);font-size:0.82rem;color:var(--muted);margin-bottom:0.5rem;"></div>
+  <div id="alignment-list"></div>
+</div>
+
+<h2>Interesting cases to try</h2>
+
+<p>Try these in the explorer above to build intuition:</p>
+
+<ul>
+  <li>
+    <code>ts</code> / <code>tests.ts</code> — does the final <code>.ts</code>
+    still win, or does the <code>ts</code> in "tests" compete?
+  </li>
+  <li>
+    <code>mc</code> / <code>MyComponent.tsx</code> — camelCase boundaries
+    vs any other <code>m</code>…<code>c</code> pairing.
+  </li>
+  <li>
+    <code>us</code> / <code>/usr/local/share</code> — path separator bonus
+    on the leading <code>u</code>.
+  </li>
+  <li>
+    <code>ss</code> / <code>assessments.ts</code> — two of the same
+    character: which consecutive pair wins?
+  </li>
+</ul>
+
+<h2>Quiz: Check your understanding</h2>
+
+<div class="quiz" id="q1">
+  <p class="quiz-question">Q1. For query <code>ts</code> in <code>timestamp.ts</code>, alignment (t=10, s=11) wins despite a leading gap of 10 skipped characters. What two bonuses overcome that penalty?</p>
+  <ul class="quiz-options">
+    <li><label><input type="radio" name="q1" value="a"> Start-of-string bonus on t, and word-underscore bonus on s</label></li>
+    <li><label><input type="radio" name="q1" value="b"> Dot-boundary bonus on t (+0.6), and consecutive match bonus on s (+1.0)</label></li>
+    <li><label><input type="radio" name="q1" value="c"> Consecutive bonus on both t and s (+1.0 each)</label></li>
+    <li><label><input type="radio" name="q1" value="d"> Path-separator bonus on t (+0.9), and dot-boundary bonus on s (+0.6)</label></li>
+  </ul>
+  <button class="btn btn-primary" onclick="checkQ('q1','b','Correct. t at position 10 follows a dot (.ts), earning +0.6. s at position 11 follows t consecutively, earning +1.0. Together they give +1.6, far exceeding the −0.05 leading gap penalty.')">Check</button>
+  <p class="quiz-feedback" id="q1-feedback"></p>
+</div>
+
+<div class="quiz" id="q2">
+  <p class="quiz-question">Q2. The DP reaches the winning alignment without explicitly listing all possibilities. How?</p>
+  <ul class="quiz-options">
+    <li><label><input type="radio" name="q2" value="a"> It only ever tries the first occurrence of each query character</label></li>
+    <li><label><input type="radio" name="q2" value="b"> At each cell it keeps whichever arrival route (consecutive or gapped) gives the higher score — all routes are considered implicitly</label></li>
+    <li><label><input type="radio" name="q2" value="c"> It tries alignments right-to-left and stops at the first match</label></li>
+    <li><label><input type="radio" name="q2" value="d"> It pre-filters candidate positions using a hash of the query</label></li>
+  </ul>
+  <button class="btn btn-primary" onclick="checkQ('q2','b','Correct. The recurrence max(consecutive arrival, gapped arrival) means every valid alignment is implicitly evaluated. No explicit enumeration needed — the cell just keeps the best seen so far.')">Check</button>
+  <p class="quiz-feedback" id="q2-feedback"></p>
+</div>
+
+<div class="quiz" id="q3">
+  <p class="quiz-question">Q3. Query <code>ss</code>, candidate <code>assessments</code>. Positions of s: 1, 3, 7, 8. Which alignment scores highest?</p>
+  <ul class="quiz-options">
+    <li><label><input type="radio" name="q3" value="a"> s=1, s=3 — first two occurrences, smallest gap</label></li>
+    <li><label><input type="radio" name="q3" value="b"> s=1, s=7 — matching across a longer span, penalised more</label></li>
+    <li><label><input type="radio" name="q3" value="c"> s=7, s=8 — consecutive pair, earning the +1.0 consecutive bonus</label></li>
+    <li><label><input type="radio" name="q3" value="d"> s=3, s=7 — both mid-word but closest to the centre</label></li>
+  </ul>
+  <button class="btn btn-primary" onclick="checkQ('q3','c','Correct. s=7 and s=8 are consecutive, earning +1.0. s=1 and s=3 have no consecutive bonus and a 1-character gap. The consecutive bonus reliably beats the small gap between positions 7 and 8 versus the slightly smaller leading gap to positions 1 and 3.')">Check</button>
+  <p class="quiz-feedback" id="q3-feedback"></p>
+</div>
+
+<div class="lesson-nav">
+  <a href="0005-scoring-model.html">← Lesson 5: The Scoring Model</a>
+  <span class="center">Fuzzy Search · Lesson 5b</span>
+  <a href="0006-bitap.html">Next: The Bitap Algorithm →</a>
+</div>
+
+<script>
+// ── Scoring constants ─────────────────────────────────────────────────────────
+const SCORE_GAP_LEADING    = -0.005;
+const SCORE_GAP_TRAILING   = -0.005;
+const SCORE_GAP_INNER      = -0.01;
+const SCORE_MATCH_CONSECUTIVE = 1.0;
+const SCORE_MATCH_SLASH    = 0.9;
+const SCORE_MATCH_WORD     = 0.8;
+const SCORE_MATCH_CAPITAL  = 0.8;
+const SCORE_MATCH_DOT      = 0.6;
+
+function charBonus(str, i) {
+  if (i === 0) return SCORE_MATCH_SLASH;
+  const prev = str[i-1], cur = str[i];
+  if (prev === '/' || prev === '\\') return SCORE_MATCH_SLASH;
+  if (prev === '_' || prev === '-' || prev === ' ') return SCORE_MATCH_WORD;
+  if (prev === '.') return SCORE_MATCH_DOT;
+  if (cur >= 'A' && cur <= 'Z' && prev >= 'a' && prev <= 'z') return SCORE_MATCH_CAPITAL;
+  return 0;
+}
+
+// ── Score a fixed alignment (array of candidate positions) ────────────────────
+function scoreAlignment(positions, candidate) {
+  const n = positions.length;
+  const m = candidate.length;
+  let total = 0;
+  const events = [];
+
+  positions.forEach((pos, qi) => {
+    const b = charBonus(candidate, pos);
+    const isConsec = qi > 0 && positions[qi-1] === pos - 1;
+
+    // Gap penalty
+    if (qi === 0) {
+      // Leading gap
+      total += pos * SCORE_GAP_LEADING;
+    } else {
+      const gapLen = pos - positions[qi-1] - 1;
+      if (gapLen > 0) total += gapLen * SCORE_GAP_INNER;
+    }
+
+    // Trailing gap (after last matched char)
+    if (qi === n - 1) {
+      total += (m - 1 - pos) * SCORE_GAP_TRAILING;
+    }
+
+    total += b;
+    if (isConsec) total += SCORE_MATCH_CONSECUTIVE;
+
+    events.push({ pos, ch: candidate[pos], bonus: b, isConsec });
+  });
+
+  return { total, events };
+}
+
+// ── Enumerate all valid alignments (positions is strictly increasing) ─────────
+function enumerate(query, candidate) {
+  const q = query.toLowerCase();
+  const c = candidate.toLowerCase();
+  const results = [];
+
+  // For each query char, find candidate positions where it appears
+  const charPositions = Array.from(query).map((_, qi) => {
+    const ch = q[qi];
+    const pos = [];
+    for (let ci = 0; ci < c.length; ci++) if (c[ci] === ch) pos.push(ci);
+    return pos;
+  });
+
+  function recurse(qi, minPos, chosen) {
+    if (qi === query.length) {
+      results.push([...chosen]);
+      return;
+    }
+    for (const pos of charPositions[qi]) {
+      if (pos > minPos) {
+        chosen.push(pos);
+        recurse(qi + 1, pos, chosen);
+        chosen.pop();
+      }
+    }
+  }
+
+  recurse(0, -1, []);
+  return results;
+}
+
+// ── Render a candidate with a given alignment highlighted ─────────────────────
+function renderAlignment(candidate, positions, events) {
+  const posSet = new Set(positions);
+  const firstMatch = positions[0];
+  const lastMatch  = positions[positions.length - 1];
+  return candidate.split('').map((ch, idx) => {
+    if (!posSet.has(idx)) {
+      const outer = idx < firstMatch || idx > lastMatch;
+      return `<span class="ch ${outer ? 'gap-outer' : 'gap-inner'}">${ch}</span>`;
+    }
+    const qi = positions.indexOf(idx);
+    const ev = events[qi];
+    let cls = 'm-plain';
+    if (ev.isConsec && ev.bonus > 0) cls = 'm-consec';
+    else if (ev.isConsec)            cls = 'm-consec';
+    else if (ev.bonus >= SCORE_MATCH_WORD) cls = 'm-boundary';
+    return `<span class="ch ${cls}">${ch}</span>`;
+  }).join('');
+}
+
+// ── Why-tags for the winner ───────────────────────────────────────────────────
+function whyTags(events, positions, candidate) {
+  const tags = [];
+  events.forEach(ev => {
+    if (ev.isConsec)                         tags.push(['consec',  '+1.0 consecutive']);
+    if (ev.bonus >= SCORE_MATCH_SLASH)       tags.push(['start',   '+0.9 path/start']);
+    else if (ev.bonus >= SCORE_MATCH_WORD)   tags.push(['bound',   '+0.8 word boundary']);
+    else if (ev.bonus >= SCORE_MATCH_DOT)    tags.push(['bound',   '+0.6 dot boundary']);
+  });
+  const leadGap = positions[0];
+  if (leadGap > 0) tags.push(['gap', `−${(leadGap * 0.005).toFixed(3)} leading gap`]);
+  // Deduplicate
+  const seen = new Set();
+  return tags.filter(t => { const k=t[0]+t[1]; if(seen.has(k)) return false; seen.add(k); return true; });
+}
+
+// ── Main render ───────────────────────────────────────────────────────────────
+function renderAlignments() {
+  const query     = document.getElementById('al-query').value;
+  const candidate = document.getElementById('al-candidate').value;
+  const listEl    = document.getElementById('alignment-list');
+  const countEl   = document.getElementById('alignment-count');
+  const noEl      = document.getElementById('no-alignments');
+
+  if (!query || !candidate) { listEl.innerHTML = ''; countEl.textContent = ''; noEl.style.display='none'; return; }
+
+  const allAlignments = enumerate(query, candidate);
+  if (allAlignments.length === 0) {
+    noEl.style.display = 'block';
+    listEl.innerHTML = '';
+    countEl.textContent = '';
+    return;
+  }
+  noEl.style.display = 'none';
+
+  // Score each alignment
+  const scored = allAlignments.map(positions => {
+    const { total, events } = scoreAlignment(positions, candidate);
+    return { positions, total, events };
+  });
+  scored.sort((a, b) => b.total - a.total);
+
+  const shown = scored.slice(0, 10);
+  const hidden = scored.length - shown.length;
+
+  countEl.textContent = `${scored.length} valid alignment${scored.length===1?'':'s'} found${hidden>0?' (showing top 10)':''}.`;
+
+  let html = '';
+  shown.forEach((item, rank) => {
+    const isWinner = rank === 0;
+    const rendered = renderAlignment(candidate, item.positions, item.events);
+    const posLabel = item.positions.map((p,i) => `${query[i]}@${p}`).join(', ');
+
+    let tagsHtml = '';
+    if (isWinner) {
+      const tags = whyTags(item.events, item.positions, candidate);
+      tagsHtml = tags.map(([type, label]) =>
+        `<span class="why-tag why-${type==='start'||type==='bound'?'bound':type}">${label}</span>`
+      ).join('');
+    }
+
+    html += `<div class="alignment-card ${isWinner ? 'winner' : ''}">
+      <div class="rank">${isWinner ? '★ #1' : `#${rank+1}`}</div>
+      <div class="cand-render">${rendered}<br>
+        <span style="font-family:var(--sans);font-size:0.72rem;color:var(--muted);">${posLabel}</span>
+        ${tagsHtml}
+      </div>
+      <div class="score-col">${item.total.toFixed(3)}</div>
+    </div>`;
+  });
+
+  listEl.innerHTML = html;
+}
+
+document.getElementById('al-query').addEventListener('input', renderAlignments);
+document.getElementById('al-candidate').addEventListener('input', renderAlignments);
+renderAlignments();
+
+// ── Quiz ──────────────────────────────────────────────────────────────────────
+function checkQ(id, correct, explanation) {
+  const selected = document.querySelector(`input[name="${id}"]:checked`);
+  const feedback = document.getElementById(`${id}-feedback`);
+  if (!selected) { feedback.textContent = 'Please select an answer.'; feedback.className = 'quiz-feedback'; return; }
+  document.querySelectorAll(`input[name="${id}"]`).forEach(r => {
+    const lbl = r.closest('label');
+    if (r.value === correct) lbl.classList.add('correct');
+    else if (r.checked)      lbl.classList.add('wrong');
+    r.disabled = true;
+  });
+  if (selected.value === correct) {
+    feedback.textContent = '✓ ' + explanation;
+    feedback.className = 'quiz-feedback correct';
+  } else {
+    feedback.textContent = '✗ Not quite. ' + explanation;
+    feedback.className = 'quiz-feedback wrong';
+  }
+}
+</script>
+</body>
+</html>

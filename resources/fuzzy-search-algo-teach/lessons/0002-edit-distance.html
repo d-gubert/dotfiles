@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 2 — Edit Distance: Formalising "Closeness"</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<div class="lesson-header">
+  <div class="lesson-meta">Fuzzy Search · Lesson 2 of 6</div>
+  <h1>Edit Distance: Formalising "Closeness"</h1>
+  <p class="lesson-subtitle">The design decision: define a precise metric for how far apart two strings are</p>
+</div>
+
+<h2>The problem this lesson solves</h2>
+
+<p>
+  In Lesson 1 we established that fuzzy search needs to decide whether a
+  candidate is "close enough" to the query. But <em>close enough</em> is not
+  an algorithm — it's a feeling. To build a machine that makes this decision
+  reliably, we need a <strong>number</strong>.
+</p>
+
+<div class="callout note">
+  <span class="callout-label">Design decision</span>
+  Define a distance metric between two strings: a single integer that
+  captures how many primitive editing steps are needed to transform one
+  string into the other. This metric is called <strong>edit distance</strong>
+  (or <strong>Levenshtein distance</strong>, after Vladimir Levenshtein, 1965).
+</div>
+
+<p>
+  Once we have this number, matching becomes a threshold check:
+  <em>"accept the candidate if its edit distance from the query is ≤ k."</em>
+  The choice of k is still a policy decision, but the distance itself is
+  objective and computable.
+</p>
+
+<h2>The three primitive operations</h2>
+
+<p>
+  Edit distance counts the <strong>minimum number of single-character
+  edits</strong> needed to turn string A into string B. The allowed edits are:
+</p>
+
+<div style="overflow-x:auto;margin:1.5rem 0;">
+<table class="dp-table" style="width:100%;">
+  <thead>
+    <tr><th>Operation</th><th>Example</th><th>Cost</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Insert</strong> a character</td><td><code>cat</code> → <code>ca<em>r</em>t</code></td><td>1</td></tr>
+    <tr><td><strong>Delete</strong> a character</td><td><code>c<em>o</em>mit</code> → <code>cmit</code></td><td>1</td></tr>
+    <tr><td><strong>Substitute</strong> a character</td><td><code><em>k</em>itten</code> → <code><em>s</em>itten</code></td><td>1</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="callout note">
+  <span class="callout-label">Why these three?</span>
+  These are the three irreducible ways a single character can be wrong.
+  Insert covers missing characters; delete covers extra characters;
+  substitute covers wrong characters. Together they span all
+  single-character divergences between two strings.
+</div>
+
+<h2>Calculating edit distance by hand</h2>
+
+<p>
+  Let's find the edit distance between <code>comit</code> (a typo) and
+  <code>commit</code> (the intended word).
+</p>
+
+<pre>comit   →   commit
+
+Step 1: comit → commit    (insert 'm' after the first 'm')
+                           cost: 1
+
+Total edit distance: 1</pre>
+
+<p>Now a harder example: <code>kitten</code> → <code>sitting</code>.</p>
+
+<pre>kitten  →  sitting
+
+Step 1: kitten  → sitten   (substitute 'k' → 's')
+Step 2: sitten  → sittin   (substitute 'e' → 'i')
+Step 3: sittin  → sitting  (insert 'g' at the end)
+
+Total edit distance: 3</pre>
+
+<div class="callout warn">
+  <span class="callout-label">The key word is "minimum"</span>
+  There are many sequences of edits that transform one string into another.
+  Edit distance is the <em>minimum</em> such count. Finding this minimum
+  naively (by trying all paths) is exponentially expensive — which is exactly
+  the problem Lesson 3 solves with dynamic programming.
+</div>
+
+<h2>Why the minimum matters for fuzzy search</h2>
+
+<p>
+  We want edit distance to represent the <em>most charitable interpretation</em>
+  of the user's intent. If a human could have produced the query in one
+  keystroke slip, it should cost 1 — not 5. Using the minimum edit count
+  correctly captures the "how many mistakes did this take?" intuition.
+</p>
+
+<h2>Try it: Edit distance explorer</h2>
+
+<div class="demo" id="demo-edit">
+  <h3>Edit distance between two strings</h3>
+  <p style="font-family:var(--sans);font-size:0.88rem;color:var(--muted);margin-bottom:0.9rem;">
+    Type a source and target string. The edit distance is computed live using
+    the Wagner–Fischer algorithm (you'll understand this fully in Lesson 3).
+  </p>
+  <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+    <div style="flex:1;min-width:140px;">
+      <label style="font-family:var(--sans);font-size:0.8rem;color:var(--muted);display:block;margin-bottom:0.3rem;">Source</label>
+      <input type="text" id="src-input" value="comit" autocomplete="off" spellcheck="false">
+    </div>
+    <div style="flex:1;min-width:140px;">
+      <label style="font-family:var(--sans);font-size:0.8rem;color:var(--muted);display:block;margin-bottom:0.3rem;">Target</label>
+      <input type="text" id="tgt-input" value="commit" autocomplete="off" spellcheck="false">
+    </div>
+  </div>
+  <div class="demo-results" id="edit-result" style="margin-top:1rem;font-family:var(--sans);font-size:1rem;"></div>
+</div>
+
+<h2>A note on variants</h2>
+
+<p>
+  Levenshtein distance (insert, delete, substitute) is the most common
+  formulation, but two variants are worth knowing:
+</p>
+
+<ul>
+  <li>
+    <strong>Damerau–Levenshtein</strong> — adds a fourth operation:
+    <em>transposition</em> (swapping two adjacent characters, e.g. <code>teh</code> → <code>the</code>).
+    This catches a very common class of typo. Many real fuzzy search
+    implementations use this variant.
+  </li>
+  <li>
+    <strong>Hamming distance</strong> — only counts substitutions, and
+    requires strings of equal length. Simpler, but too rigid for search.
+  </li>
+</ul>
+
+<div class="callout insight">
+  <span class="callout-label">Design insight</span>
+  The choice of which operations to allow is itself a design decision.
+  Levenshtein without transposition will give <code>teh</code> a distance of 2
+  from <code>the</code> (delete + insert). With Damerau's extension, it's 1.
+  The right choice depends on the error model for your users.
+</div>
+
+<h2>Quiz: Check your understanding</h2>
+
+<div class="quiz" id="q1">
+  <p class="quiz-question">Q1. What is the Levenshtein distance between <code>recieve</code> and <code>receive</code>?</p>
+  <ul class="quiz-options">
+    <li><label><input type="radio" name="q1" value="a"> 0 — they are the same string</label></li>
+    <li><label><input type="radio" name="q1" value="b"> 2 — delete 'i', insert 'i' in the right place</label></li>
+    <li><label><input type="radio" name="q1" value="c"> 1 — one transposition swaps adjacent 'i' and 'e'</label></li>
+    <li><label><input type="radio" name="q1" value="d"> 3 — three substitutions are required</label></li>
+  </ul>
+  <button class="btn btn-primary" onclick="checkQ('q1','c','Correct. recieve → receive is a single transposition of adjacent characters e↔i. Under Levenshtein (no transpositions) it costs 2; under Damerau-Levenshtein it costs 1. This distinction matters in practice.')">Check</button>
+  <p class="quiz-feedback" id="q1-feedback"></p>
+</div>
+
+<div class="quiz" id="q2">
+  <p class="quiz-question">Q2. Why does edit distance use the <em>minimum</em> number of operations, rather than any valid sequence?</p>
+  <ul class="quiz-options">
+    <li><label><input type="radio" name="q2" value="a"> To make computation faster by stopping at the first valid path</label></li>
+    <li><label><input type="radio" name="q2" value="b"> To represent the most charitable interpretation of the user's intent</label></li>
+    <li><label><input type="radio" name="q2" value="c"> Because longer edit sequences are always invalid</label></li>
+    <li><label><input type="radio" name="q2" value="d"> To ensure the distance is always a positive integer</label></li>
+  </ul>
+  <button class="btn btn-primary" onclick="checkQ('q2','b','Correct. A user who typed "comit" made one slip. Counting the minimum operations reflects the fewest errors needed, which best models actual human intent.')">Check</button>
+  <p class="quiz-feedback" id="q2-feedback"></p>
+</div>
+
+<div class="quiz" id="q3">
+  <p class="quiz-question">Q3. Which edit operation is NOT part of standard Levenshtein distance?</p>
+  <ul class="quiz-options">
+    <li><label><input type="radio" name="q3" value="a"> Insert a character into the string</label></li>
+    <li><label><input type="radio" name="q3" value="b"> Delete a character from the string</label></li>
+    <li><label><input type="radio" name="q3" value="c"> Transpose two adjacent characters</label></li>
+    <li><label><input type="radio" name="q3" value="d"> Substitute one character for another</label></li>
+  </ul>
+  <button class="btn btn-primary" onclick="checkQ('q3','c','Correct. Transposition is the Damerau extension. Standard Levenshtein only has insert, delete, and substitute.')">Check</button>
+  <p class="quiz-feedback" id="q3-feedback"></p>
+</div>
+
+<div class="quiz" id="q4">
+  <p class="quiz-question">Q4. Edit distance between <code>abc</code> and <code>xyz</code> is:</p>
+  <ul class="quiz-options">
+    <li><label><input type="radio" name="q4" value="a"> 6 — delete all of abc, insert all of xyz</label></li>
+    <li><label><input type="radio" name="q4" value="b"> 3 — substitute each character once</label></li>
+    <li><label><input type="radio" name="q4" value="c"> 0 — both strings have the same length</label></li>
+    <li><label><input type="radio" name="q4" value="d"> 2 — insert x at start, delete c at end</label></li>
+  </ul>
+  <button class="btn btn-primary" onclick="checkQ('q4','b','Correct. abc → xbc (sub a→x), xbc → xyc (sub b→y), xyc → xyz (sub c→z). Three substitutions. Minimum is 3.')">Check</button>
+  <p class="quiz-feedback" id="q4-feedback"></p>
+</div>
+
+<hr>
+
+<div class="primary-source">
+  <span class="label">Primary source for this lesson</span>
+  <a href="https://en.wikipedia.org/wiki/Levenshtein_distance" target="_blank">
+    Levenshtein distance — Wikipedia
+  </a>
+  — Read the "Definition" and "Example" sections. The recurrence relation
+  defined there is exactly what Lesson 3 will implement as a DP table.
+</div>
+
+<div class="ask-teacher">
+  💬 <strong>Have a question?</strong> Ask your teacher — type in the chat and I'll explain, rephrase, or go deeper on anything from this lesson.
+</div>
+
+<div class="lesson-nav">
+  <a href="0001-the-problem.html">← Lesson 1: The Problem</a>
+  <span class="center">Fuzzy Search · Lesson 2 of 6</span>
+  <a href="0003-dp-table.html">Next: Computing Edit Distance →</a>
+</div>
+
+<script>
+  // ── Edit distance (Wagner-Fischer) ─────────────────────
+  function editDistance(a, b) {
+    const m = a.length, n = b.length;
+    const dp = Array.from({length: m + 1}, (_, i) =>
+      Array.from({length: n + 1}, (_, j) => i === 0 ? j : j === 0 ? i : 0)
+    );
+    for (let i = 1; i <= m; i++) {
+      for (let j = 1; j <= n; j++) {
+        if (a[i-1] === b[j-1]) {
+          dp[i][j] = dp[i-1][j-1];
+        } else {
+          dp[i][j] = 1 + Math.min(
+            dp[i-1][j],   // delete
+            dp[i][j-1],   // insert
+            dp[i-1][j-1]  // substitute
+          );
+        }
+      }
+    }
+    return dp[m][n];
+  }
+
+  function updateDemo() {
+    const src = document.getElementById('src-input').value;
+    const tgt = document.getElementById('tgt-input').value;
+    const result = document.getElementById('edit-result');
+    if (!src || !tgt) { result.textContent = ''; return; }
+    const d = editDistance(src, tgt);
+    const colour = d === 0 ? 'var(--success)' : d <= 2 ? 'var(--warn)' : 'var(--danger)';
+    result.innerHTML = `Edit distance: <strong style="color:${colour};font-size:1.4rem;">${d}</strong>
+      <span style="color:var(--muted);font-size:0.85rem;margin-left:0.75rem;">(${d} operation${d===1?'':'s'} needed)</span>`;
+  }
+
+  document.getElementById('src-input').addEventListener('input', updateDemo);
+  document.getElementById('tgt-input').addEventListener('input', updateDemo);
+  updateDemo();
+
+  // ── Quiz logic ─────────────────────────────────────────
+  function checkQ(id, correct, explanation) {
+    const selected = document.querySelector(`input[name="${id}"]:checked`);
+    const feedback = document.getElementById(`${id}-feedback`);
+    if (!selected) { feedback.textContent = 'Please select an answer.'; feedback.className = 'quiz-feedback'; return; }
+
+    document.querySelectorAll(`input[name="${id}"]`).forEach(r => {
+      const lbl = r.closest('label');
+      if (r.value === correct) lbl.classList.add('correct');
+      else if (r.checked)      lbl.classList.add('wrong');
+      r.disabled = true;
+    });
+
+    if (selected.value === correct) {
+      feedback.textContent = '✓ ' + explanation;
+      feedback.className = 'quiz-feedback correct';
+    } else {
+      feedback.textContent = '✗ Not quite. ' + explanation;
+      feedback.className = 'quiz-feedback wrong';
+    }
+  }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 5 — The Scoring Model</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <style>
+    /* ── Scoring breakdown ── */
+    .score-bar {
+      display: flex; align-items: stretch;
+      border: 1px solid var(--rule); border-radius: 6px;
+      overflow: hidden; margin: 0.75rem 0; font-family: var(--mono);
+      font-size: 0.82rem; min-height: 2.4rem;
+    }
+    .score-bar .seg {
+      display: flex; align-items: center; justify-content: center;
+      padding: 0.3rem 0.45rem; min-width: 1.8rem;
+      border-right: 1px solid var(--rule); white-space: nowrap;
+    }
+    .score-bar .seg:last-child { border-right: none; }
+    .seg.consec  { background: #dcfce7; }
+    .seg.boundary{ background: #dbeafe; }
+    .seg.gap     { background: #fee2e2; }
+    .seg.neutral { background: #f4f4f5; }
+
+    .candidate-line {
+      font-family: var(--mono); font-size: 1.05rem;
+      padding: 0.5rem 0; word-break: break-all; line-height: 1.8;
+    }
+    .ch { display: inline-block; padding: 0 0.05em; border-radius: 2px; }
+    .ch.m-consec   { background: #dcfce7; color: #166534; font-weight: 800; }
+    .ch.m-boundary { background: #dbeafe; color: #1e40af; font-weight: 800; }
+    .ch.m-plain    { background: #fef9c3; color: #92400e; font-weight: 700; }
+    .ch.gap-inner  { color: #dc2626; text-decoration: underline; text-decoration-style: dotted; }
+    .ch.gap-outer  { color: var(--faint); }
+
+    .comparison-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 0.75rem; margin: 1rem 0;
+    }
+    @media (max-width: 580px) { .comparison-grid { grid-template-columns: 1fr; } }
+
+    .comp-card {
+      border: 1px solid var(--rule); border-radius: 6px;
+      padding: 0.85rem 1rem; background: #fafafa;
+    }
+    .comp-card.winner { border-color: var(--success); background: var(--success-bg); }
+    .comp-card .label {
+      font-family: var(--sans); font-size: 0.75rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.07em;
+      color: var(--muted); margin-bottom: 0.4rem;
+    }
+    .comp-card.winner .label { color: var(--success); }
+    .comp-score { font-family: var(--mono); font-size: 1.1rem; font-weight: 700; }
+
+    .bonus-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin: 1rem 0; }
+    .bonus-table th { text-align: left; font-family: var(--sans); font-weight: 600;
+      padding: 0.4rem 0.6rem; border-bottom: 2px solid var(--rule); }
+    .bonus-table td { padding: 0.35rem 0.6rem; border-bottom: 1px solid var(--rule); font-family: var(--mono); }
+    .bonus-table td:last-child { font-weight: 700; }
+
+    .score-legend { display: flex; gap: 0.9rem; flex-wrap: wrap;
+      font-family: var(--sans); font-size: 0.8rem; margin: 0.5rem 0 1rem; }
+    .score-legend span { display: flex; align-items: center; gap: 0.35rem; }
+    .score-legend .sw { width: 0.9rem; height: 0.9rem; border-radius: 2px; border: 1px solid var(--rule); flex-shrink: 0; }
+
+    /* ── Live scorer ── */
+    #live-candidate { font-size: 1.15rem; word-break: break-all; min-height: 2rem; margin: 0.5rem 0; line-height: 1.9; }
+    #live-breakdown { font-family: var(--sans); font-size: 0.88rem; margin-top: 0.5rem; }
+    #live-total { font-size: 1.2rem; font-weight: 700; font-family: var(--mono); color: var(--accent); }
+    .breakdown-row { display: flex; justify-content: space-between;
+      border-bottom: 1px solid var(--rule); padding: 0.22rem 0; font-size: 0.85rem; }
+    .breakdown-row:last-child { border-bottom: none; }
+  </style>
+</head>
+<body>
+
+<div class="lesson-header">
+  <div class="lesson-meta">Fuzzy Search · Lesson 5 of 6</div>
+  <h1>The Scoring Model</h1>
+  <p class="lesson-subtitle">The design decision: rank matches by intent, not just by existence</p>
+</div>
+
+<h2>The problem this lesson solves</h2>
+
+<p>
+  After the subsequence gate (Lesson 4), we know a query's characters all
+  appear in the candidate in order. But a query like <code>cfg</code> matches
+  <code>cfg.ts</code> and <code>app_configuration_manager.ts</code> equally
+  — both are valid subsequences. How do we know which one the user meant?
+</p>
+
+<div class="callout note">
+  <span class="callout-label">Design decision</span>
+  Assign each match a <strong>score</strong> based on the quality of the
+  alignment, not just its existence. The scoring model encodes human
+  intuitions about intentionality: <em>consecutive runs are more deliberate
+  than scattered letters; matching word starts shows structural awareness;
+  compact matches in short strings are more precise.</em>
+</div>
+
+<p>
+  This is the heart of fzy's algorithm. Every design decision in the scoring
+  model solves one specific failure of naive subsequence matching.
+</p>
+
+<h2>The three scoring decisions</h2>
+
+<h3>Decision 1 — Consecutive match bonus</h3>
+
+<p>
+  If matched characters run consecutively in the candidate, the user almost
+  certainly typed exactly that substring. Award a large bonus per consecutive
+  pair.
+</p>
+
+<div class="comparison-grid">
+  <div class="comp-card">
+    <div class="label">Scattered match</div>
+    <div class="candidate-line">
+      <span class="ch m-plain">c</span>on<span class="ch gap-inner">f</span>i<span class="ch gap-inner">g</span>uration
+    </div>
+    <div>query <code>cfg</code> matched to positions 0, 3, 5 — gaps between every char</div>
+  </div>
+  <div class="comp-card winner">
+    <div class="label">Consecutive match ✓ wins</div>
+    <div class="candidate-line">
+      <span class="ch m-boundary">c</span><span class="ch m-consec">f</span><span class="ch m-consec">g</span>.ts
+    </div>
+    <div>query <code>cfg</code> matched to positions 0, 1, 2 — three consecutive characters</div>
+  </div>
+</div>
+
+<h3>Decision 2 — Word boundary bonus</h3>
+
+<p>
+  Matching the first character of a word (after <code>/</code>, <code>_</code>,
+  <code>-</code>, space, <code>.</code>, or uppercase-after-lowercase) means
+  the user is thinking in terms of structure, not raw characters.
+  Award a bonus scaled by boundary type.
+</p>
+
+<table class="bonus-table">
+  <thead><tr><th>Boundary type</th><th>Example trigger</th><th>Bonus</th></tr></thead>
+  <tbody>
+    <tr><td>Path separator <code>/</code></td><td><code>/usr/<strong>l</strong>ocal</code></td><td>+0.9</td></tr>
+    <tr><td>Word char <code>_ - space</code></td><td><code>auth_<strong>c</strong>onfig</code></td><td>+0.8</td></tr>
+    <tr><td>camelCase capital</td><td><code>my<strong>C</strong>omponent</code></td><td>+0.8</td></tr>
+    <tr><td>Dot separator</td><td><code>index.<strong>t</strong>s</code></td><td>+0.6</td></tr>
+    <tr><td>No boundary</td><td><code>con<strong>f</strong>ig</code></td><td>+0.0</td></tr>
+  </tbody>
+</table>
+
+<div class="callout insight">
+  <span class="callout-label">Why these values?</span>
+  Path separators rank highest because typing <code>usr/l</code> precisely signals
+  you want something <em>inside</em> <code>/usr/</code>. Word chars are next —
+  they show you know the token structure. Mid-word matches are penalised
+  because they could easily be accidental.
+</div>
+
+<h3>Decision 3 — Gap penalty (affine)</h3>
+
+<p>
+  Every unmatched character between two matched characters is a "gap."
+  Gaps are penalised because they suggest the match was accidental.
+  fzy uses an <strong>affine gap penalty</strong>: a fixed cost for
+  <em>opening</em> a gap, plus a smaller cost per additional character in it.
+</p>
+
+<pre>gap_cost(length) = GAP_OPEN + (length - 1) × GAP_EXTEND
+
+where: GAP_OPEN = -0.01   (per character, inner gaps)
+       Outer gaps (leading/trailing) = -0.005 per character</pre>
+
+<div class="callout note">
+  <span class="callout-label">Why affine and not linear?</span>
+  Borrowed from bioinformatics (Gotoh, 1982). A single long gap is more
+  "forgivable" than many short gaps: one long skip might just mean the
+  file has a long suffix. Many small gaps suggest the match is scattered
+  by coincidence. Affine penalties encode this by making the first character
+  of a gap more expensive than subsequent ones.
+</div>
+
+<h2>The two-matrix DP</h2>
+
+<p>
+  The scoring DP builds two matrices over the same (query × candidate) grid:
+</p>
+
+<ul>
+  <li>
+    <strong>M[i][j]</strong> — the best score for matching the first <code>i</code>
+    query characters to the first <code>j</code> candidate characters,
+    with query[i] matched to candidate[j]. May have arrived here via a gap.
+  </li>
+  <li>
+    <strong>D[i][j]</strong> — the same, but <em>query[i] is part of a
+    consecutive run</em> (no gap before this match). Used to compute the
+    consecutive bonus correctly.
+  </li>
+</ul>
+
+<pre>// Bonus at candidate position j
+B[j] = boundary_bonus(candidate, j)
+
+// D: consecutive-run score ending at (i, j)
+D[i][j] = max(
+  M[i-1][j-1] + CONSECUTIVE + B[j],   // extend a run from any previous match
+  D[i-1][j-1] + CONSECUTIVE + B[j]    // extend a confirmed consecutive run
+)
+
+// M: best score overall ending at (i, j)
+M[i][j] = max(
+  D[i][j],                             // end a consecutive run here
+  best over k < j: M[i-1][k] + gap_cost(j - k) + B[j]
+)</pre>
+
+<div class="callout insight">
+  <span class="callout-label">Why two matrices?</span>
+  The consecutive bonus applies when <em>both</em> the previous and current
+  query characters are matched without a gap. If you tracked only one matrix
+  you couldn't distinguish "I arrived here from a consecutive run" from
+  "I arrived here via a gap." The D matrix carries that information.
+</div>
+
+<h2>Live scorer</h2>
+
+<p>Type a query and candidate to see the fzy-style score and alignment.</p>
+
+<div class="demo">
+  <h3>Scoring explorer</h3>
+  <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-bottom:0.85rem;">
+    <div style="flex:1;min-width:120px;">
+      <label style="font-family:var(--sans);font-size:0.78rem;color:var(--muted);display:block;margin-bottom:0.25rem;">Query</label>
+      <input type="text" id="sc-query" value="cfg" maxlength="12" autocomplete="off" spellcheck="false" style="width:100%;">
+    </div>
+    <div style="flex:2;min-width:200px;">
+      <label style="font-family:var(--sans);font-size:0.78rem;color:var(--muted);display:block;margin-bottom:0.25rem;">Candidate</label>
+      <input type="text" id="sc-candidate" value="auth_config_loader.ts" autocomplete="off" spellcheck="false" style="width:100%;">
+    </div>
+  </div>
+  <div class="score-legend">
+    <span><span class="sw" style="background:#dcfce7;border-color:#16a34a;"></span> Consecutive match</span>
+    <span><span class="sw" style="background:#dbeafe;border-color:#3b82f6;"></span> Boundary match</span>
+    <span><span class="sw" style="background:#fef9c3;border-color:#ca8a04;"></span> Plain match</span>
+    <span><span class="sw" style="background:#fee2e2;border-color:#dc2626;"></span> Inner gap</span>
+  </div>
+  <div id="live-candidate" class="candidate-line"></div>
+  <div id="live-breakdown"></div>
+</div>
+
+<h2>Seeing the ranking in action</h2>
+
+<p>
+  Below are four candidates for query <code>cfg</code>, ranked by their
+  fzy score. Hover over each to see why it ranks where it does.
+</p>
+
+<div id="ranking-demo"></div>
+
+<h2>Quiz: Check your understanding</h2>
+
+<div class="quiz" id="q1">
+  <p class="quiz-question">Q1. Query <code>mc</code> against <code>MyComponent.tsx</code>. The M matches at position 0 (capital, start of string) and the C at position 2 (camelCase capital). What type of bonus applies to both?</p>
+  <ul class="quiz-options">
+    <li><label><input type="radio" name="q1" value="a"> Consecutive match bonus — the characters run one after another</label></li>
+    <li><label><input type="radio" name="q1" value="b"> Boundary bonus — both M and C are at camelCase word boundaries</label></li>
+    <li><label><input type="radio" name="q1" value="c"> Gap penalty — there is one character between M and C</label></li>
+    <li><label><input type="radio" name="q1" value="d"> Path separator bonus — the file extension creates a boundary</label></li>
+  </ul>
+  <button class="btn btn-primary" onclick="checkQ('q1','b','Correct. M is at position 0 (start of string = highest boundary bonus), C is a capital after lowercase (camelCase boundary). Both earn +0.8 or higher.')">Check</button>
+  <p class="quiz-feedback" id="q1-feedback"></p>
+</div>
+
+<div class="quiz" id="q2">
+  <p class="quiz-question">Q2. Why does fzy use an <em>affine</em> gap penalty rather than a flat penalty per gap character?</p>
+  <ul class="quiz-options">
+    <li><label><input type="radio" name="q2" value="a"> To make the score always a negative number</label></li>
+    <li><label><input type="radio" name="q2" value="b"> One long gap is more forgivable than many short gaps — affine makes opening a gap cost more than extending it</label></li>
+    <li><label><input type="radio" name="q2" value="c"> To ensure the score is comparable across strings of different lengths</label></li>
+    <li><label><input type="radio" name="q2" value="d"> Affine penalties are faster to compute than linear ones</label></li>
+  </ul>
+  <button class="btn btn-primary" onclick="checkQ('q2','b','Correct. Many short gaps suggest scattered/accidental matching. One long gap might just be a long file suffix. Affine penalty encodes this: pay more to open a gap, less to extend an existing one.')">Check</button>
+  <p class="quiz-feedback" id="q2-feedback"></p>
+</div>
+
+<div class="quiz" id="q3">
+  <p class="quiz-question">Q3. The scoring DP uses two matrices: M and D. What specifically does the D matrix track that M alone cannot?</p>
+  <ul class="quiz-options">
+    <li><label><input type="radio" name="q3" value="a"> Whether the current match character is uppercase</label></li>
+    <li><label><input type="radio" name="q3" value="b"> The best score where the current match is part of a consecutive run (no gap before it)</label></li>
+    <li><label><input type="radio" name="q3" value="c"> The cumulative gap penalty across the entire candidate</label></li>
+    <li><label><input type="radio" name="q3" value="d"> The minimum number of gaps needed to complete the match</label></li>
+  </ul>
+  <button class="btn btn-primary" onclick="checkQ('q3','b','Correct. D[i][j] tracks the score when query[i] arrived at candidate[j] without a gap from the previous match. This is needed to correctly apply the consecutive bonus, which only fires when both the current and previous matches were adjacent.')">Check</button>
+  <p class="quiz-feedback" id="q3-feedback"></p>
+</div>
+
+<div class="quiz" id="q4">
+  <p class="quiz-question">Q4. Query <code>ts</code>. Candidate A: <code>tools.ts</code> (matches <code>t</code> at position 0, <code>s</code> at position 7 after the dot). Candidate B: <code>timestamp.js</code> (matches <code>t</code> at 0, <code>s</code> at 4 consecutively as part of "times"). Which scores higher and why?</p>
+  <ul class="quiz-options">
+    <li><label><input type="radio" name="q4" value="a"> A scores higher — the dot before .ts is a boundary, giving a large bonus to s</label></li>
+    <li><label><input type="radio" name="q4" value="b"> B scores higher — ts appears consecutively near the start with no gap bonus needed</label></li>
+    <li><label><input type="radio" name="q4" value="c"> They score equally — both match t at position 0</label></li>
+    <li><label><input type="radio" name="q4" value="d"> A scores higher — shorter strings always rank above longer ones</label></li>
+  </ul>
+  <button class="btn btn-primary" onclick="checkQ('q4','a','Correct. In tools.ts the s matches after a dot boundary (+0.6) and t matches at position 0. This is the intended match — the user typed ts to find TypeScript files. The dot-boundary bonus on s elevates it above a mid-word consecutive match with no boundary signal.')">Check</button>
+  <p class="quiz-feedback" id="q4-feedback"></p>
+</div>
+
+<hr>
+
+<div class="primary-source">
+  <span class="label">Primary source for this lesson</span>
+  <a href="https://github.com/jhawthorn/fzy/blob/master/ALGORITHM.md" target="_blank">
+    fzy ALGORITHM.md — jhawthorn (GitHub)
+  </a>
+  — You now have everything you need to read this document end-to-end and
+  understand every paragraph. Read it now: the gap score, the bonus values,
+  the two-matrix DP, and the rationale for each constant.
+</div>
+
+<div class="ask-teacher">
+  💬 <strong>Have a question?</strong> Ask your teacher — type in the chat and I'll go deeper on any scoring decision, matrix cell, or constant from this lesson.
+</div>
+
+<div class="lesson-nav">
+  <a href="0004-threshold-search.html">← Lesson 4: From Distance to Search</a>
+  <span class="center">Fuzzy Search · Lesson 5 of 6</span>
+  <a href="0006-bitap.html">Next: The Bitap Algorithm →</a>
+</div>
+
+<script>
+// ── Scoring constants (fzy-faithful) ─────────────────────────────────────────
+const SCORE_GAP_LEADING    = -0.005;
+const SCORE_GAP_TRAILING   = -0.005;
+const SCORE_GAP_INNER      = -0.01;
+const SCORE_MATCH_CONSECUTIVE = 1.0;
+const SCORE_MATCH_SLASH    = 0.9;
+const SCORE_MATCH_WORD     = 0.8;
+const SCORE_MATCH_CAPITAL  = 0.8;
+const SCORE_MATCH_DOT      = 0.6;
+const SCORE_MIN            = -Infinity;
+
+function charBonus(str, i) {
+  if (i === 0) return SCORE_MATCH_SLASH;
+  const prev = str[i - 1], cur = str[i];
+  if (prev === '/' || prev === '\\') return SCORE_MATCH_SLASH;
+  if (prev === '_' || prev === '-' || prev === ' ') return SCORE_MATCH_WORD;
+  if (prev === '.') return SCORE_MATCH_DOT;
+  if (cur >= 'A' && cur <= 'Z' && prev >= 'a' && prev <= 'z') return SCORE_MATCH_CAPITAL;
+  return 0;
+}
+
+function isSubseq(query, candidate) {
+  const q = query.toLowerCase(), c = candidate.toLowerCase();
+  let qi = 0;
+  for (let ci = 0; ci < c.length && qi < q.length; ci++)
+    if (c[ci] === q[qi]) qi++;
+  return qi === q.length;
+}
+
+function score(query, candidate) {
+  const n = query.length, m = candidate.length;
+  const q = query.toLowerCase(), c = candidate.toLowerCase();
+  if (!isSubseq(q, c)) return { score: SCORE_MIN, positions: [] };
+
+  // Precompute bonuses
+  const bonus = Array.from({length: m}, (_, i) => charBonus(candidate, i));
+
+  // Two matrices: D (consecutive), M (best overall)
+  // Initialise with -Infinity
+  const D = Array.from({length: n}, () => new Float64Array(m).fill(SCORE_MIN));
+  const M = Array.from({length: n}, () => new Float64Array(m).fill(SCORE_MIN));
+
+  for (let i = 0; i < n; i++) {
+    let prevScore = SCORE_MIN;
+    const gapScore = i === n - 1 ? SCORE_GAP_TRAILING : SCORE_GAP_INNER;
+
+    for (let j = (i === 0 ? 0 : i); j < m; j++) {
+      if (q[i] === c[j]) {
+        let bScore = bonus[j];
+        if (i === 0) {
+          // First query char: leading gap from start
+          const leadGap = j * SCORE_GAP_LEADING;
+          D[i][j] = leadGap + bScore;
+          M[i][j] = D[i][j];
+        } else {
+          // D: consecutive from previous query char at j-1
+          const dVal = j > 0 && D[i-1][j-1] > SCORE_MIN
+            ? D[i-1][j-1] + SCORE_MATCH_CONSECUTIVE + bScore
+            : SCORE_MIN;
+          // Also: M from j-1 + consecutive (extending any match)
+          const mVal = j > 0 && M[i-1][j-1] > SCORE_MIN
+            ? M[i-1][j-1] + SCORE_MATCH_CONSECUTIVE + bScore
+            : SCORE_MIN;
+          D[i][j] = Math.max(dVal, mVal);
+          M[i][j] = Math.max(D[i][j], prevScore + bScore);
+        }
+      }
+      // Update prevScore with gap penalty
+      if (M[i][j] > SCORE_MIN)
+        prevScore = Math.max(prevScore, M[i][j] + gapScore);
+      else if (i > 0 && prevScore > SCORE_MIN)
+        prevScore += gapScore;
+    }
+  }
+
+  // Best score is max of last row
+  let best = SCORE_MIN, bestJ = 0;
+  for (let j = n - 1; j < m; j++) {
+    if (M[n-1][j] > best) { best = M[n-1][j]; bestJ = j; }
+  }
+
+  // Traceback: reconstruct match positions
+  const positions = new Array(n).fill(0);
+  let j = bestJ;
+  for (let i = n - 1; i >= 0; i--) {
+    while (j >= 0 && (q[i] !== c[j] || M[i][j] <= SCORE_MIN)) j--;
+    positions[i] = j;
+    j--;
+  }
+
+  return { score: best, positions, bonus, D, M };
+}
+
+// ── Live scorer ───────────────────────────────────────────────────────────────
+
+function renderLive() {
+  const query     = document.getElementById('sc-query').value;
+  const candidate = document.getElementById('sc-candidate').value;
+  const visEl     = document.getElementById('live-candidate');
+  const brkEl     = document.getElementById('live-breakdown');
+
+  if (!query || !candidate) { visEl.innerHTML = ''; brkEl.innerHTML = ''; return; }
+
+  if (!isSubseq(query.toLowerCase(), candidate.toLowerCase())) {
+    visEl.innerHTML = `<span style="color:var(--danger)">✗ Not a subsequence — no match.</span>`;
+    brkEl.innerHTML = '';
+    return;
+  }
+
+  const result = score(query, candidate);
+  const { positions, bonus: bonuses } = result;
+  const posSet = new Set(positions);
+
+  // Build character breakdown
+  const events = [];
+  let consecutive = 0;
+  const chars = candidate.split('').map((ch, idx) => {
+    if (!posSet.has(idx)) {
+      const isLeadingOrTrailing =
+        idx < positions[0] || idx > positions[positions.length - 1];
+      return `<span class="ch ${isLeadingOrTrailing ? 'gap-outer' : 'gap-inner'}">${ch}</span>`;
+    }
+    const queryIdx = positions.indexOf(idx);
+    const b = bonuses[idx];
+    const prevPos = queryIdx > 0 ? positions[queryIdx - 1] : -1;
+    const isConsec = prevPos === idx - 1;
+    let cls = 'm-plain';
+    let type = 'match';
+    if (isConsec && b > 0)       { cls = 'm-consec'; type = 'consecutive + boundary'; }
+    else if (isConsec)           { cls = 'm-consec'; type = 'consecutive'; }
+    else if (b >= SCORE_MATCH_WORD) { cls = 'm-boundary'; type = 'boundary'; }
+
+    const bonusLabel = b > 0 ? ` (+${b.toFixed(1)} boundary)` : '';
+    const consecLabel = isConsec ? ` (+1.0 consecutive)` : '';
+    events.push({ ch, type, bonus: b, isConsec, consecLabel, bonusLabel });
+    return `<span class="ch ${cls}" title="${type}${bonusLabel}${consecLabel}">${ch}</span>`;
+  }).join('');
+
+  visEl.innerHTML = chars;
+
+  // Score breakdown
+  let html = `<div style="margin-top:0.6rem;">`;
+  html += `<div style="font-family:var(--sans);font-size:0.82rem;color:var(--muted);margin-bottom:0.4rem;">Score components</div>`;
+  events.forEach(ev => {
+    let parts = [];
+    if (ev.b > 0) parts.push(`<span style="color:var(--accent)">+${ev.b.toFixed(2)} boundary</span>`);
+    if (ev.isConsec) parts.push(`<span style="color:var(--success)">+1.00 consecutive</span>`);
+    html += `<div class="breakdown-row">
+      <span><code>${ev.ch}</code> — ${ev.type}</span>
+      <span>${parts.length ? parts.join(' ') : '<span style="color:var(--faint)">+0.00</span>'}</span>
+    </div>`;
+  });
+  html += `<div class="breakdown-row" style="margin-top:0.4rem;border-top:2px solid var(--ink);">
+    <strong>Total score</strong>
+    <strong id="live-total">${result.score.toFixed(3)}</strong>
+  </div>`;
+  html += `</div>`;
+  brkEl.innerHTML = html;
+}
+
+document.getElementById('sc-query').addEventListener('input', renderLive);
+document.getElementById('sc-candidate').addEventListener('input', renderLive);
+renderLive();
+
+// ── Ranking demo ──────────────────────────────────────────────────────────────
+
+function renderRanking() {
+  const query = 'cfg';
+  const candidates = [
+    'cfg.ts',
+    'auth_config_loader.ts',
+    'app_configuration_manager.ts',
+    'reconfiguring_cache.json',
+  ];
+
+  const scored = candidates.map(c => ({ c, ...score(query, c) }));
+  scored.sort((a, b) => b.score - a.score);
+
+  const el = document.getElementById('ranking-demo');
+  let html = '';
+  scored.forEach((item, rank) => {
+    const { positions, bonus: bonuses } = item;
+    const posSet = new Set(positions);
+    const chars = item.c.split('').map((ch, idx) => {
+      if (!posSet.has(idx)) {
+        const outer = idx < positions[0] || idx > positions[positions.length - 1];
+        return `<span class="ch ${outer ? 'gap-outer' : 'gap-inner'}">${ch}</span>`;
+      }
+      const qi = positions.indexOf(idx);
+      const b = bonuses[idx];
+      const isConsec = qi > 0 && positions[qi-1] === idx - 1;
+      let cls = isConsec ? 'm-consec' : b >= SCORE_MATCH_WORD ? 'm-boundary' : 'm-plain';
+      return `<span class="ch ${cls}">${ch}</span>`;
+    }).join('');
+
+    html += `<div style="border:1px solid var(--rule);border-radius:6px;padding:0.75rem 1rem;margin-bottom:0.6rem;background:${rank===0?'var(--success-bg)':'#fafafa'}">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:0.3rem;">
+        <span style="font-family:var(--sans);font-size:0.78rem;font-weight:700;color:${rank===0?'var(--success)':'var(--muted)'};">#${rank+1}</span>
+        <span style="font-family:var(--mono);font-size:0.82rem;color:var(--muted);">score: ${item.score.toFixed(3)}</span>
+      </div>
+      <div class="candidate-line" style="font-size:0.95rem;">${chars}</div>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+renderRanking();
+
+// ── Quiz ──────────────────────────────────────────────────────────────────────
+
+function checkQ(id, correct, explanation) {
+  const selected = document.querySelector(`input[name="${id}"]:checked`);
+  const feedback = document.getElementById(`${id}-feedback`);
+  if (!selected) { feedback.textContent = 'Please select an answer.'; feedback.className = 'quiz-feedback'; return; }
+  document.querySelectorAll(`input[name="${id}"]`).forEach(r => {
+    const lbl = r.closest('label');
+    if (r.value === correct) lbl.classList.add('correct');
+    else if (r.checked)      lbl.classList.add('wrong');
+    r.disabled = true;
+  });
+  if (selected.value === correct) {
+    feedback.textContent = '✓ ' + explanation;
+    feedback.className = 'quiz-feedback correct';
+  } else {
+    feedback.textContent = '✗ Not quite. ' + explanation;
+    feedback.className = 'quiz-feedback wrong';
+  }
+}
+</script>
+
+</body>
+</html>

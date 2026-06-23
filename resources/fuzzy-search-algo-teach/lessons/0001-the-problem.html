@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 1 — The Problem: Why Exact Search Fails</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<div class="lesson-header">
+  <div class="lesson-meta">Fuzzy Search · Lesson 1 of 6</div>
+  <h1>The Problem: Why Exact Search Fails</h1>
+  <p class="lesson-subtitle">Understanding what we are trying to solve before we solve it</p>
+</div>
+
+<h2>The promise of exact search</h2>
+
+<p>
+  The simplest search algorithm imaginable is a direct string comparison:
+  does the candidate contain the query as a substring? This is what
+  <code>str.includes(query)</code>, <code>grep</code>, and <code>LIKE '%…%'</code> all do.
+</p>
+
+<p>
+  It is fast, predictable, and sufficient — until the moment a human is
+  doing the typing.
+</p>
+
+<div class="callout note">
+  <span class="callout-label">Core insight</span>
+  Exact match assumes the query is a precise, correctly-spelled substring of
+  the target. Human queries almost never are.
+</div>
+
+<h2>Three ways humans fail to type what they mean</h2>
+
+<h3>1. Typos and transpositions</h3>
+<p>
+  A developer types <code>comit</code> instead of <code>commit</code>.
+  They type <code>recieve</code> instead of <code>receive</code>.
+  Exact match returns nothing. But the intent is unambiguous.
+</p>
+
+<h3>2. Abbreviations</h3>
+<p>
+  A user types <code>usr/lcl</code> to find <code>/usr/local/bin</code>.
+  They type <code>MC</code> to find <code>MyComponent.tsx</code>.
+  No substring match exists, but the intent is clear: the query characters
+  all appear in the target, in order.
+</p>
+
+<h3>3. Fuzzy recall</h3>
+<p>
+  A user remembers a file is "something about authentication, starts with
+  auth, has config in the name." They type <code>authcfg</code>.
+  The file is named <code>auth_config_loader.ts</code>.
+  Again: exact match fails, human intent succeeds.
+</p>
+
+<div class="demo" id="demo-exact">
+  <h3>Try it: Exact substring search</h3>
+  <p style="font-family:var(--sans);font-size:0.88rem;color:var(--muted);margin-bottom:0.75rem;">
+    Type a query. See which candidates match using exact substring search.
+  </p>
+  <input type="text" id="exact-input" placeholder="try: comit, authcfg, usr/lcl" autocomplete="off" spellcheck="false">
+  <div class="demo-results" id="exact-results"></div>
+</div>
+
+<h2>What the problem really is</h2>
+
+<p>
+  The challenge has two distinct parts, and most confusion about fuzzy search
+  comes from conflating them:
+</p>
+
+<ol>
+  <li>
+    <strong>Matching</strong> — deciding whether a candidate is "close enough"
+    to the query at all.
+  </li>
+  <li>
+    <strong>Ranking</strong> — when multiple candidates pass the threshold,
+    deciding which one the user probably meant.
+  </li>
+</ol>
+
+<p>
+  These require different machinery. A good fuzzy search algorithm solves
+  <em>both</em> — and the rest of this course shows how each design decision
+  targets one or the other.
+</p>
+
+<div class="callout insight">
+  <span class="callout-label">Preview of what's coming</span>
+  <strong>Edit distance</strong> solves matching: it gives us a number
+  representing how "far apart" two strings are. <strong>Scoring models</strong>
+  (gap penalties, consecutive bonuses, boundary bonuses) solve ranking:
+  they let us order results by likely intent.
+</div>
+
+<h2>What properties must a solution have?</h2>
+
+<p>Before building anything, it helps to list the requirements the solution
+must satisfy. A fuzzy search algorithm should:</p>
+
+<ul>
+  <li><strong>Tolerate small typos</strong> — off-by-one character edits should not disqualify a match.</li>
+  <li><strong>Support abbreviations</strong> — all query characters appear in the target, in order (subsequence matching).</li>
+  <li><strong>Rank better matches first</strong> — <code>comit</code> → <code>commit</code> should rank above <code>comit</code> → <code>recommit_changes_v2.log</code>.</li>
+  <li><strong>Prefer compact matches</strong> — matching 4 consecutive characters should score higher than the same 4 characters scattered across a 200-character string.</li>
+  <li><strong>Prefer early and boundary matches</strong> — a match at the start of a word or path component feels more intentional than one buried in the middle.</li>
+</ul>
+
+<div class="callout warn">
+  <span class="callout-label">The tradeoff</span>
+  Every relaxation of exact match increases the number of results returned
+  (recall goes up). The scoring model is what keeps <em>precision</em> usable
+  by surfacing the right result first.
+</div>
+
+<h2>Quiz: Check your understanding</h2>
+
+<div class="quiz" id="q1">
+  <p class="quiz-question">Q1. Exact substring search on the query <code>authcfg</code> against the target <code>auth_config_loader.ts</code> returns no match. What property does a fuzzy search algorithm need to find it?</p>
+  <ul class="quiz-options">
+    <li><label><input type="radio" name="q1" value="a"> Tolerance for transpositions only</label></li>
+    <li><label><input type="radio" name="q1" value="b"> Subsequence matching — all query chars appear in the target in order</label></li>
+    <li><label><input type="radio" name="q1" value="c"> Phonetic similarity between query and target</label></li>
+    <li><label><input type="radio" name="q1" value="d"> Case-insensitive exact matching</label></li>
+  </ul>
+  <button class="btn btn-primary" onclick="checkQ('q1','b','Correct. The characters a-u-t-h-c-f-g all appear in auth_config_loader.ts in that order. This is subsequence matching — a core building block of fuzzy search.')">Check</button>
+  <p class="quiz-feedback" id="q1-feedback"></p>
+</div>
+
+<div class="quiz" id="q2">
+  <p class="quiz-question">Q2. Two candidates both pass the fuzzy match threshold for query <code>cfg</code>: <code>cfg.ts</code> and <code>app_configuration_manager.ts</code>. Which problem does the <em>scoring model</em> solve here?</p>
+  <ul class="quiz-options">
+    <li><label><input type="radio" name="q2" value="a"> It decides whether either candidate matches at all</label></li>
+    <li><label><input type="radio" name="q2" value="b"> It computes how many characters differ between query and candidate</label></li>
+    <li><label><input type="radio" name="q2" value="c"> It ranks the candidates so the more likely intended result appears first</label></li>
+    <li><label><input type="radio" name="q2" value="d"> It removes duplicate matches from the result set</label></li>
+  </ul>
+  <button class="btn btn-primary" onclick="checkQ('q2','c','Correct. Matching decides yes/no. Scoring decides who comes first. cfg.ts should rank above app_configuration_manager.ts because the match is more compact and starts at a word boundary.')">Check</button>
+  <p class="quiz-feedback" id="q2-feedback"></p>
+</div>
+
+<div class="quiz" id="q3">
+  <p class="quiz-question">Q3. A fuzzy search that is very permissive (accepts almost anything) will have high recall but low precision. What is the role of the scoring model in addressing this tradeoff?</p>
+  <ul class="quiz-options">
+    <li><label><input type="radio" name="q3" value="a"> It raises the match threshold to reduce the number of results</label></li>
+    <li><label><input type="radio" name="q3" value="b"> It surfaces the most likely intended result first, making high recall usable</label></li>
+    <li><label><input type="radio" name="q3" value="c"> It replaces the match threshold entirely</label></li>
+    <li><label><input type="radio" name="q3" value="d"> It reduces the length of candidates to improve comparison speed</label></li>
+  </ul>
+  <button class="btn btn-primary" onclick="checkQ('q3','b','Correct. You keep recall high so nothing is missed, but scoring ensures position #1 is almost always right. The user does not have to wade through noise.')">Check</button>
+  <p class="quiz-feedback" id="q3-feedback"></p>
+</div>
+
+<hr>
+
+<h2>The curriculum ahead</h2>
+
+<p>Each of the next five lessons targets one specific design decision and the problem it solves:</p>
+
+<ul class="curriculum">
+  <li><span class="num current">01</span> <span class="current">The Problem — why exact match fails (this lesson)</span></li>
+  <li><span class="num">02</span> <a href="0002-edit-distance.html">Edit Distance — formalising "closeness" with Levenshtein distance</a></li>
+  <li><span class="num locked">03</span> <span class="locked">Computing Edit Distance — the DP table and recurrence relation</span></li>
+  <li><span class="num locked">04</span> <span class="locked">From Distance to Search — threshold filtering and normalisation</span></li>
+  <li><span class="num locked">05</span> <span class="locked">The Scoring Model — gap penalties, consecutive and boundary bonuses (fzy)</span></li>
+  <li><span class="num locked">06</span> <span class="locked">The Bitap Algorithm — bit-parallel matching for performance</span></li>
+</ul>
+
+<div class="primary-source">
+  <span class="label">Primary source for this lesson</span>
+  <a href="https://en.wikipedia.org/wiki/Approximate_string_matching" target="_blank">
+    Approximate string matching — Wikipedia
+  </a>
+  — Read the intro and "Problem formulation" sections. It frames the
+  problem space precisely and introduces the vocabulary used in all subsequent
+  algorithm literature.
+</div>
+
+<div class="ask-teacher">
+  💬 <strong>Have a question?</strong> Ask your teacher directly — type your question in the chat and I'll explain, rephrase, or go deeper on anything from this lesson.
+</div>
+
+<div class="lesson-nav">
+  <span></span>
+  <span class="center">Fuzzy Search · Lesson 1 of 6</span>
+  <a href="0002-edit-distance.html">Next: Edit Distance →</a>
+</div>
+
+<script>
+  // ── Exact-search demo ──────────────────────────────────
+  const CANDIDATES = [
+    'commit',
+    'auth_config_loader.ts',
+    '/usr/local/bin',
+    'MyComponent.tsx',
+    'receive',
+    'recommit_changes_v2.log',
+    'cfg.ts',
+    'app_configuration_manager.ts',
+  ];
+
+  const exactInput   = document.getElementById('exact-input');
+  const exactResults = document.getElementById('exact-results');
+
+  function runExact(query) {
+    if (!query) { exactResults.innerHTML = ''; return; }
+    const q = query.toLowerCase();
+    const lines = CANDIDATES.map(c => {
+      const hit = c.toLowerCase().includes(q);
+      const escaped = c.replace(/</g, '&lt;');
+      if (hit) {
+        const highlighted = escaped.replace(
+          new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'),
+          m => `<span class="hit">${m}</span>`
+        );
+        return `<div class="match">✓ ${highlighted}</div>`;
+      }
+      return `<div class="no-match">✗ ${escaped}</div>`;
+    });
+    exactResults.innerHTML = lines.join('');
+  }
+
+  exactInput.addEventListener('input', e => runExact(e.target.value));
+
+  // ── Quiz logic ─────────────────────────────────────────
+  function checkQ(id, correct, explanation) {
+    const selected = document.querySelector(`input[name="${id}"]:checked`);
+    const feedback = document.getElementById(`${id}-feedback`);
+    if (!selected) { feedback.textContent = 'Please select an answer.'; feedback.className = 'quiz-feedback'; return; }
+
+    document.querySelectorAll(`input[name="${id}"]`).forEach(r => {
+      const lbl = r.closest('label');
+      if (r.value === correct) lbl.classList.add('correct');
+      else if (r.checked)      lbl.classList.add('wrong');
+      r.disabled = true;
+    });
+
+    if (selected.value === correct) {
+      feedback.textContent = '✓ ' + explanation;
+      feedback.className = 'quiz-feedback correct';
+    } else {
+      feedback.textContent = '✗ Not quite. ' + explanation;
+      feedback.className = 'quiz-feedback wrong';
+    }
+  }
+</script>
+
+</body>
+</html>

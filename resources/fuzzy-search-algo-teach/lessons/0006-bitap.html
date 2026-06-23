@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 6 — The Bitap Algorithm</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <style>
+    /* ── Bitmask visualiser ── */
+    .bitmask-row {
+      display: flex; align-items: center; gap: 0.5rem;
+      font-family: var(--mono); font-size: 0.88rem;
+      margin: 0.3rem 0;
+    }
+    .bitmask-row .label {
+      min-width: 3.5rem; color: var(--muted); font-size: 0.8rem;
+      text-align: right; flex-shrink: 0;
+    }
+    .bits { display: flex; gap: 3px; }
+    .bit {
+      width: 2rem; height: 2rem;
+      border: 1px solid var(--rule);
+      border-radius: 3px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 0.88rem;
+      transition: background 0.2s;
+    }
+    .bit.on  { background: #dbeafe; border-color: var(--accent); color: var(--accent); }
+    .bit.off { background: #f4f4f5; color: var(--faint); }
+    .bit.match { background: #dcfce7; border-color: var(--success); color: var(--success); }
+    .bit.idx { background: none; border-color: transparent; color: var(--muted);
+               font-size: 0.72rem; height: 1.2rem; }
+
+    .text-row {
+      display: flex; gap: 3px; font-family: var(--mono); font-size: 0.88rem;
+      margin: 0.25rem 0;
+    }
+    .text-char {
+      width: 2rem; height: 2rem;
+      border: 1px solid var(--rule); border-radius: 3px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 600;
+    }
+    .text-char.current { background: #fef9c3; border-color: #ca8a04; }
+    .text-char.past    { background: #f4f4f5; color: var(--muted); }
+    .text-char.future  { color: var(--faint); border-color: var(--rule); }
+    .text-char.found   { background: #dcfce7; border-color: var(--success); font-weight: 900; }
+
+    #step-box {
+      font-family: var(--sans); font-size: 0.88rem;
+      background: var(--accent-bg); border-radius: 6px;
+      padding: 0.8rem 1rem; margin: 0.75rem 0; min-height: 4rem;
+      line-height: 1.6;
+    }
+
+    .k-panel { margin-top: 0.5rem; }
+    .k-row { display: flex; align-items: center; gap: 0.75rem; margin: 0.25rem 0; font-family: var(--mono); font-size: 0.85rem; }
+    .k-label { min-width: 3rem; flex-shrink: 0; color: var(--muted); }
+    .k-bits { display: flex; gap: 3px; }
+
+    .nfa-diagram {
+      display: flex; align-items: center; gap: 0; margin: 1.5rem 0;
+      font-family: var(--mono); font-size: 0.9rem; overflow-x: auto;
+    }
+    .nfa-state {
+      width: 2.8rem; height: 2.8rem; border-radius: 50%;
+      border: 2px solid var(--ink); background: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; flex-shrink: 0;
+    }
+    .nfa-state.active { background: #dbeafe; border-color: var(--accent); }
+    .nfa-state.final  { border-width: 4px; }
+    .nfa-arrow {
+      display: flex; flex-direction: column; align-items: center;
+      flex-shrink: 0; padding: 0 0.2rem;
+    }
+    .nfa-arrow .ch  { font-size: 0.75rem; color: var(--muted); margin-bottom: 0.1rem; }
+    .nfa-arrow .line { width: 2rem; height: 2px; background: var(--ink); position: relative; }
+    .nfa-arrow .line::after { content:''; position:absolute; right:-4px; top:-3px;
+      border:4px solid transparent; border-left-color:var(--ink); }
+
+    .algo-box {
+      background: var(--code-bg); border-radius: 6px; padding: 1rem 1.2rem;
+      font-family: var(--mono); font-size: 0.82rem; line-height: 1.7; margin: 1rem 0;
+    }
+    .algo-box .comment { color: var(--muted); }
+    .algo-box .kw  { color: var(--accent); }
+    .algo-box .hl  { background: #fef9c3; border-radius: 2px; padding: 0 2px; }
+  </style>
+</head>
+<body>
+
+<div class="lesson-header">
+  <div class="lesson-meta">Fuzzy Search · Lesson 6 of 6</div>
+  <h1>The Bitap Algorithm</h1>
+  <p class="lesson-subtitle">The design decision: use bit-parallelism to make approximate matching fast</p>
+</div>
+
+<h2>The problem this lesson solves</h2>
+
+<p>
+  The scoring DP from Lessons 5 and 5b runs in O(|query| × |candidate|) time
+  — polynomial, but still non-trivial when you have thousands of candidates.
+  The subsequence gate filters most of them, but a different class of
+  problems needs something faster still: <em>scanning large bodies of text</em>
+  for approximate matches, without any pre-filtering.
+</p>
+
+<div class="callout note">
+  <span class="callout-label">Design decision</span>
+  Represent the matching state as a <strong>bitmask</strong>, where each bit
+  tracks whether a particular prefix of the pattern has been matched ending
+  at the current text position. A single bitwise operation advances
+  <em>all states at once</em>, exploiting the CPU's 64-bit word to do 64
+  comparisons in one instruction. This is the <strong>Bitap algorithm</strong>
+  (also called Shift-Or or Shift-And), introduced by Baeza-Yates and
+  Gonnet (1992).
+</div>
+
+<h2>The NFA intuition</h2>
+
+<p>
+  Before bitmasks, think of matching as a
+  <strong>non-deterministic finite automaton (NFA)</strong>.
+  For pattern <code>cat</code>, the NFA has one state per pattern character
+  plus a start state:
+</p>
+
+<div class="nfa-diagram" id="nfa-cat">
+  <!-- rendered by JS -->
+</div>
+
+<p>
+  The NFA starts in state 0. Each time a text character matches the expected
+  pattern character, the NFA moves to the next state. <em>Multiple states
+  can be active simultaneously</em> — this is the non-determinism.
+  If we ever reach the final state, we found a match.
+</p>
+
+<div class="callout insight">
+  <span class="callout-label">The bitmask insight</span>
+  Instead of tracking which states are active in a set, encode them as
+  a single integer: bit <code>i</code> is 1 if state <code>i</code> is active.
+  One bitwise operation advances all active states at once.
+</div>
+
+<h2>The Shift-And algorithm (exact matching)</h2>
+
+<p>
+  <strong>Precomputation</strong>: for each character <code>c</code> in the alphabet,
+  build a mask <code>D[c]</code> where bit <code>i</code> is 1 if
+  <code>pattern[i] == c</code>.
+</p>
+
+<p>
+  <strong>Scanning</strong>: maintain a state bitmask <code>R</code>
+  (initially 0). For each text character <code>t</code>:
+</p>
+
+<div class="algo-box">
+<span class="comment">// Shift all active states forward by one, open a new state 0, keep only</span><br>
+<span class="comment">// states where the pattern character matches the current text character.</span><br>
+<br>
+R = ((R <span class="hl">&lt;&lt; 1</span>) | 1) <span class="hl">&amp;</span> D[t]<br>
+<br>
+<span class="comment">// If bit (m-1) is set in R, the full pattern was just matched.</span><br>
+<span class="kw">if</span> (R &amp; (1 &lt;&lt; (m-1))) → match found
+</div>
+
+<p>Each line decodes as:</p>
+
+<ul>
+  <li><code>R &lt;&lt; 1</code> — advance every active state by one position in the pattern</li>
+  <li><code>| 1</code> — always try starting a fresh match at position 0</li>
+  <li><code>&amp; D[t]</code> — discard any state where the pattern character does not match the text character</li>
+</ul>
+
+<h2>Step through it</h2>
+
+<p>
+  Watch the bitmask evolve as we scan the text.
+  Bits are shown from position 0 (left) to m−1 (right).
+  A lit bit means "a match of this many pattern chars has just been completed."
+</p>
+
+<div class="demo" style="padding:1.1rem 1.2rem;">
+  <h3>Shift-And stepper</h3>
+  <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-bottom:0.85rem;">
+    <div style="flex:1;min-width:100px;">
+      <label style="font-family:var(--sans);font-size:0.78rem;color:var(--muted);display:block;margin-bottom:0.25rem;">Pattern</label>
+      <input type="text" id="sa-pattern" value="cat" maxlength="8" autocomplete="off" spellcheck="false" style="width:100%;">
+    </div>
+    <div style="flex:3;min-width:180px;">
+      <label style="font-family:var(--sans);font-size:0.78rem;color:var(--muted);display:block;margin-bottom:0.25rem;">Text</label>
+      <input type="text" id="sa-text" value="concatenate" maxlength="20" autocomplete="off" spellcheck="false" style="width:100%;">
+    </div>
+    <div style="display:flex;align-items:flex-end;">
+      <button class="btn btn-ghost" onclick="resetSA()">Reset</button>
+    </div>
+  </div>
+
+  <!-- Pattern character labels -->
+  <div style="margin-bottom:0.3rem;">
+    <div class="bitmask-row">
+      <span class="label">bit #</span>
+      <div class="bits" id="bit-indices"></div>
+    </div>
+    <div class="bitmask-row">
+      <span class="label">pattern</span>
+      <div class="bits" id="pattern-chars"></div>
+    </div>
+  </div>
+
+  <div style="height:1px;background:var(--rule);margin:0.6rem 0;"></div>
+
+  <!-- Text display -->
+  <div class="bitmask-row" style="margin-bottom:0.4rem;">
+    <span class="label">text</span>
+    <div class="text-row" id="text-chars"></div>
+  </div>
+
+  <!-- State R -->
+  <div class="bitmask-row">
+    <span class="label">R</span>
+    <div class="bits" id="r-bits"></div>
+  </div>
+
+  <div id="step-box">Press <strong>Next Step</strong> to begin.</div>
+
+  <div style="display:flex;gap:0.6rem;flex-wrap:wrap;">
+    <button class="btn btn-primary" id="sa-next" onclick="stepSA()">Next Step</button>
+    <button class="btn btn-ghost" onclick="runAllSA()">Run to end</button>
+  </div>
+</div>
+
+<h2>Extending to k errors (approximate matching)</h2>
+
+<p>
+  Exact matching is useful, but fuzzy search needs tolerance for errors.
+  The Bitap algorithm extends cleanly: instead of one bitmask, maintain
+  <strong>k + 1 bitmasks</strong>, one per error level.
+</p>
+
+<div class="algo-box">
+<span class="comment">// R[j] = states reachable with exactly j errors</span><br>
+<span class="kw">for</span> j = k <span class="kw">downto</span> 1:<br>
+&nbsp;&nbsp;R[j] = (<br>
+&nbsp;&nbsp;&nbsp;&nbsp;((R[j] &lt;&lt; 1) | 1) &amp; D[t]   <span class="comment">// match (same as exact)</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;| (R[j-1] &lt;&lt; 1)             <span class="comment">// deletion from text</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;| R[j-1]                      <span class="comment">// insertion into text</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;| (R[j-1] &lt;&lt; 1) &amp; ~D[t]      <span class="comment">// substitution</span><br>
+&nbsp;&nbsp;)<br>
+R[0] = ((R[0] &lt;&lt; 1) | 1) &amp; D[t]   <span class="comment">// exact match layer</span>
+</div>
+
+<p>
+  Each layer adds a one-step "rescue" from the layer below it. A state that
+  would have died (wrong character) in layer j−1 gets propagated to layer j
+  with one more error counted.
+</p>
+
+<div class="callout note">
+  <span class="callout-label">Mapping to edit operations</span>
+  <ul style="margin-top:0.4rem;">
+    <li><code>R[j-1] &lt;&lt; 1</code> (no AND with D[t]) — <strong>deletion</strong>: skip a text character</li>
+    <li><code>R[j-1]</code> — <strong>insertion</strong>: advance in pattern without consuming text</li>
+    <li><code>(R[j-1] &lt;&lt; 1) &amp; ~D[t]</code> — <strong>substitution</strong>: consume text but allow mismatch</li>
+  </ul>
+</div>
+
+<h2>Try it: k-approximate matching</h2>
+
+<div class="demo" style="padding:1.1rem 1.2rem;">
+  <h3>Approximate match stepper (k errors)</h3>
+  <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-bottom:0.75rem;">
+    <div style="flex:1;min-width:80px;">
+      <label style="font-family:var(--sans);font-size:0.78rem;color:var(--muted);display:block;margin-bottom:0.25rem;">Pattern</label>
+      <input type="text" id="ka-pattern" value="comit" maxlength="8" autocomplete="off" spellcheck="false" style="width:100%;">
+    </div>
+    <div style="flex:3;min-width:160px;">
+      <label style="font-family:var(--sans);font-size:0.78rem;color:var(--muted);display:block;margin-bottom:0.25rem;">Text</label>
+      <input type="text" id="ka-text" value="git commit" maxlength="20" autocomplete="off" spellcheck="false" style="width:100%;">
+    </div>
+    <div style="flex:0.5;min-width:60px;">
+      <label style="font-family:var(--sans);font-size:0.78rem;color:var(--muted);display:block;margin-bottom:0.25rem;">k</label>
+      <select id="ka-k" style="width:100%;padding:0.45rem 0.3rem;border:1px solid var(--rule);border-radius:4px;">
+        <option value="0">0</option>
+        <option value="1" selected>1</option>
+        <option value="2">2</option>
+      </select>
+    </div>
+    <div style="display:flex;align-items:flex-end;">
+      <button class="btn btn-ghost" onclick="resetKA()">Reset</button>
+    </div>
+  </div>
+
+  <div style="margin-bottom:0.5rem;">
+    <div class="bitmask-row"><span class="label">bit #</span><div class="bits" id="ka-bit-indices"></div></div>
+    <div class="bitmask-row"><span class="label">pattern</span><div class="bits" id="ka-pattern-chars"></div></div>
+  </div>
+  <div style="height:1px;background:var(--rule);margin:0.5rem 0;"></div>
+  <div class="bitmask-row" style="margin-bottom:0.4rem;">
+    <span class="label">text</span><div class="text-row" id="ka-text-chars"></div>
+  </div>
+  <div class="k-panel" id="ka-layers"></div>
+  <div id="ka-step-box" style="font-family:var(--sans);font-size:0.88rem;background:var(--accent-bg);border-radius:6px;padding:0.8rem 1rem;margin:0.75rem 0;min-height:3rem;">
+    Press <strong>Next Step</strong> to begin.
+  </div>
+  <div style="display:flex;gap:0.6rem;flex-wrap:wrap;">
+    <button class="btn btn-primary" id="ka-next" onclick="stepKA()">Next Step</button>
+    <button class="btn btn-ghost" onclick="runAllKA()">Run to end</button>
+  </div>
+</div>
+
+<h2>Bitap vs. the fzy scoring DP</h2>
+
+<table class="dp-table" style="width:100%;margin:1rem 0;font-size:0.88rem;">
+  <thead><tr><th>Property</th><th>Bitap (Shift-And/Or)</th><th>fzy scoring DP</th></tr></thead>
+  <tbody>
+    <tr><td>Matching model</td><td>Edit distance (k errors)</td><td>Subsequence</td></tr>
+    <tr><td>Output</td><td>Match positions (yes/no + where)</td><td>Score (for ranking)</td></tr>
+    <tr><td>Time per candidate</td><td>O(m·n / w) — bit-parallel</td><td>O(m·n)</td></tr>
+    <tr><td>Pattern length limit</td><td>~64 chars (one CPU word)</td><td>No hard limit</td></tr>
+    <tr><td>Ranking support</td><td>No — binary result</td><td>Yes — continuous score</td></tr>
+    <tr><td>Used by</td><td><code>agrep</code>, <code>fzf</code> (inner loop)</td><td><code>fzy</code>, VS Code picker</td></tr>
+  </tbody>
+</table>
+
+<div class="callout insight">
+  <span class="callout-label">They solve different halves of the problem</span>
+  Bitap excels at the <em>matching</em> question: is this candidate within
+  k edits of the pattern, and where? The fzy scoring DP excels at the
+  <em>ranking</em> question: among candidates that match, which one did
+  the user most likely mean? Production fuzzy finders often combine both.
+</div>
+
+<h2>Quiz: Check your understanding</h2>
+
+<div class="quiz" id="q1">
+  <p class="quiz-question">Q1. In the Shift-And algorithm, what does it mean when bit <code>i</code> is set in the state bitmask <code>R</code> after processing text character <code>t[j]</code>?</p>
+  <ul class="quiz-options">
+    <li><label><input type="radio" name="q1" value="a"> The text character at position j equals pattern character at position i</label></li>
+    <li><label><input type="radio" name="q1" value="b"> The first i+1 characters of the pattern have been matched ending at text position j</label></li>
+    <li><label><input type="radio" name="q1" value="c"> There are i errors remaining before the pattern is rejected</label></li>
+    <li><label><input type="radio" name="q1" value="d"> The pattern appears exactly i times in the text so far</label></li>
+  </ul>
+  <button class="btn btn-primary" onclick="checkQ('q1','b','Correct. Bit i being set means a match of the first i+1 pattern characters has just concluded at the current text position. When bit m-1 (the last one) is set, the full pattern matched.')">Check</button>
+  <p class="quiz-feedback" id="q1-feedback"></p>
+</div>
+
+<div class="quiz" id="q2">
+  <p class="quiz-question">Q2. The update rule is <code>R = ((R &lt;&lt; 1) | 1) &amp; D[t]</code>. What is the purpose of the <code>| 1</code> step?</p>
+  <ul class="quiz-options">
+    <li><label><input type="radio" name="q2" value="a"> It sets the final bit to signal that a complete match was found</label></li>
+    <li><label><input type="radio" name="q2" value="b"> It always opens a fresh potential match starting at pattern position 0</label></li>
+    <li><label><input type="radio" name="q2" value="c"> It resets the bitmask to zero when no match is active</label></li>
+    <li><label><input type="radio" name="q2" value="d"> It inverts the mask to handle substitution errors</label></li>
+  </ul>
+  <button class="btn btn-primary" onclick="checkQ('q2','b','Correct. OR-ing with 1 always sets bit 0, meaning: at every text position, try starting a new match. Without this, the algorithm could only find one non-overlapping match.')">Check</button>
+  <p class="quiz-feedback" id="q2-feedback"></p>
+</div>
+
+<div class="quiz" id="q3">
+  <p class="quiz-question">Q3. Why is Bitap limited to patterns shorter than ~64 characters in practice?</p>
+  <ul class="quiz-options">
+    <li><label><input type="radio" name="q3" value="a"> Longer patterns have too many characters for the alphabet table to store</label></li>
+    <li><label><input type="radio" name="q3" value="b"> The bitmask must fit in a single machine word (64 bits) to exploit bit-parallel operations</label></li>
+    <li><label><input type="radio" name="q3" value="c"> The algorithm uses recursion that overflows the stack beyond 64 characters</label></li>
+    <li><label><input type="radio" name="q3" value="d"> Text scanning becomes O(n²) once the pattern exceeds one cache line</label></li>
+  </ul>
+  <button class="btn btn-primary" onclick="checkQ('q3','b','Correct. Each bit in the state bitmask represents one pattern position. A 64-bit integer gives you 64 bits — one per pattern character. Longer patterns require multi-word bitmasks, losing much of the speed advantage.')">Check</button>
+  <p class="quiz-feedback" id="q3-feedback"></p>
+</div>
+
+<div class="quiz" id="q4">
+  <p class="quiz-question">Q4. In the k-error extension, the layer <code>R[j]</code> receives <code>R[j-1]</code> (without a shift) as one of its inputs. Which edit operation does this represent?</p>
+  <ul class="quiz-options">
+    <li><label><input type="radio" name="q4" value="a"> Substitution — replace the text character with the pattern character</label></li>
+    <li><label><input type="radio" name="q4" value="b"> Deletion — remove a character from the text</label></li>
+    <li><label><input type="radio" name="q4" value="c"> Insertion — advance the pattern without consuming a text character</label></li>
+    <li><label><input type="radio" name="q4" value="d"> Transposition — swap two adjacent characters</label></li>
+  </ul>
+  <button class="btn btn-primary" onclick="checkQ('q4','c','Correct. R[j-1] without a shift means: the pattern pointer advances (we matched a pattern character) but the text pointer does not (we consumed nothing). That is exactly inserting a character into the pattern — or equivalently, deleting from the text.')">Check</button>
+  <p class="quiz-feedback" id="q4-feedback"></p>
+</div>
+
+<hr>
+
+<h2>You've completed the curriculum</h2>
+
+<p>
+  Across these six lessons you built the fuzzy search algorithm from first
+  principles — each design decision motivated by a specific failure of the
+  previous approach:
+</p>
+
+<ol>
+  <li>Exact match fails → need a distance metric</li>
+  <li>Distance needs formal definition → Levenshtein edit distance</li>
+  <li>Naive recursion is exponential → dynamic programming table</li>
+  <li>Distance doesn't model abbreviations → subsequence gate</li>
+  <li>Subsequence gives no ranking → scoring DP with bonuses</li>
+  <li>Scoring DP is O(mn) per candidate → bit-parallel Bitap</li>
+</ol>
+
+<div class="primary-source">
+  <span class="label">Primary source for this lesson</span>
+  <a href="https://en.wikipedia.org/wiki/Bitap_algorithm" target="_blank">
+    Bitap algorithm — Wikipedia
+  </a>
+  — Read the "Exact searching" and "Fuzzy searching" sections. The pseudocode
+  there matches the stepper above exactly.
+</div>
+
+<div class="ask-teacher">
+  💬 <strong>Have a question?</strong> Ask your teacher — type in the chat for any clarification on bitmask operations, error layers, or how this compares to the scoring DP.
+</div>
+
+<div class="lesson-nav">
+  <a href="0005b-multiple-matches.html">← Lesson 5b: Competing Alignments</a>
+  <span class="center">Fuzzy Search · Lesson 6 of 6</span>
+  <span></span>
+</div>
+
+<script>
+// ── NFA diagram ───────────────────────────────────────────────────────────────
+function renderNFA(pattern, containerId) {
+  const el = document.getElementById(containerId);
+  let html = `<div class="nfa-state active">q₀</div>`;
+  for (let i = 0; i < pattern.length; i++) {
+    html += `<div class="nfa-arrow">
+      <span class="ch">${pattern[i]}</span>
+      <div class="line"></div>
+    </div>
+    <div class="nfa-state ${i === pattern.length-1 ? 'final' : ''}">q${i+1}</div>`;
+  }
+  el.innerHTML = html;
+}
+renderNFA('cat', 'nfa-cat');
+
+// ── Shared utilities ──────────────────────────────────────────────────────────
+function buildD(pattern) {
+  const D = {};
+  for (let i = 0; i < pattern.length; i++) {
+    const c = pattern[i].toLowerCase();
+    if (!D[c]) D[c] = 0;
+    D[c] |= (1 << i);
+  }
+  return D;
+}
+
+function renderBits(bits, m, container, matchBit) {
+  let html = '';
+  for (let i = 0; i < m; i++) {
+    const on = (bits >> i) & 1;
+    let cls = on ? 'on' : 'off';
+    if (on && i === m - 1) cls = 'match';
+    html += `<div class="bit ${cls}">${on}</div>`;
+  }
+  document.getElementById(container).innerHTML = html;
+}
+
+function renderTextChars(text, current, found, container) {
+  let html = '';
+  text.split('').forEach((ch, i) => {
+    let cls = 'future';
+    if (found && found.has(i)) cls = 'found';
+    else if (i < current) cls = 'past';
+    else if (i === current) cls = 'current';
+    html += `<div class="text-char ${cls}">${ch}</div>`;
+  });
+  document.getElementById(container).innerHTML = html;
+}
+
+// ── Shift-And exact stepper ───────────────────────────────────────────────────
+let saPattern, saText, saD, saR, saStep, saDone, saFound;
+
+function resetSA() {
+  saPattern = document.getElementById('sa-pattern').value.toLowerCase() || 'cat';
+  saText    = document.getElementById('sa-text').value.toLowerCase()    || 'concatenate';
+  saD = buildD(saPattern);
+  saR = 0; saStep = 0; saDone = false; saFound = new Set();
+
+  // Render static pattern header
+  const m = saPattern.length;
+  let idxHtml = '', patHtml = '';
+  for (let i = 0; i < m; i++) {
+    idxHtml += `<div class="bit idx">${i}</div>`;
+    patHtml += `<div class="bit off" style="background:#f4f4f5;border-color:var(--rule);color:var(--ink)">${saPattern[i]}</div>`;
+  }
+  document.getElementById('bit-indices').innerHTML  = idxHtml;
+  document.getElementById('pattern-chars').innerHTML = patHtml;
+
+  renderTextChars(saText, -1, saFound, 'text-chars');
+  renderBits(0, m, 'r-bits');
+  document.getElementById('step-box').innerHTML = 'Press <strong>Next Step</strong> to begin.';
+  document.getElementById('sa-next').disabled = false;
+  document.getElementById('sa-next').textContent = 'Next Step';
+}
+
+function stepSA() {
+  if (saDone) return;
+  const m = saPattern.length;
+  const t = saText[saStep].toLowerCase();
+  const mask = saD[t] || 0;
+  saR = ((saR << 1) | 1) & mask;
+
+  const isMatch = (saR >> (m - 1)) & 1;
+  if (isMatch) {
+    for (let i = saStep - m + 1; i <= saStep; i++) saFound.add(i);
+  }
+
+  renderTextChars(saText, saStep, saFound, 'text-chars');
+  renderBits(saR, m, 'r-bits');
+
+  const dBin = (mask >>> 0).toString(2).padStart(m, '0').split('').reverse().join('');
+  const rBin = (saR  >>> 0).toString(2).padStart(m, '0').split('').reverse().join('');
+
+  let msg = `<strong>Step ${saStep + 1}:</strong> text[${saStep}] = '<code>${saText[saStep]}</code>'<br>
+    D['${t}'] = <code>${dBin}</code> &nbsp;→&nbsp; R = ((R&lt;&lt;1)|1) &amp; D = <code>${rBin}</code>`;
+  if (isMatch) msg += `<br><span style="color:var(--success);font-weight:700;">✓ Match found ending at position ${saStep}!</span>`;
+
+  document.getElementById('step-box').innerHTML = msg;
+  saStep++;
+
+  if (saStep >= saText.length) {
+    saDone = true;
+    document.getElementById('sa-next').disabled = true;
+    document.getElementById('step-box').innerHTML += `<br><br><em>Scan complete. ${saFound.size > 0 ? `Pattern matched at positions: ${[...saFound].sort((a,b)=>a-b).join(', ')}.` : 'No match found.'}</em>`;
+  }
+}
+
+function runAllSA() { while (!saDone) stepSA(); }
+
+document.getElementById('sa-pattern').addEventListener('input', resetSA);
+document.getElementById('sa-text').addEventListener('input', resetSA);
+resetSA();
+
+// ── k-approximate stepper ─────────────────────────────────────────────────────
+let kaPattern, kaText, kaD, kaR, kaStep, kaDone, kaK, kaFound;
+
+function resetKA() {
+  kaPattern = document.getElementById('ka-pattern').value.toLowerCase() || 'comit';
+  kaText    = document.getElementById('ka-text').value.toLowerCase()    || 'git commit';
+  kaK       = parseInt(document.getElementById('ka-k').value);
+  kaD = buildD(kaPattern);
+  kaR = new Array(kaK + 1).fill(0);
+  kaStep = 0; kaDone = false; kaFound = new Set();
+
+  const m = kaPattern.length;
+  let idxHtml = '', patHtml = '';
+  for (let i = 0; i < m; i++) {
+    idxHtml += `<div class="bit idx">${i}</div>`;
+    patHtml += `<div class="bit off" style="background:#f4f4f5;border-color:var(--rule);color:var(--ink)">${kaPattern[i]}</div>`;
+  }
+  document.getElementById('ka-bit-indices').innerHTML   = idxHtml;
+  document.getElementById('ka-pattern-chars').innerHTML = patHtml;
+
+  renderTextChars(kaText, -1, kaFound, 'ka-text-chars');
+  renderKALayers();
+  document.getElementById('ka-step-box').innerHTML = 'Press <strong>Next Step</strong> to begin.';
+  document.getElementById('ka-next').disabled = false;
+}
+
+function renderKALayers() {
+  const m = kaPattern.length;
+  let html = '';
+  for (let j = 0; j <= kaK; j++) {
+    let bits = '';
+    for (let i = 0; i < m; i++) {
+      const on = (kaR[j] >> i) & 1;
+      let cls = on ? 'on' : 'off';
+      if (on && i === m - 1) cls = 'match';
+      bits += `<div class="bit ${cls}">${on}</div>`;
+    }
+    html += `<div class="k-row">
+      <span class="k-label">R[${j}]</span>
+      <div class="k-bits">${bits}</div>
+      ${(kaR[j] >> (m-1)) & 1 ? `<span style="color:var(--success);font-weight:700;margin-left:0.5rem;font-family:var(--sans);font-size:0.82rem;">≤${j} error${j===1?'':'s'} match</span>` : ''}
+    </div>`;
+  }
+  document.getElementById('ka-layers').innerHTML = html;
+}
+
+function stepKA() {
+  if (kaDone) return;
+  const m = kaPattern.length;
+  const t = kaText[kaStep].toLowerCase();
+  const mask = kaD[t] || 0;
+
+  const prevR = [...kaR];
+  // Update from high to low to avoid using updated values
+  for (let j = kaK; j >= 1; j--) {
+    kaR[j] = (
+      (((prevR[j] << 1) | 1) & mask)   // match
+      | (prevR[j-1] << 1)              // deletion
+      | prevR[j-1]                     // insertion
+      | ((prevR[j-1] << 1) & ~mask)   // substitution
+    );
+  }
+  kaR[0] = ((prevR[0] << 1) | 1) & mask;
+
+  let matchAt = -1;
+  for (let j = 0; j <= kaK; j++) {
+    if ((kaR[j] >> (m-1)) & 1) { matchAt = j; break; }
+  }
+  if (matchAt >= 0) {
+    for (let i = Math.max(0, kaStep - m); i <= kaStep; i++) kaFound.add(i);
+  }
+
+  renderTextChars(kaText, kaStep, kaFound, 'ka-text-chars');
+  renderKALayers();
+
+  let msg = `<strong>Step ${kaStep + 1}:</strong> text[${kaStep}] = '<code>${kaText[kaStep]}</code>', D['${t}'] = <code>${(mask>>>0).toString(2).padStart(m,'0').split('').reverse().join('')}</code>`;
+  if (matchAt >= 0) msg += `<br><span style="color:var(--success);font-weight:700;">✓ Match with ≤${matchAt} error${matchAt===1?'':'s'} ending at position ${kaStep}!</span>`;
+
+  document.getElementById('ka-step-box').innerHTML = msg;
+  kaStep++;
+
+  if (kaStep >= kaText.length) {
+    kaDone = true;
+    document.getElementById('ka-next').disabled = true;
+    document.getElementById('ka-step-box').innerHTML += `<br><br><em>Scan complete.</em>`;
+  }
+}
+
+function runAllKA() { while (!kaDone) stepKA(); }
+
+document.getElementById('ka-pattern').addEventListener('input', resetKA);
+document.getElementById('ka-text').addEventListener('input', resetKA);
+document.getElementById('ka-k').addEventListener('change', resetKA);
+resetKA();
+
+// ── Quiz ──────────────────────────────────────────────────────────────────────
+function checkQ(id, correct, explanation) {
+  const selected = document.querySelector(`input[name="${id}"]:checked`);
+  const feedback = document.getElementById(`${id}-feedback`);
+  if (!selected) { feedback.textContent = 'Please select an answer.'; feedback.className = 'quiz-feedback'; return; }
+  document.querySelectorAll(`input[name="${id}"]`).forEach(r => {
+    const lbl = r.closest('label');
+    if (r.value === correct) lbl.classList.add('correct');
+    else if (r.checked)      lbl.classList.add('wrong');
+    r.disabled = true;
+  });
+  if (selected.value === correct) {
+    feedback.textContent = '✓ ' + explanation;
+    feedback.className = 'quiz-feedback correct';
+  } else {
+    feedback.textContent = '✗ Not quite. ' + explanation;
+    feedback.className = 'quiz-feedback wrong';
+  }
+}
+</script>
+
+</body>
+</html>

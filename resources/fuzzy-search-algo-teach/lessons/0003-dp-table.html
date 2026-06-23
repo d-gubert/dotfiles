@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 3 — Computing Edit Distance: The DP Table</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <style>
+    /* ── Stepper-specific styles ── */
+    #stepper-table td {
+      width: 2.6rem; height: 2.6rem;
+      font-size: 0.95rem; font-weight: 600;
+      transition: background 0.2s;
+      cursor: default;
+    }
+    #stepper-table td.empty { color: var(--rule); }
+    #stepper-table td.current { background: #bfdbfe; outline: 2px solid var(--accent); outline-offset: -2px; }
+    #stepper-table td.used-diag { background: #fef9c3; }
+    #stepper-table td.used-top  { background: #dcfce7; }
+    #stepper-table td.used-left { background: #fce7f3; }
+    #stepper-table td.settled   { background: var(--code-bg); }
+    #stepper-table td.path      { background: var(--success-bg); font-weight: 900; }
+    #stepper-table th { background: var(--code-bg); font-weight: 700; font-size: 0.88rem; }
+    .legend { display:flex; gap:1rem; flex-wrap:wrap; font-family:var(--sans); font-size:0.8rem; margin:0.6rem 0 1rem; }
+    .legend span { display:flex; align-items:center; gap:0.35rem; }
+    .legend .swatch { width:1rem; height:1rem; border-radius:2px; border:1px solid var(--rule); flex-shrink:0; }
+    #step-explanation {
+      font-family: var(--sans); font-size: 0.9rem;
+      background: var(--accent-bg); border-radius: 6px;
+      padding: 0.8rem 1rem; margin: 0.75rem 0; min-height: 3.5rem;
+      line-height: 1.5;
+    }
+    #step-explanation code { font-size: 0.85em; }
+    .op-row { display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:0.5rem; }
+    .op-badge {
+      font-family: var(--mono); font-size: 0.78rem; padding: 0.2rem 0.6rem;
+      border-radius: 4px; border: 1px solid var(--rule); background: #fff;
+    }
+    .op-badge.diag  { background:#fef9c3; border-color:#ca8a04; }
+    .op-badge.top   { background:#dcfce7; border-color:#16a34a; }
+    .op-badge.left  { background:#fce7f3; border-color:#db2777; }
+    .op-badge.chosen{ font-weight:700; outline:2px solid var(--ink); outline-offset:1px; }
+  </style>
+</head>
+<body>
+
+<div class="lesson-header">
+  <div class="lesson-meta">Fuzzy Search · Lesson 3 of 6</div>
+  <h1>Computing Edit Distance: The DP Table</h1>
+  <p class="lesson-subtitle">The design decision: use dynamic programming to find the minimum in polynomial time</p>
+</div>
+
+<h2>The problem this lesson solves</h2>
+
+<p>
+  We know edit distance is the right metric. But how do you
+  <em>compute</em> it? The naïve approach — try every possible sequence of
+  edits and keep the shortest — has exponential time complexity.
+  For a 10-character query against a 50-character filename, that's
+  trillions of paths to evaluate.
+</p>
+
+<div class="callout note">
+  <span class="callout-label">Design decision</span>
+  Observe that the problem has <strong>overlapping subproblems</strong>:
+  the edit distance between the first 4 characters of A and the first 3
+  characters of B is a subproblem of the full computation — and it
+  gets used many times. Store those subproblem answers in a table and
+  look them up instead of recomputing them. This is <strong>dynamic programming</strong>.
+  Time complexity drops from exponential to O(m × n).
+</div>
+
+<h2>The recurrence relation</h2>
+
+<p>
+  Define <code>dp[i][j]</code> as the edit distance between the first
+  <code>i</code> characters of string A and the first <code>j</code>
+  characters of string B.
+</p>
+
+<p>There are only ever three cases when filling a cell:</p>
+
+<pre>If A[i] == B[j]:          dp[i][j] = dp[i-1][j-1]          // no edit needed
+
+If A[i] != B[j]:          dp[i][j] = 1 + min(
+                              dp[i-1][j-1],  // substitute
+                              dp[i-1][j],    // delete from A
+                              dp[i][j-1]     // insert into A
+                           )</pre>
+
+<p>
+  The base cases initialise the first row and column: converting an
+  empty string to a k-character string costs exactly k operations.
+</p>
+
+<div class="callout insight">
+  <span class="callout-label">Why three predecessors?</span>
+  Each cell in the table represents a prefix-pair. To get here, either:
+  <ul style="margin-top:0.4rem;">
+    <li>The last characters matched (come from the diagonal — free move)</li>
+    <li>We deleted a character from A (come from above — cost 1)</li>
+    <li>We inserted a character into A (come from the left — cost 1)</li>
+  </ul>
+  The substitute case is the diagonal with a cost of 1 when characters differ.
+</div>
+
+<h2>Step through the table</h2>
+
+<p>
+  Press <strong>Next Step</strong> to fill the table one cell at a time.
+  Each step shows you which three predecessor cells were consulted and
+  which operation was chosen. When the table is complete, the
+  <strong>optimal path</strong> is traced back in green.
+</p>
+
+<div class="demo" style="padding:1.1rem 1.2rem;">
+  <h3>DP Table Stepper</h3>
+  <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-bottom:0.85rem;">
+    <div style="flex:1;min-width:120px;">
+      <label style="font-family:var(--sans);font-size:0.78rem;color:var(--muted);display:block;margin-bottom:0.25rem;">String A (rows)</label>
+      <input type="text" id="str-a" value="comit" maxlength="9" autocomplete="off" spellcheck="false" style="width:100%;">
+    </div>
+    <div style="flex:1;min-width:120px;">
+      <label style="font-family:var(--sans);font-size:0.78rem;color:var(--muted);display:block;margin-bottom:0.25rem;">String B (columns)</label>
+      <input type="text" id="str-b" value="commit" maxlength="9" autocomplete="off" spellcheck="false" style="width:100%;">
+    </div>
+    <div style="display:flex;align-items:flex-end;">
+      <button class="btn btn-ghost" id="reset-btn" onclick="resetStepper()">Reset</button>
+    </div>
+  </div>
+
+  <div class="dp-table-wrapper">
+    <table id="stepper-table" class="dp-table"></table>
+  </div>
+
+  <div class="legend">
+    <span><span class="swatch" style="background:#bfdbfe;border-color:#3b82f6;"></span> Current cell</span>
+    <span><span class="swatch" style="background:#fef9c3;border-color:#ca8a04;"></span> Diagonal (sub / match)</span>
+    <span><span class="swatch" style="background:#dcfce7;border-color:#16a34a;"></span> Above (delete)</span>
+    <span><span class="swatch" style="background:#fce7f3;border-color:#db2777;"></span> Left (insert)</span>
+    <span><span class="swatch" style="background:var(--success-bg);border-color:var(--success);"></span> Optimal path</span>
+  </div>
+
+  <div id="step-explanation">Press <strong>Next Step</strong> to begin.</div>
+
+  <div style="display:flex;gap:0.6rem;margin-top:0.5rem;flex-wrap:wrap;">
+    <button class="btn btn-primary" id="next-btn" onclick="nextStep()">Next Step</button>
+    <button class="btn btn-ghost" onclick="runToEnd()">Run to end</button>
+  </div>
+</div>
+
+<h2>Reading the finished table</h2>
+
+<p>
+  The answer is always in the <strong>bottom-right cell</strong>:
+  <code>dp[m][n]</code>, where m and n are the lengths of the two strings.
+  The path from bottom-right back to top-left (tracing the minimum choices)
+  tells you exactly which edits were made — a full alignment of the strings.
+</p>
+
+<p>
+  For fuzzy search, we only need the number in that final cell. Computing the
+  full path (the <em>alignment</em>) is an optional extra step used when you
+  want to highlight which characters matched.
+</p>
+
+<h2>Complexity</h2>
+
+<table class="dp-table" style="margin:1rem 0;">
+  <thead>
+    <tr><th>Approach</th><th>Time</th><th>Space</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Naïve recursion (no memoisation)</td><td>O(3<sup>m</sup>)</td><td>O(m)</td></tr>
+    <tr><td>DP table (Wagner–Fischer)</td><td>O(m × n)</td><td>O(m × n)</td></tr>
+    <tr><td>DP table, two-row optimised</td><td>O(m × n)</td><td>O(n)</td></tr>
+  </tbody>
+</table>
+
+<div class="callout note">
+  <span class="callout-label">Space optimisation</span>
+  Each row only needs the previous row's values, so you can discard all but
+  the last two rows. This reduces space from O(m × n) to O(n) — important
+  when scanning many candidates.
+</div>
+
+<h2>Quiz: Check your understanding</h2>
+
+<div class="quiz" id="q1">
+  <p class="quiz-question">Q1. In the DP table, what does <code>dp[0][j]</code> (the entire first row) always equal, and why?</p>
+  <ul class="quiz-options">
+    <li><label><input type="radio" name="q1" value="a"> Always 0 — no edits are needed for empty strings</label></li>
+    <li><label><input type="radio" name="q1" value="b"> Always j — inserting j characters to build B from an empty A</label></li>
+    <li><label><input type="radio" name="q1" value="c"> Always 1 — only one edit is ever needed per row</label></li>
+    <li><label><input type="radio" name="q1" value="d"> Always the length of B — matching the full string is the base case</label></li>
+  </ul>
+  <button class="btn btn-primary" onclick="checkQ('q1','b','Correct. dp[0][j] = j because converting an empty string to the first j characters of B requires exactly j insertions.')">Check</button>
+  <p class="quiz-feedback" id="q1-feedback"></p>
+</div>
+
+<div class="quiz" id="q2">
+  <p class="quiz-question">Q2. When filling cell <code>dp[i][j]</code> and A[i] ≠ B[j], the formula is <code>1 + min(dp[i-1][j-1], dp[i-1][j], dp[i][j-1])</code>. Which predecessor corresponds to <em>inserting</em> a character into A?</p>
+  <ul class="quiz-options">
+    <li><label><input type="radio" name="q2" value="a"> dp[i-1][j-1] — the diagonal cell</label></li>
+    <li><label><input type="radio" name="q2" value="b"> dp[i-1][j]   — the cell directly above</label></li>
+    <li><label><input type="radio" name="q2" value="c"> dp[i][j-1]   — the cell directly to the left</label></li>
+    <li><label><input type="radio" name="q2" value="d"> dp[i+1][j+1] — the cell diagonally below-right</label></li>
+  </ul>
+  <button class="btn btn-primary" onclick="checkQ('q2','c','Correct. Moving left means B is one character shorter — equivalent to inserting a character into A to account for that extra character in B.')">Check</button>
+  <p class="quiz-feedback" id="q2-feedback"></p>
+</div>
+
+<div class="quiz" id="q3">
+  <p class="quiz-question">Q3. Why does dynamic programming reduce the time complexity from exponential to O(m × n)?</p>
+  <ul class="quiz-options">
+    <li><label><input type="radio" name="q3" value="a"> It uses bitwise operations to compare characters faster</label></li>
+    <li><label><input type="radio" name="q3" value="b"> It avoids recomputing the same subproblem answers by storing them in a table</label></li>
+    <li><label><input type="radio" name="q3" value="c"> It only computes cells on the diagonal of the table</label></li>
+    <li><label><input type="radio" name="q3" value="d"> It prunes paths that exceed the threshold before completing them</label></li>
+  </ul>
+  <button class="btn btn-primary" onclick="checkQ('q3','b','Correct. Naïve recursion recomputes the same prefix-pair subproblems exponentially many times. DP stores each answer once and looks it up in O(1), so each of the m×n cells is filled exactly once.')">Check</button>
+  <p class="quiz-feedback" id="q3-feedback"></p>
+</div>
+
+<div class="quiz" id="q4">
+  <p class="quiz-question">Q4. Where in the completed DP table do you read off the final edit distance?</p>
+  <ul class="quiz-options">
+    <li><label><input type="radio" name="q4" value="a"> The top-left cell dp[0][0]</label></li>
+    <li><label><input type="radio" name="q4" value="b"> The cell with the smallest value in the table</label></li>
+    <li><label><input type="radio" name="q4" value="c"> The bottom-right cell dp[m][n]</label></li>
+    <li><label><input type="radio" name="q4" value="d"> The sum of all values along the main diagonal</label></li>
+  </ul>
+  <button class="btn btn-primary" onclick="checkQ('q4','c','Correct. dp[m][n] holds the edit distance between the full string A (length m) and the full string B (length n).')">Check</button>
+  <p class="quiz-feedback" id="q4-feedback"></p>
+</div>
+
+<hr>
+
+<div class="primary-source">
+  <span class="label">Primary source for this lesson</span>
+  <a href="https://www.baeldung.com/cs/levenshtein-distance-computation" target="_blank">
+    Levenshtein Distance Computation — Baeldung on Computer Science
+  </a>
+  — Works through the DP table step-by-step with diagrams. Reading this
+  alongside the stepper above will solidify the recurrence relation.
+</div>
+
+<div class="ask-teacher">
+  💬 <strong>Have a question?</strong> Ask your teacher — type in the chat and I'll explain, rephrase, or go deeper on any cell, step, or formula from this lesson.
+</div>
+
+<div class="lesson-nav">
+  <a href="0002-edit-distance.html">← Lesson 2: Edit Distance</a>
+  <span class="center">Fuzzy Search · Lesson 3 of 6</span>
+  <a href="0004-threshold-search.html">Next: From Distance to Search →</a>
+</div>
+
+<script>
+// ── DP Stepper ──────────────────────────────────────────────────────────────
+
+let A, B, dp, steps, stepIdx, done;
+
+function buildSteps(a, b) {
+  const m = a.length, n = b.length;
+  const table = Array.from({length: m+1}, (_, i) =>
+    Array.from({length: n+1}, (_, j) => i===0 ? j : j===0 ? i : null)
+  );
+  const seq = [];
+  // Emit base-case cells as pre-settled (no explanation needed)
+  for (let i = 1; i <= m; i++)
+    for (let j = 1; j <= n; j++) {
+      const diag = table[i-1][j-1];
+      const top  = table[i-1][j];
+      const left = table[i][j-1];
+      const match = a[i-1] === b[j-1];
+      let val, op;
+      if (match) {
+        val = diag; op = 'match';
+      } else {
+        const best = Math.min(diag, top, left);
+        val = 1 + best;
+        op = best === diag ? 'sub' : best === top ? 'del' : 'ins';
+      }
+      table[i][j] = val;
+      seq.push({i, j, val, op, match, diag, top, left});
+    }
+  return {table, seq};
+}
+
+function resetStepper() {
+  A = document.getElementById('str-a').value || 'comit';
+  B = document.getElementById('str-b').value || 'commit';
+  const built = buildSteps(A, B);
+  dp = built.table; steps = built.seq; stepIdx = 0; done = false;
+  renderTable();
+  document.getElementById('step-explanation').innerHTML = 'Press <strong>Next Step</strong> to begin.';
+  document.getElementById('next-btn').disabled = false;
+}
+
+function renderTable(highlightStep, showPath) {
+  const m = A.length, n = B.length;
+  const tbl = document.getElementById('stepper-table');
+  let html = '<thead><tr><th></th><th>ε</th>';
+  for (let j = 0; j < n; j++) html += `<th>${B[j]}</th>`;
+  html += '</tr></thead><tbody>';
+  for (let i = 0; i <= m; i++) {
+    html += '<tr>';
+    html += `<th>${i === 0 ? 'ε' : A[i-1]}</th>`;
+    for (let j = 0; j <= n; j++) {
+      const val = dp[i][j];
+      let cls = '';
+      if (showPath && showPath.some(p => p[0]===i && p[1]===j)) cls = 'path';
+      else if (highlightStep) {
+        const {i:ci, j:cj} = highlightStep;
+        if      (i===ci   && j===cj)   cls = 'current';
+        else if (i===ci-1 && j===cj-1) cls = 'used-diag';
+        else if (i===ci-1 && j===cj)   cls = 'used-top';
+        else if (i===ci   && j===cj-1) cls = 'used-left';
+        else if (val !== null && !(i===ci && j===cj)) cls = 'settled';
+      } else if (val !== null) cls = 'settled';
+      const display = val === null ? '·' : val;
+      html += `<td class="${cls}">${display}</td>`;
+    }
+    html += '</tr>';
+  }
+  html += '</tbody>';
+  tbl.innerHTML = html;
+}
+
+function nextStep() {
+  if (done) return;
+  if (stepIdx >= steps.length) { finishStepper(); return; }
+  const s = steps[stepIdx];
+  // Temporarily null out cells not yet processed
+  for (let k = stepIdx; k < steps.length; k++) {
+    dp[steps[k].i][steps[k].j] = null;
+  }
+  dp[s.i][s.j] = s.val;
+  renderTable(s);
+
+  const ai = A[s.i - 1], bj = B[s.j - 1];
+  let html = '';
+  if (s.match) {
+    html = `<strong>Cell [${s.i},${s.j}]</strong>: A[${s.i}]='<code>${ai}</code>' matches B[${s.j}]='<code>${bj}</code>' — no edit needed. ` +
+           `Carry diagonal: <code>dp[${s.i-1}][${s.j-1}] = ${s.diag}</code> → <strong>${s.val}</strong>`;
+  } else {
+    const ops = [
+      {label:'sub (diagonal)', val:s.diag, cls:'diag', chosen: s.op==='sub'},
+      {label:'del (above)',    val:s.top,  cls:'top',  chosen: s.op==='del'},
+      {label:'ins (left)',     val:s.left, cls:'left', chosen: s.op==='ins'},
+    ];
+    const chosen = ops.find(o => o.chosen);
+    html = `<strong>Cell [${s.i},${s.j}]</strong>: A[${s.i}]='<code>${ai}</code>' ≠ B[${s.j}]='<code>${bj}</code>' — pick cheapest operation + 1.`;
+    html += `<div class="op-row">` + ops.map(o =>
+      `<span class="op-badge ${o.cls}${o.chosen ? ' chosen' : ''}">${o.label}: ${o.val}</span>`
+    ).join('') + `</div>`;
+    html += `<span style="margin-top:0.4rem;display:block;">Chose <strong>${chosen.label}</strong>: 1 + ${chosen.val} = <strong>${s.val}</strong></span>`;
+  }
+  document.getElementById('step-explanation').innerHTML = html;
+  stepIdx++;
+  if (stepIdx >= steps.length) {
+    document.getElementById('next-btn').textContent = 'Show Path';
+  }
+}
+
+function runToEnd() {
+  while (stepIdx < steps.length) {
+    const s = steps[stepIdx];
+    dp[s.i][s.j] = s.val;
+    stepIdx++;
+  }
+  finishStepper();
+}
+
+function finishStepper() {
+  done = true;
+  document.getElementById('next-btn').disabled = true;
+  document.getElementById('next-btn').textContent = 'Done';
+  const path = tracePath();
+  renderTable(null, path);
+  const dist = dp[A.length][B.length];
+  document.getElementById('step-explanation').innerHTML =
+    `<strong>Complete.</strong> Edit distance = <strong style="font-size:1.2rem;color:var(--success)">${dist}</strong>. ` +
+    `The green path traces the optimal alignment from bottom-right back to top-left.`;
+}
+
+function tracePath() {
+  const path = [];
+  let i = A.length, j = B.length;
+  while (i > 0 || j > 0) {
+    path.push([i, j]);
+    if (i === 0) { j--; continue; }
+    if (j === 0) { i--; continue; }
+    const diag = dp[i-1][j-1], top = dp[i-1][j], left = dp[i][j-1];
+    if (A[i-1] === B[j-1] && dp[i][j] === diag) { i--; j--; }
+    else if (dp[i][j] === 1 + Math.min(diag, top, left)) {
+      const best = Math.min(diag, top, left);
+      if (best === diag) { i--; j--; }
+      else if (best === top) { i--; }
+      else { j--; }
+    }
+  }
+  path.push([0, 0]);
+  return path;
+}
+
+// Init
+document.getElementById('str-a').addEventListener('input', resetStepper);
+document.getElementById('str-b').addEventListener('input', resetStepper);
+resetStepper();
+
+// ── Quiz logic ────────────────────────────────────────────────────────────
+function checkQ(id, correct, explanation) {
+  const selected = document.querySelector(`input[name="${id}"]:checked`);
+  const feedback = document.getElementById(`${id}-feedback`);
+  if (!selected) { feedback.textContent = 'Please select an answer.'; feedback.className = 'quiz-feedback'; return; }
+  document.querySelectorAll(`input[name="${id}"]`).forEach(r => {
+    const lbl = r.closest('label');
+    if (r.value === correct) lbl.classList.add('correct');
+    else if (r.checked)      lbl.classList.add('wrong');
+    r.disabled = true;
+  });
+  if (selected.value === correct) {
+    feedback.textContent = '✓ ' + explanation;
+    feedback.className = 'quiz-feedback correct';
+  } else {
+    feedback.textContent = '✗ Not quite. ' + explanation;
+    feedback.className = 'quiz-feedback wrong';
+  }
+}
+</script>
+
+</body>
+</html>
