@@ -221,7 +221,6 @@ ccd() {
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 
-alias gw='git worktree'
 
 # Home dir encryption long file restriction messes up with this too
 export PLAYWRIGHT_BROWSERS_PATH=/work/.cache/playwright
@@ -346,6 +345,12 @@ function zvm_after_init() {
 	if command -v fzf >/dev/null; then
 		source <(fzf --zsh)
 	fi
+
+	# Git aliases that would be overwritten by the git plugin
+	alias gw='git worktree'
+	alias gl='git pull --rebase --autostash'
+	alias grd='git rebase --autostash origin/develop'
+	alias gbgD='LANG=C git branch --no-color -vv | grep ": gone\]" | cut -c 3- | awk '\''{print $1}'\'' | xargs git branch -D'
 }
 
 [ -f "$DOTFILES_SCRIPTS/watch_rocket.sh" ] && zsh -c "$DOTFILES_SCRIPTS/watch_rocket.sh start" &|
