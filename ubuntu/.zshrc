@@ -231,6 +231,12 @@ export DOTFILES_SCRIPTS="${DOTFILES_PATH}/scripts"
 
 export PATH=$DOTFILES_SCRIPTS:$PATH
 
+# Carapace
+if command -v carapace >/dev/null; then
+	zstyle ':completion:*' format $'\e[2;37mCompleting %d\e[m'
+	source <(carapace _carapace)
+fi
+
 if command -v jiratui >/dev/null; then
 	alias jira="jiratui ui"
 fi
@@ -274,12 +280,6 @@ export PATH="$DVM_DIR/bin:$PATH"
 export GOPATH="$HOME/dev/go"
 export PATH="$PATH:/usr/local/go/bin:$GOPATH/bin"
 
-# Carapace
-if command -v carapace >/dev/null; then
-	zstyle ':completion:*' format $'\e[2;37mCompleting %d\e[m'
-	source <(carapace _carapace)
-fi
-
 # playerctl daemon
 if command -v playerctld >/dev/null; then
 	playerctld daemon 2> /dev/null
@@ -302,6 +302,10 @@ if command -v zellij >/dev/null; then
 	function zef () { zellij edit --floating "$*";}
 	# Edit file in current pane
 	function zei () { zellij edit --in-place "$*";}
+fi
+
+if command -v glow >/dev/null; then
+	source <(glow completion zsh)
 fi
 
 # Helm suggestions
