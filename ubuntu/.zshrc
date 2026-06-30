@@ -287,7 +287,6 @@ if command -v playerctld >/dev/null; then
 	playerctld daemon 2> /dev/null
 fi
 
-# Zellij
 if command -v zellij >/dev/null; then
 	local zcomp="$HOME/.config/zellij/compdef"
 	# zellij setup --generate-completion zsh > $zcomp
@@ -304,6 +303,14 @@ if command -v zellij >/dev/null; then
 	function zef () { zellij edit --floating "$*";}
 	# Edit file in current pane
 	function zei () { zellij edit --in-place "$*";}
+fi
+
+if command -v tmux >/dev/null; then
+	alias t="tmux"
+	alias tls="tmux list-sessions"
+	alias tlsk="tmux list-keys"
+	alias tlsw="tmux list-windows"
+	alias tlscm="tmux list-commands"
 fi
 
 if command -v glow >/dev/null; then
