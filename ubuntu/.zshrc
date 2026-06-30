@@ -119,11 +119,13 @@ setopt HIST_IGNORE_SPACE
 [ -f ~/.xprofile ] && source ~/.xprofile
 
 # Preferred editor for local and remote sessions
-if [[ -n $SSH_CONNECTION ]]; then
-	export EDITOR='vi'
-else
-	export EDITOR='nvim'
-fi
+# if [[ -n $SSH_CONNECTION ]]; then
+# 	export EDITOR='vi'
+# else
+# 	export EDITOR='nvim'
+# fi
+
+export EDITOR='nvim'
 
 export SUDO_EDITOR="$(which $EDITOR)"
 export ZVM_VI_EDITOR=$EDITOR
@@ -343,6 +345,11 @@ fi
 
 # opencode
 export PATH=$HOME/.opencode/bin:$PATH
+
+if [[ -n "$SSH_CONNECTION" ]]; then
+	export LANG=en_US.UTF-8
+	export LC_CTYPE=en_US.UTF-8
+fi
 
 # The plugin will auto execute this zvm_after_init function
 function zvm_after_init() {
