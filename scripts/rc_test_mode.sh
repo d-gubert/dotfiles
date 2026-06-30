@@ -2,7 +2,7 @@
 
 source "$(dirname $0)/watch_rocket.sh"
 
-TEST_MODE=${TEST_MODE:-'true'}
+TEST_MODE=${TEST_MODE:-'api'}
 PORT=${PORT:-3000}
 MONGO_PORT=${MONGO_PORT:-27017}
 MONGO_DB=${MONGO_DB:-'rocketchat'}

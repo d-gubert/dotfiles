@@ -21,7 +21,7 @@ done
 # If no script path was found in arguments, use the default
 SCRIPT=${SCRIPT:-$DEFAULT_SCRIPT}
 
-TEST_MODE=${TEST_MODE:-'true'}
+TEST_MODE=${TEST_MODE:-'api'}
 PORT=${PORT:-3000}
 MONGO_PORT=${MONGO_PORT:-27017}
 MONGO_DB=${MONGO_DB:-'rocketchat'}
