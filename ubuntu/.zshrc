@@ -102,12 +102,18 @@ if [[ ! -n $NVIM ]]; then
 	plugins+=(zsh-vi-mode)
 fi
 
+# UNDO MISTAKE IN BUFFER LINE/PROMPT
+bindkey '^[z' undo
+bindkey '^[r' redo
+
 source $ZSH/oh-my-zsh.sh
 
 # I don't want shared history
 setopt NO_SHARE_HISTORY
+# Don't save to history any command lines starting with a white space 
 setopt HIST_IGNORE_SPACE
-
+# Don't expand history expressions before executing the command line
+setopt NO_HIST_VERIFY
 # User configuration
 
 # export MANPATH="/usr/local/man:$MANPATH"
