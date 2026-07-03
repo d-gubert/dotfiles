@@ -368,12 +368,16 @@ fi
 function zvm_after_init() {
 	if command -v fzf >/dev/null; then
 		source <(fzf --zsh)
+		bindkey '' fzf-cd-widget
 	fi
 
 	# Git aliases that would be overwritten by the git plugin
 	alias gw='git worktree'
-	alias gl='git pull --rebase --autostash'
-	alias grd='git rebase --autostash origin/develop'
+	alias gl='git pull --autostash'
+	alias glr='git pull --rebase --autostash'
+	alias grd='git rebase --interactive --update-refs --autostash origin/develop'
+	alias grc='git rebase --continue'
+	alias grs='git rebase --skip'
 	alias gbgD='LANG=C git branch --no-color -vv | grep ": gone\]" | cut -c 3- | awk '\''{print $1}'\'' | xargs git branch -D'
 }
 
