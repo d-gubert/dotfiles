@@ -1,0 +1,51 @@
+{
+  "name": "Claude Code Sandbox",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "args": {
+      "TZ": "${localEnv:TZ:America/Sao_Paulo}"
+    }
+  },
+  // NET_ADMIN/NET_RAW are what let init-firewall.sh install the outbound
+  // allowlist. This is the isolation that makes running Claude with
+  // permissions bypassed safe.
+  "runArgs": [
+    "--cap-add=NET_ADMIN",
+    "--cap-add=NET_RAW"
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "eamodio.gitlens",
+        "anthropic.claude-code"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "terminal.integrated.profiles.linux": {
+          "zsh": { "path": "zsh" }
+        }
+      }
+    }
+  },
+  "remoteUser": "node",
+  // Persist bash history and the Claude config/auth across container rebuilds
+  // so you only log in once. Scoped per-devcontainer via devcontainerId.
+  "mounts": [
+    "source=claude-code-bashhistory-${devcontainerId},target=/commandhistory,type=volume",
+    "source=claude-code-config-${devcontainerId},target=/home/node/.claude,type=volume"
+  ],
+  "remoteEnv": {
+    "NODE_OPTIONS": "--max-old-space-size=4096",
+    "CLAUDE_CONFIG_DIR": "/home/node/.claude",
+    "POWERLEVEL9K_DISABLE_GITSTATUS": "true",
+    // Forwarded from the host if set, so `gh` and Claude can auth without an
+    // interactive login. Safe to leave empty.
+    "GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}",
+    "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}"
+  },
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=delegated",
+  "workspaceFolder": "/workspace",
+  // Runs as root via sudo (see sudoers entry in the Dockerfile) to lock down
+  // the network before you start working.
+  "postCreateCommand": "sudo /usr/local/bin/init-firewall.sh"
+}

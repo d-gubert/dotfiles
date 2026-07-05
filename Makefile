@@ -69,6 +69,7 @@ essential: homebrew \
 # Development
 # ─────────────────────────────────────────────────────────────────────────────
 # ast-grep — brew
+# devcontainer-cli — volta/npm (@devcontainers/cli) — for the sandbox devcontainer
 # dvm      — official install script (https://dvm.deno.dev) — Deno Version Manager
 # lazygit  — brew
 # meteor   — official install script (https://www.meteor.com/developers/install)
@@ -80,6 +81,7 @@ essential: homebrew \
 development: homebrew \
 	stow \
 	install-ast-grep \
+	install-devcontainer-cli \
 	install-dvm \
 	install-lazygit \
 	install-meteor \
@@ -174,6 +176,19 @@ install-meteor:
 	@if command -v meteor >/dev/null 2>&1; then echo "[meteor] already installed"; else \
 		echo "[meteor] installing via official script..."; \
 		curl -fsSL https://install.meteor.com | sh; \
+	fi
+
+.PHONY: install-devcontainer-cli
+install-devcontainer-cli:
+	@if command -v devcontainer >/dev/null 2>&1; then echo "[devcontainer-cli] already installed"; \
+	elif command -v volta >/dev/null 2>&1; then \
+		echo "[devcontainer-cli] installing via volta..."; \
+		volta install @devcontainers/cli; \
+	elif command -v npm >/dev/null 2>&1; then \
+		echo "[devcontainer-cli] installing via npm..."; \
+		npm install -g @devcontainers/cli; \
+	else \
+		echo "[devcontainer-cli] need node/npm first (make install-volta); skipping"; \
 	fi
 
 .PHONY: install-zsh

@@ -50,6 +50,22 @@ Stow is usually used by having one directory for each software you want to manag
 
 ---
 
+## Claude Code sandbox devcontainer
+
+`templates/devcontainer/` is a reusable dev container that lets Claude Code run
+without permission prompts, safely — the project is the only thing mounted, and
+`init-firewall.sh` locks outbound network to an allowlist. Drop it into any
+project from its root (`scripts/` is on `PATH`):
+
+```sh
+add-devcontainer.sh          # copies the template into ./.devcontainer
+```
+
+Then "Reopen in Container" in VS Code. Inside, `claude` is aliased to skip
+permissions. See [`templates/devcontainer/README.md`](templates/devcontainer/README.md).
+
+---
+
 ## Software
 
 ### Essential
