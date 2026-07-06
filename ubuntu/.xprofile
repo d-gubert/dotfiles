@@ -5,3 +5,7 @@
 export XDG_CACHE_HOME=/work/.cache/xdg
 
 export EDITOR=nvim
+
+# Pin the X server DPI before i3 starts, so fonts don't scale with the
+# connected monitor's EDID. See ~/.Xresources.
+[ -f ~/.Xresources ] && xrdb -merge ~/.Xresources

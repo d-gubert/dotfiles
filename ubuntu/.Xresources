@@ -1,0 +1,5 @@
+! Pin the X server DPI so pango-based fonts (i3 title bars, i3bar) render at a
+! consistent size regardless of which monitor is connected at login. Without
+! this, Xorg auto-computes DPI from the connected monitor EDID; the 4K HDMI
+! panel reports ~154 DPI, which blows up the i3 font at startup.
+Xft.dpi: 96
