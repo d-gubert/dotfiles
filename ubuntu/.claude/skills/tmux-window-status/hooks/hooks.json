@@ -1,0 +1,32 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "\"${DOTFILES_PATH}\"/scripts/tmux-window-status.sh busy-done" }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          { "type": "command", "command": "\"${DOTFILES_PATH}\"/scripts/tmux-window-status.sh attention" }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          { "type": "command", "command": "\"${DOTFILES_PATH}\"/scripts/tmux-window-status.sh clear" }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          { "type": "command", "command": "\"${DOTFILES_PATH}\"/scripts/tmux-window-status.sh clear" }
+        ]
+      }
+    ]
+  }
+}

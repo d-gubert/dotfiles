@@ -119,3 +119,14 @@ Stow is usually used by having one directory for each software you want to manag
 | [spotatui](https://github.com/LargeModGames/spotatui) | Spotify TUI | brew |
 | [carapace](https://carapace.sh) | Multi-shell completion generator | brew |
 | [tree-sitter](https://tree-sitter.github.io) | Parser generator and incremental parsing | brew |
+
+---
+
+## Claude Code
+
+### `tmux-window-status` plugin
+
+A local [Claude Code plugin](https://code.claude.com/docs/en/plugins-reference) that prefixes the current tmux window name with a glyph while Claude waits for you — `● ` when it finishes a turn, `🔔 ` when it needs permission — and clears it once you reply. Tweak the glyphs in the plugin's `scripts/tmux-window-status.sh`.
+
+- **Plugin:** `ubuntu/.claude/skills/tmux-window-status/` (hooks + script). It's dropped into the config dir's `skills/`, so Claude Code auto-loads it as `tmux-window-status@skills-dir` — no marketplace or install step, and nothing added to `~/.claude/settings.json`.
+- **tmux side:** `ubuntu/.tmux.conf` splices a `@status_glyph` user option into the catppuccin window label
