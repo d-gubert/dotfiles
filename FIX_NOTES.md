@@ -6,7 +6,7 @@ Need to fix bootstrap
 4 - After installing brew for the first time, the command is not available to the shell ✅
 5 - Make asks for confirmation, need to skip (can't skip everything)
 6 - Fixed some bugs in tmux installation ✅
-7 - vi-mongo is not installable via brew
+7 - vi-mongo is not installable via brew ✅
 8 - oh-my-zsh substitutes .zshrc, need to find an option for it not to do that
 9 - spotatui not available in brew
 10 - Add Brave browser to make file ✅

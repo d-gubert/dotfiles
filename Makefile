@@ -434,6 +434,8 @@ install-glow: homebrew
 install-vi-mongo: homebrew
 	@if command -v vi-mongo >/dev/null 2>&1; then echo "[vi-mongo] already installed"; else \
 		echo "[vi-mongo] installing via brew..."; \
+		brew tap kopecmaciej/vi-mongo; \
+		brew trust kopecmaciej/vi-mongo; \
 		brew install vi-mongo; \
 	fi
 
