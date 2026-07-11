@@ -179,16 +179,10 @@ install-meteor:
 	fi
 
 .PHONY: install-devcontainer-cli
-install-devcontainer-cli:
-	@if command -v devcontainer >/dev/null 2>&1; then echo "[devcontainer-cli] already installed"; \
-	elif command -v volta >/dev/null 2>&1; then \
+install-devcontainer-cli: install-volta
+	@if command -v devcontainer >/dev/null 2>&1; then echo "[devcontainer-cli] already installed"; else \
 		echo "[devcontainer-cli] installing via volta..."; \
 		volta install @devcontainers/cli; \
-	elif command -v npm >/dev/null 2>&1; then \
-		echo "[devcontainer-cli] installing via npm..."; \
-		npm install -g @devcontainers/cli; \
-	else \
-		echo "[devcontainer-cli] need node/npm first (make install-volta); skipping"; \
 	fi
 
 .PHONY: install-zsh
