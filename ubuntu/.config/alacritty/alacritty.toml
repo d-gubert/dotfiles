@@ -1,6 +1,3 @@
-import = [
-    "~/.config/alacritty/catppuccin-mocha.toml"
-]
 
 [font]
 size = 8
@@ -29,3 +26,8 @@ mods = "Control"
 [window]
 dimensions = { columns = 200, lines = 50 }
 decorations = "None"
+
+[general]
+import = [
+    "~/.config/alacritty/catppuccin-mocha.toml"
+]
