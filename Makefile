@@ -32,6 +32,7 @@ all: essential development utilities
 # gh         — brew
 # glow       — brew
 # i3         — apt (X11 session manager, not in brew for Linux)
+#              also pulls xserver-xorg-input-libinput (Xorg keyboard/touchpad driver)
 # jq         — brew
 # kanata     — brew
 # neovim     — brew
@@ -46,6 +47,8 @@ all: essential development utilities
 essential: homebrew \
 	stow \
 	install-alacritty \
+	install-i3 \
+	install-zsh \
 	install-arandr \
 	install-bat \
 	install-btop \
@@ -54,7 +57,6 @@ essential: homebrew \
 	install-fzf \
 	install-gh \
 	install-glow \
-	install-i3 \
 	install-jq \
 	install-kanata \
 	install-neovim \
@@ -62,8 +64,7 @@ essential: homebrew \
 	install-ripgrep \
 	install-tmux \
 	install-xclip \
-	install-zellij \
-	install-zsh
+	install-zellij
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Development
@@ -281,10 +282,29 @@ install-alacritty:
 	fi
 
 .PHONY: install-i3
-install-i3:
+install-i3: install-xorg-input install-xinput
 	@if command -v i3 >/dev/null 2>&1; then echo "[i3] already installed"; else \
 		echo "[i3] installing via apt..."; \
 		sudo apt-get install -y i3; \
+	fi
+
+# Xorg needs a userspace input driver to bind keyboard/touchpad/mouse; without it
+# an X11 i3 session starts but receives no input (Wayland/sway talks to libinput
+# directly and does not need this package).
+.PHONY: install-xorg-input
+install-xorg-input:
+	@if dpkg -s xserver-xorg-input-libinput >/dev/null 2>&1; then echo "[xorg-input] already installed"; else \
+		echo "[xorg-input] installing xserver-xorg-input-libinput via apt..."; \
+		sudo apt-get install -y xserver-xorg-input-libinput; \
+	fi
+
+# CLI to tweak libinput props at session start (tap-to-click, natural scroll).
+# Used by ~/.xprofile; see the touchpad block there.
+.PHONY: install-xinput
+install-xinput:
+	@if command -v xinput >/dev/null 2>&1; then echo "[xinput] already installed"; else \
+		echo "[xinput] installing via apt..."; \
+		sudo apt-get install -y xinput; \
 	fi
 
 .PHONY: install-rofi

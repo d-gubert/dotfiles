@@ -12,3 +12,4 @@ Need to fix bootstrap
 10 - Add Brave browser to make file
 11 - Maybe installing build-essentials first will install make by default?
 12 - zsh is not made to be the default shell, and needs to be added to /etc/shells ✅
+13 - i3 no work on Ubuntu 26. Gotta add sway to the mix - Fuck sway, added some deps to the i3 installation and now I can keep i3 ✅
