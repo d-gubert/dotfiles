@@ -339,7 +339,7 @@ install-alacritty:
 install-i3: install-xorg-input install-xinput
 	@if command -v i3 >/dev/null 2>&1; then echo "[i3] already installed"; else \
 		echo "[i3] installing via apt..."; \
-		sudo apt-get install -y i3; \
+		sudo apt-get install -y i3 maim; \
 	fi
 
 # Xorg needs a userspace input driver to bind keyboard/touchpad/mouse; without it

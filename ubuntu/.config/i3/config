@@ -174,7 +174,7 @@ default_border none
 # bindsym $super+2 exec spotify
 # bindsym $super+w exec /opt/Rocket.Chat/rocketchat-desktop %U
 bindsym $mod+c exec /opt/Rocket.Chat/rocketchat-desktop %U
-bindsym $mod+s exec spotify
+# bindsym $mod+s exec spotify
 bindsym $mod+b exec brave-browser --ozone-platform=x11
 bindsym $mod+Return exec alacritty
 bindsym $mod+v exec --no-startup-id ~/.config/i3/scripts/dmenu-cliphist.sh sel
@@ -304,5 +304,5 @@ bar {
         output eDP-1
         position top
         status_command i3status
-        font pango:DejaVu Sans Mono 9
+        font pango:DejaVu Sans Mono 8
 }
