@@ -2,4 +2,4 @@
 ! consistent size regardless of which monitor is connected at login. Without
 ! this, Xorg auto-computes DPI from the connected monitor EDID; the 4K HDMI
 ! panel reports ~154 DPI, which blows up the i3 font at startup.
-Xft.dpi: 96
+Xft.dpi: 110
