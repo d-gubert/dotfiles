@@ -48,6 +48,7 @@ essential: homebrew \
 	stow \
 	install-brave-browser \
 	install-alacritty \
+	install-enpass \
 	install-i3 \
 	install-zsh \
 	install-arandr \
@@ -301,6 +302,16 @@ install-curl:
 	@if command -v curl >/dev/null 2>&1; then echo "[curl] already installed"; else \
 		echo "[curl] installing via apt..."; \
 		sudo apt-get install -y curl; \
+	fi
+
+.PHONY: install-enpass
+install-enpass:
+	@if dpkg -s enpass >/dev/null 2>&1; then echo "[enpass] already installed"; else \
+		echo "[enpass] installing via apt..."; \
+		echo "deb https://apt.enpass.io/  stable main" | sudo tee /etc/apt/sources.list.d/enpass.list; \
+		wget -O - https://apt.enpass.io/keys/enpass-linux.key | sudo tee /etc/apt/trusted.gpg.d/enpass.asc; \
+		sudo apt-get -y update; \
+		sudo apt-get -y install enpass; \
 	fi
 
 .PHONY: install-xclip
