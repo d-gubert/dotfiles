@@ -131,6 +131,18 @@ homebrew:
 	fi
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Fonts (nerd fonts, ligatures)
+# ─────────────────────────────────────────────────────────────────────────────
+
+.PHONY: fonts
+fonts: homebrew
+	@if brew info font-fira-code 2>&1 | grep Installed >/dev/null; then echo "[fira-code] already installed"; else \
+		echo "[fira-code] installing via brew..."; \
+		brew install font-fira-code; \
+		echo "[fira-code] installed"; \
+	fi
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Custom installation
 # ─────────────────────────────────────────────────────────────────────────────
 
