@@ -1,9 +1,16 @@
 # Add deno completions to search path
 if [[ ":$FPATH:" != *":$HOME/.zsh/completions:"* ]]; then export FPATH="$HOME/.zsh/completions:$FPATH"; fi
+
+local enableStarship
+
+if test -n "$SSH_CONNECTION" && test -n "$TMUX" && command -v starship >/dev/null; then
+	enableStarship='true'
+fi
+
 # Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
 # Initialization code that may require console input (password prompts, [y/n]
 # confirmations, etc.) must go above this block; everything else may go below.
-if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
+if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]] && [[ -z $enableStarship ]]; then
 	source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
 fi
 
@@ -20,8 +27,7 @@ export ZSH="$HOME/.oh-my-zsh"
 # load a random theme each time oh-my-zsh is loaded, in which case,
 # to know which specific one was loaded, run: echo $RANDOM_THEME
 # See https://github.com/ohmyzsh/ohmyzsh/wiki/Themes
-# Cursor dislikes p10k for some reason
-if [[ -z $CURSOR_CLI_MODE ]]; then
+if [[ -z $enableStarship ]]; then
 	ZSH_THEME="powerlevel10k/powerlevel10k"
 fi
 
@@ -381,6 +387,10 @@ function zvm_after_init() {
 	alias grs='git rebase --skip'
 	alias gbgD='LANG=C git branch --no-color -vv | grep ": gone\]" | cut -c 3- | awk '\''{print $1}'\'' | xargs git branch -D'
 }
+
+if [[ -n $enableStarship ]]; then
+	eval "$(starship init zsh)"
+fi
 
 [ -f "$DOTFILES_SCRIPTS/watch_rocket.sh" ] && zsh -c "$DOTFILES_SCRIPTS/watch_rocket.sh start" &|
 
