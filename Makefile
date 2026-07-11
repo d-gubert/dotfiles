@@ -46,6 +46,7 @@ all: essential development utilities
 .PHONY: essential
 essential: homebrew \
 	stow \
+	install-brave-browser \
 	install-alacritty \
 	install-i3 \
 	install-zsh \
@@ -156,6 +157,13 @@ install-docker: install-curl
 		curl -fsSL https://get.docker.com | sudo sh; \
 		sudo usermod -aG docker $$USER; \
 		echo "[docker] NOTE: log out and back in for group membership to take effect"; \
+	fi
+
+.PHONY: install-brave-browser
+install-brave-browser: install-curl
+	@if command -v brave-browser >/dev/null 2>&1; then echo "[brave-browser] already installed"; else \
+		echo "[brave-browser] installing via official script..."; \
+		curl -fsS https://dl.brave.com/install.sh | sh; \
 	fi
 
 .PHONY: install-volta

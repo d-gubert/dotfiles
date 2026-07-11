@@ -57,6 +57,7 @@ Stow is usually used by having one directory for each software you want to manag
 | Tool | Description | Installed via |
 | ------ | ------------- | --------------- |
 | [alacritty](https://github.com/alacritty/alacritty) | GPU-accelerated terminal emulator | apt |
+| [brave-browser](https://brave.com) | Brave Browser | install script |
 | [homebrew](https://brew.sh) | Package manager | install script |
 | [zsh](https://www.zsh.org) | Shell | brew |
 | [oh-my-zsh](https://ohmyz.sh) | Zsh framework | install script |
