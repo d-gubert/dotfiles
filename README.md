@@ -7,7 +7,7 @@ Me dotfiles.
 ### One-liner bootstrap
 
 ```sh
-wget -qO- https://raw.githubusercontent.com/d-gubert/dotfiles/main/bootstrap.sh | bash
+wget -qO- https://raw.githubusercontent.com/d-gubert/dotfiles/main/scripts/bootstrap.sh | bash
 ```
 
 This clones the repo to `~/dev/dotfiles`, installs git first if needed, and runs `make all`.

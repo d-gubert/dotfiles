@@ -5,26 +5,13 @@ set -euo pipefail
 REPO="https://github.com/d-gubert/dotfiles.git"
 DEST="$HOME/dev/dotfiles"
 
-read -r -p "[bootstrap] would you like to run apt-get update? [y/N]" runupdate
-case "$runupdate" in
-	[yY])
-		sudo apt-get update -y
-		;;
-esac
+# Read prompts from the terminal, not stdin: the README runs this script as
+# `wget -qO- ... | bash`, so stdin is the script itself. Without </dev/tty the
+# read would swallow the next script line and break parsing (case arm ')').
+# read -r -p "[bootstrap] would you like to run apt-get update? [y/N] " runupdate </dev/tty
 
-if ! command -v git >/dev/null 2>&1; then
-	echo "[bootstrap] git is not installed."
-	read -r -p "Install git via apt? [y/N] " answer
-	case "$answer" in
-		[yY])
-			sudo apt-get install -y git
-			;;
-		*)
-			echo "[bootstrap] git is required. Aborting."
-			exit 1
-			;;
-	esac
-fi
+sudo apt-get -y update
+sudo apt-get -y install git build-essential
 
 if [ -d "$DEST" ]; then
 	echo "[bootstrap] $DEST already exists, pulling latest..."

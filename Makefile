@@ -124,10 +124,8 @@ stow: install-stow
 # ─────────────────────────────────────────────────────────────────────────────
 
 .PHONY: homebrew
-homebrew:
-	@if command -v brew >/dev/null 2>&1; then \
-		echo "[homebrew] already installed"; \
-	else \
+homebrew: install-curl
+	@if command -v brew >/dev/null 2>&1; then echo "[homebrew] already installed"; else \
 		echo "[homebrew] installing..."; \
 		/bin/bash -c "$$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"; \
 	fi
@@ -149,7 +147,7 @@ fonts: homebrew
 # ─────────────────────────────────────────────────────────────────────────────
 
 .PHONY: install-docker
-install-docker:
+install-docker: install-curl
 	@if command -v docker >/dev/null 2>&1; then echo "[docker] already installed"; else \
 		echo "[docker] installing via official script (docker-ce)..."; \
 		curl -fsSL https://get.docker.com | sudo sh; \
@@ -158,7 +156,7 @@ install-docker:
 	fi
 
 .PHONY: install-volta
-install-volta:
+install-volta: install-curl
 	@if command -v volta >/dev/null 2>&1; then echo "[volta] already installed"; else \
 		echo "[volta] installing via official script..."; \
 		curl -fsSL https://get.volta.sh | bash; \
@@ -172,26 +170,30 @@ install-node: install-volta
 	fi
 
 .PHONY: install-dvm
-install-dvm:
+install-dvm: install-curl
 	@if command -v dvm >/dev/null 2>&1; then echo "[dvm] already installed"; else \
 		echo "[dvm] installing via official script..."; \
 		curl -fsSL https://dvm.deno.dev | sh; \
 	fi
 
 .PHONY: install-meteor
-install-meteor:
+install-meteor: install-curl
 	@if command -v meteor >/dev/null 2>&1; then echo "[meteor] already installed"; else \
 		echo "[meteor] installing via official script..."; \
 		curl -fsSL https://install.meteor.com | sh; \
 	fi
 
 .PHONY: install-zsh
-install-zsh:
-	@if ! command -v zsh >/dev/null 2>&1; then \
+install-zsh: homebrew install-curl
+	@if command -v zsh >/dev/null 2>&1; then echo "[zsh] already installed"; else \
 		echo "[zsh] installing via brew..."; \
 		brew install zsh; \
-	else \
-		echo "[zsh] already installed"; \
+		if [ ! -f /bin/zsh ]; then \
+			sudo ln -s $$(which zsh) /usr/bin/zsh; \
+		fi; \
+		if ! cat /etc/shells | grep -q zsh; then \
+			sudo echo "/bin/zsh" >> /etc/shells; \
+		fi \
 	fi
 	@if [ ! -d "$$HOME/.oh-my-zsh" ]; then \
 		echo "[zsh:oh-my-zsh] installing..."; \
@@ -259,6 +261,14 @@ install-tmux: homebrew
 # ─────────────────────────────────────────────────────────────────────────────
 # APT managed packages
 # ─────────────────────────────────────────────────────────────────────────────
+
+# Prerequisite for the `curl | sh` script installers (homebrew, docker, volta, dvm, meteor)
+.PHONY: install-curl
+install-curl:
+	@if command -v curl >/dev/null 2>&1; then echo "[curl] already installed"; else \
+		echo "[curl] installing via apt..."; \
+		sudo apt-get install -y curl; \
+	fi
 
 .PHONY: install-xclip
 install-xclip:
