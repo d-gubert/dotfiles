@@ -97,7 +97,7 @@ development: homebrew \
 # jwt-ui      — brew
 # lazyjira    — brew
 # tree-sitter — brew
-# spotatui    - brew
+# spotatui    - prebuilt .deb from GitHub releases (not on the Linux brew tap)
 
 .PHONY: utilities
 utilities: homebrew \
@@ -192,6 +192,28 @@ install-meteor: install-curl
 	@if command -v meteor >/dev/null 2>&1; then echo "[meteor] already installed"; else \
 		echo "[meteor] installing via official script..."; \
 		curl -fsSL https://install.meteor.com | sh; \
+	fi
+
+# Not published on the Linux brew tap
+.PHONY: install-spotatui
+install-spotatui: install-curl install-jq
+	@if command -v spotatui >/dev/null 2>&1; then echo "[spotatui] already installed"; else \
+		echo "[spotatui] resolving latest release..."; \
+		deb_url=$$(curl -fsSL https://api.github.com/repos/LargeModGames/spotatui/releases/latest \
+			| jq -r '.assets[] | select(.name | endswith("_amd64.deb")) | .browser_download_url'); \
+		if [ -z "$$deb_url" ]; then echo "[spotatui] ERROR: no amd64 .deb asset in latest release"; exit 1; fi; \
+		tmp=$$(mktemp -d); \
+		deb="$$tmp/$$(basename "$$deb_url")"; \
+		echo "[spotatui] downloading $$(basename "$$deb_url")..."; \
+		curl -fsSL "$$deb_url" -o "$$deb"; \
+		curl -fsSL "$$deb_url.sha256" -o "$$deb.sha256"; \
+		echo "[spotatui] verifying sha256..."; \
+		if ! ( cd "$$tmp" && sha256sum -c "$$(basename "$$deb").sha256" ); then \
+			echo "[spotatui] ERROR: checksum verification failed"; rm -rf "$$tmp"; exit 1; \
+		fi; \
+		echo "[spotatui] installing via apt..."; \
+		sudo apt-get install -y "$$deb"; \
+		rm -rf "$$tmp"; \
 	fi
 
 .PHONY: install-zsh
@@ -465,13 +487,6 @@ install-rgx: homebrew
 	@if command -v rgx >/dev/null 2>&1; then echo "[rgx] already installed"; else \
 		echo "[rgx] installing via brew..."; \
 		brew install brevity1swos/tap/rgx; \
-	fi
-
-.PHONY: install-spotatui
-install-spotatui: homebrew
-	@if command -v spotatui >/dev/null 2>&1; then echo "[spotatui] already installed"; else \
-		echo "[spotatui] installing via brew..."; \
-		brew install spotatui; \
 	fi
 
 .PHONY: install-sttr

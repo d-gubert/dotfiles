@@ -117,9 +117,9 @@ Stow is usually used by having one directory for each software you want to manag
 | ------ | ------------- | --------------- |
 | [jwt-ui](https://github.com/jwt-rs/jwt-ui) | JWT TUI codec | brew |
 | [lazyjira](https://github.com/textfuel/jiratui) | Jira TUI client | brew |
-| [spotatui](https://github.com/LargeModGames/spotatui) | Spotify TUI | brew |
 | [carapace](https://carapace.sh) | Multi-shell completion generator | brew |
 | [tree-sitter](https://tree-sitter.github.io) | Parser generator and incremental parsing | brew |
+| [spotatui](https://github.com/LargeModGames/spotatui) | Spotify TUI | prebuilt installer |
 
 ---
 

@@ -8,7 +8,7 @@ Need to fix bootstrap
 6 - Fixed some bugs in tmux installation ✅
 7 - vi-mongo is not installable via brew ✅
 8 - oh-my-zsh substitutes .zshrc, need to find an option for it not to do that
-9 - spotatui not available in brew
+9 - spotatui not available in brew ✅
 10 - Add Brave browser to make file ✅
 11 - Maybe installing build-essentials first will install make by default? ✅
 12 - zsh is not made to be the default shell, and needs to be added to /etc/shells ✅
