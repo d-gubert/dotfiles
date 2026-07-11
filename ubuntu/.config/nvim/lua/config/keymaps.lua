@@ -1,5 +1,3 @@
----@diagnostic disable: missing-fields
-
 -- Keymaps are automatically loaded on the VeryLazy event
 -- Default keymaps that are always set: https://github.com/LazyVim/LazyVim/blob/main/lua/lazyvim/config/keymaps.lua
 -- Add any additional keymaps here
@@ -13,6 +11,12 @@ vim.keymap.set({ "n", "x" }, "<leader>gy", function()
         notify = false,
     })
 end, { desc = "Git Browse (copy)" })
+
+-- PR Review: sidebar of changed files vs a base ref, with diff-on-select
+-- (see lua/pr_review and lua/plugins/pr-review.lua for the keymaps)
+vim.api.nvim_create_user_command("PRReview", function(cmd_opts)
+    require("pr_review").open({ base = cmd_opts.args ~= "" and cmd_opts.args or nil })
+end, { nargs = "?", desc = "Open PR review sidebar (optionally against a given base ref)" })
 
 -- Easy copy to clipboard and past from clipboard
 vim.keymap.set({ "n", "v" }, "<A-y>", '"+y', { desc = "Copy to clipboard" })
