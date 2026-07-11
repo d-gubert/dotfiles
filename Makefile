@@ -128,7 +128,10 @@ homebrew: install-curl
 	@if command -v brew >/dev/null 2>&1; then echo "[homebrew] already installed"; else \
 		echo "[homebrew] installing..."; \
 		/bin/bash -c "$$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"; \
+		eval "$$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"; \
 	fi
+	# Make it so installations via brew don't require input
+	@export NONINTERACTIVE=1
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Fonts (nerd fonts, ligatures)
