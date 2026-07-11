@@ -9,3 +9,16 @@ export EDITOR=nvim
 # Pin the X server DPI before i3 starts, so fonts don't scale with the
 # connected monitor's EDID. See ~/.Xresources.
 [ -f ~/.Xresources ] && xrdb -merge ~/.Xresources
+
+# Touchpad: tap-to-click and natural (reverse) scrolling.
+# Matched by name so it survives device-id reshuffles; needs the `xinput` pkg.
+if command -v xinput >/dev/null 2>&1; then
+	xinput list --name-only | while read -r dev; do
+		case "$dev" in
+			*[Tt]ouchpad*)
+				xinput set-prop "$dev" "libinput Tapping Enabled" 1 2>/dev/null
+				xinput set-prop "$dev" "libinput Natural Scrolling Enabled" 1 2>/dev/null
+				;;
+		esac
+	done
+fi
