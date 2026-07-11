@@ -236,6 +236,7 @@ function ccd() {
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 
 alias pclaude='CLAUDE_CONFIG_DIR=~/.claude-personal claude'
+alias brave-browser='brave-browser --ozone-platform=x11'
 
 # Home dir encryption long file restriction messes up with this too
 # export PLAYWRIGHT_BROWSERS_PATH=/work/.cache/playwright
