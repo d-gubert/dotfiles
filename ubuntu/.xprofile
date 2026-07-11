@@ -1,8 +1,8 @@
 # Environment variables needed before the X session (and i3) starts.
 # Sourced by display managers; also sourced by .zshrc so values stay in sync.
 
-# Home dir encryption does not like long file names
-export XDG_CACHE_HOME=/work/.cache/xdg
+# Home dir encryption (eCrypt-fs) does not like long file names
+# export XDG_CACHE_HOME=/work/.cache/xdg
 
 export EDITOR=nvim
 

@@ -238,7 +238,7 @@ function ccd() {
 alias pclaude='CLAUDE_CONFIG_DIR=~/.claude-personal claude'
 
 # Home dir encryption long file restriction messes up with this too
-export PLAYWRIGHT_BROWSERS_PATH=/work/.cache/playwright
+# export PLAYWRIGHT_BROWSERS_PATH=/work/.cache/playwright
 
 # Prompt expansion that prints the current script name, then resolves it to absolute path `:A` (following symlinks)
 export DOTFILES_PATH=$(dirname ${${(%):-%N}:A})
