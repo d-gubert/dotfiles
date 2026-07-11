@@ -250,10 +250,10 @@ install-tmux: homebrew
 	@if [ -d "$$HOME/.tmux/plugins/tpm" ]; then echo "[tmux:tpm] already installed"; else \
 		echo "[tmux:tpm] installing with git..."; \
 		mkdir -p "$$HOME/.tmux/plugins/tpm"; \
-		git clone --depth=1 --branch v3.1.0 https://github.com/tmux-plugins/tpm "$HOME/.tmux/plugins/tpm"; \
+		git clone --depth=1 --branch v3.1.0 https://github.com/tmux-plugins/tpm "$$HOME/.tmux/plugins/tpm"; \
 		tmux new-session -d -s bootstrap_tpm; \
 		"$$HOME/.tmux/plugins/tpm/bin/install_plugins"; \
-		tmux kill-session bootstrap_tpm; \
+		tmux kill-session -t bootstrap_tpm; \
 	fi
 	@if [ -d "$$HOME/.tmux/plugins/catppuccin" ]; then echo "[tmux:catppuccin] already installed"; else \
 		echo "[tmux:catppuccin] installing with git..."; \
