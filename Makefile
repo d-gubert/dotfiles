@@ -83,6 +83,7 @@ development: homebrew \
 	install-dvm \
 	install-lazygit \
 	install-meteor \
+	install-node \
 	install-tealdeer \
 	install-vi-mongo \
 	install-volta
@@ -160,6 +161,13 @@ install-volta:
 	@if command -v volta >/dev/null 2>&1; then echo "[volta] already installed"; else \
 		echo "[volta] installing via official script..."; \
 		curl -fsSL https://get.volta.sh | bash; \
+	fi
+
+.PHONY: install-node
+install-node: install-volta
+	@if command -v node >/dev/null 2>&1; then echo "[node] already installed"; else \
+		echo "[node] installing with volta..."; \
+		volta install node; \
 	fi
 
 .PHONY: install-dvm
@@ -354,7 +362,7 @@ install-ripgrep: homebrew
 	fi
 
 .PHONY: install-neovim
-install-neovim: homebrew
+install-neovim: homebrew install-node
 	@if command -v nvim >/dev/null 2>&1; then echo "[neovim] already installed"; else \
 		echo "[neovim] installing via brew..."; \
 		brew install neovim; \
