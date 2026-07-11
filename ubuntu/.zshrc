@@ -151,7 +151,7 @@ export ZVM_VI_EDITOR=$EDITOR
 # Maybe move to a sourced script in the future?
 
 # Switch git worktrees
-gwl() {
+function gwl() {
 	local target
 	local filter="${1}"
 
@@ -176,7 +176,7 @@ gwl() {
 }
 
 # List my open PRs
-mypr() {
+function mypr() {
 	gh search prs --author '@me' --state open --sort updated --order desc --json repository,number,state,title,updatedAt,url \
 		--jq '.[] | [.url,.repository.nameWithOwner,("#"+(.number|tostring)),.state,.title,.updatedAt] | @tsv' |
 	column -t -s $'\t' |
@@ -189,7 +189,7 @@ mypr() {
 }
 
 # Claude code dev-tools
-ccd() {
+function ccd() {
 	local profile="~/.claude"
 	local port=3456
 
