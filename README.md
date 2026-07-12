@@ -61,7 +61,7 @@ Stow is usually used by having one directory for each software you want to manag
 | [homebrew](https://brew.sh) | Package manager | install script |
 | [zsh](https://www.zsh.org) | Shell | brew |
 | [oh-my-zsh](https://ohmyz.sh) | Zsh framework | install script |
-| [powerlevel10k](https://github.com/romkatv/powerlevel10k) | Zsh theme | git |
+| [powerlevel10k](https://github.com/romkatv/powerlevel10k) | Zsh theme and prompt | git |
 | [zellij](https://zellij.dev) | Terminal multiplexer | brew |
 | [kanata](https://github.com/jtroo/kanata) | Software keyboard remapper | brew |
 | [i3](https://i3wm.org) | Tiling window manager | apt |
@@ -79,6 +79,12 @@ Stow is usually used by having one directory for each software you want to manag
 | [btop](https://github.com/aristocratsbit/btop) | System resource monitor | brew |
 | [tmux](https://github.com/tmux/tmux) | The OG terminal multiplexer | brew |
 | [ffmpeg](https://ffmpeg.org) | Audio/video processing | brew |
+
+#### Fonts (Nerd Fonts)
+
+| Name | Installed via |
+| - | - |
+| [font-fira-code-nerd-font](https://www.programmingfonts.org/#firacode) | brew |
 
 #### Oh-My-Zsh plugins
 
@@ -115,9 +121,9 @@ Stow is usually used by having one directory for each software you want to manag
 
 | Tool | Description | Installed via |
 | ------ | ------------- | --------------- |
+| [carapace](https://carapace.sh) | Multi-shell completion generator | brew |
 | [jwt-ui](https://github.com/jwt-rs/jwt-ui) | JWT TUI codec | brew |
 | [lazyjira](https://github.com/textfuel/jiratui) | Jira TUI client | brew |
-| [carapace](https://carapace.sh) | Multi-shell completion generator | brew |
 | [tree-sitter](https://tree-sitter.github.io) | Parser generator and incremental parsing | brew |
 | [spotatui](https://github.com/LargeModGames/spotatui) | Spotify TUI | prebuilt installer |
 
