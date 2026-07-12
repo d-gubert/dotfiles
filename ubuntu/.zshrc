@@ -128,7 +128,7 @@ setopt NO_HIST_VERIFY
 # export LANG=en_US.UTF-8
 
 # Change XDG_CACHE_HOME due to home encryption limitations (defined in .xprofile)
-[ -f ~/.xprofile ] && source ~/.xprofile
+# [ -f ~/.xprofile ] && source ~/.xprofile
 
 # Preferred editor for local and remote sessions
 # if [[ -n $SSH_CONNECTION ]]; then

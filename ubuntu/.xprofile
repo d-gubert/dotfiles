@@ -8,7 +8,7 @@ export EDITOR=nvim
 
 # Pin the X server DPI before i3 starts, so fonts don't scale with the
 # connected monitor's EDID. See ~/.Xresources.
-[ -f ~/.Xresources ] && xrdb -merge ~/.Xresources
+# [ -f ~/.Xresources ] && xrdb -merge ~/.Xresources
 
 # Touchpad: tap-to-click and natural (reverse) scrolling.
 # Matched by name so it survives device-id reshuffles; needs the `xinput` pkg.
