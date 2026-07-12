@@ -77,7 +77,6 @@ tiling_drag modifier titlebar
 
 # kill focused window
 bindsym $mod+q kill
-bindsym $alt+q kill
 
 # start dmenu (a program launcher)
 # bindsym $mod+d exec --no-startup-id dmenu_run
@@ -162,7 +161,6 @@ workspace $ws9  output nonprimary
 workspace $ws10 output nonprimary
 
 assign [class="Rocket.Chat"] $ws7
-assign [class="Spotify"] $ws8
 
 for_window [class="Windscribe2"] floating enable
 for_window [class="gnome-calculator"] floating enable
@@ -273,7 +271,7 @@ bindsym $mod+r mode "resize"
 exec_always --no-startup-id "setxkbmap -model pc105 -layout us\(intl\),br -option 'grp:win_space_toggle'"
 
 # Adjust touchpad
-exec --no-startup-id ~/.config/i3/scripts/touchpad-fix.sh
+#exec --no-startup-id ~/.config/i3/scripts/touchpad-fix.sh
 
 # This became somewhat obsolete with the glove 80
 # Totally replaced by kanata
@@ -297,12 +295,12 @@ bar {
         output HDMI-1-0
         position top
         status_command i3status
-        font pango:DejaVu Sans Mono 9
+        font pango:DejaVu Sans Mono 10
 }
 
 bar {
         output eDP-1
         position top
         status_command i3status
-        font pango:DejaVu Sans Mono 8
+        font pango:DejaVu Sans Mono 9
 }
