@@ -244,8 +244,10 @@ alias brave-browser='brave-browser --ozone-platform=x11'
 # Home dir encryption long file restriction messes up with this too
 # export PLAYWRIGHT_BROWSERS_PATH=/work/.cache/playwright
 
-# Prompt expansion that prints the current script name, then resolves it to absolute path `:A` (following symlinks)
-export DOTFILES_PATH=$(dirname ${${(%):-%N}:A})
+# Prompt expansion that prints the current script name, then: 
+#	- resolves it to absolute path `:A` (following symlinks)
+#	- goes 1 directory above twice `:h` ("head" filter, effectively dirname)
+export DOTFILES_PATH=${${(%):-%N}:A:h:h}
 export DOTFILES_SCRIPTS="${DOTFILES_PATH}/scripts"
 
 export PATH=$DOTFILES_SCRIPTS:$PATH
