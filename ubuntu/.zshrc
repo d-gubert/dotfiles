@@ -1,9 +1,12 @@
 # Add deno completions to search path
 if [[ ":$FPATH:" != *":$HOME/.zsh/completions:"* ]]; then export FPATH="$HOME/.zsh/completions:$FPATH"; fi
 
+# Helpers
+function exists() { command -v "$1" >/dev/null 2>&1 }
+
 local enableStarship
 
-if test -n "$SSH_CONNECTION" && test -n "$TMUX" && command -v starship >/dev/null; then
+if test -n "$SSH_CONNECTION" && test -n "$TMUX" && exists starship; then
 	enableStarship='true'
 fi
 
@@ -247,31 +250,8 @@ export DOTFILES_SCRIPTS="${DOTFILES_PATH}/scripts"
 
 export PATH=$DOTFILES_SCRIPTS:$PATH
 
-# Carapace
-if command -v carapace >/dev/null; then
-	zstyle ':completion:*' format $'\e[2;37mCompleting %d\e[m'
-	source <(carapace _carapace)
-fi
-
-if command -v jiratui >/dev/null; then
-	alias jira="jiratui ui"
-fi
-
-if command -v lazygit >/dev/null; then
-	source <(lazygit completion zsh)
-	alias lg='lazygit'
-	alias lgs='lazygit stash'
-	alias lgl='lazygit log'
-fi
-
-if command -v lazyjira >/dev/null; then
-	alias lj='lazyjira'
-fi
-
 # ~/.zshrc — disable Powerlevel10k when Cursor Agent runs
-if [[ -n "$CURSOR_AGENT" ]]; then
-	# Skip theme initialization for better compatibility
-else
+if [[ -z "$CURSOR_AGENT" ]]; then
 	# To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 	[[ -f ~/.p10k.zsh ]] && source ~/.p10k.zsh
 fi
@@ -279,7 +259,7 @@ fi
 # Load pyenv automatically
 export PYENV_ROOT="$HOME/.pyenv"
 
-if command -v pyenv >/dev/null; then
+if exists pyenv; then
 	export PATH="$PYENV_ROOT/bin:$PATH"
 	source <(pyenv init -)
 fi
@@ -299,12 +279,40 @@ export PATH="$DVM_DIR/bin:$PATH"
 export GOPATH="$HOME/dev/go"
 export PATH="$PATH:/usr/local/go/bin:$GOPATH/bin"
 
+# bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
+
+# bun completions
+[ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
+
+# Carapace
+if exists carapace; then
+	zstyle ':completion:*' format $'\e[2;37mCompleting %d\e[m'
+	source <(carapace _carapace)
+fi
+
+if exists jiratui; then
+	alias jira="jiratui ui"
+fi
+
+if exists lazygit; then
+	source <(lazygit completion zsh)
+	alias lg='lazygit'
+	alias lgs='lazygit stash'
+	alias lgl='lazygit log'
+fi
+
+if exists lazyjira; then
+	alias lj='lazyjira'
+fi
+
 # playerctl daemon
-if command -v playerctld >/dev/null; then
+if exists playerctld; then
 	playerctld daemon 2> /dev/null
 fi
 
-if command -v zellij >/dev/null; then
+if exists zellij; then
 	local zcomp="$HOME/.config/zellij/compdef"
 	# zellij setup --generate-completion zsh > $zcomp
 	fpath=($zcomp $fpath)
@@ -322,7 +330,7 @@ if command -v zellij >/dev/null; then
 	function zei () { zellij edit --in-place "$*";}
 fi
 
-if command -v tmux >/dev/null; then
+if exists tmux; then
 	alias t="tmux"
 	alias tls="tmux list-sessions"
 	alias tlsk="tmux list-keys"
@@ -330,23 +338,23 @@ if command -v tmux >/dev/null; then
 	alias tlscm="tmux list-commands"
 fi
 
-if command -v glow >/dev/null; then
+if exists glow; then
 	source <(glow completion zsh)
 fi
 
 # Helm suggestions
-if command -v helm >/dev/null; then
+if exists helm; then
 	source <(helm completion zsh)
 fi
 
 # Kubectl suggestions
-if command -v kubectl >/dev/null; then
+if exists kubectl; then
 	source <(kubectl completion zsh)
 	alias k=kubectl
 fi
 
 # Github CLI tool completion
-if command -v gh >/dev/null; then
+if exists gh; then
 	source <(gh completion -s zsh)
 	alias prvw='gh pr view --web'
 	alias prv='gh pr view'
@@ -355,15 +363,8 @@ if command -v gh >/dev/null; then
 	alias repovw='gh repo view --web'
 fi
 
-# bun
-export BUN_INSTALL="$HOME/.bun"
-export PATH="$BUN_INSTALL/bin:$PATH"
-
-# bun completions
-[ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
-
 # Identification for self signed certificates via mkcert
-if command -v mkcert >/dev/null; then
+if exists mkcert; then
 	export NODE_EXTRA_CA_CERTS="$(mkcert -CAROOT)/rootCA.pem"
 fi
 
@@ -377,9 +378,10 @@ fi
 
 # The plugin will auto execute this zvm_after_init function
 function zvm_after_init() {
-	if command -v fzf >/dev/null; then
+	if exists fzf; then
 		source <(fzf --zsh)
 		bindkey '' fzf-cd-widget
+		bindkey '' fzf-file-widget
 	fi
 
 	# Git aliases that would be overwritten by the git plugin
@@ -397,20 +399,3 @@ if [[ -n $enableStarship ]]; then
 fi
 
 [ -f "$DOTFILES_SCRIPTS/watch_rocket.sh" ] && zsh -c "$DOTFILES_SCRIPTS/watch_rocket.sh start" &|
-
-###### TESTING DENO ######
-
-# function deno () {
-# 	DIR=${DENO_DIR:-$HOME/.deno}
-# 	echo "DOCKER DENO - $@ - \$DENO_DIR is $DIR"
-# 	docker run \
-# 		--interactive \
-# 		--tty \
-# 		--rm \
-# 		--volume /work:/work \
-# 		--volume $DIR:/deno-dir \
-# 		--workdir $PWD \
-# 		--entrypoint deno \
-# 		custom-deno \
-# 		"$@"
-# }
