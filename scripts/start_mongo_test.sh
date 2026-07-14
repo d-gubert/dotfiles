@@ -1,10 +1,10 @@
-#!/bin/zsh
+#!/bin/env zsh
 
-cd /home/douglas-gubert/dev/containers/local-mongo
+compose="$DOTFILES_PATH/containers/local-mongo/docker-compose.yml"
 
 if [[ $1 == "down" ]]; then
 	# -v forces removing the volume and network
-	docker compose down -v
+	docker compose -f "$compose" down -v
 fi
 
-docker compose up -d mongo
+docker compose -f "$compose" up -d mongo
