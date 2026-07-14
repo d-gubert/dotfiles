@@ -333,11 +333,7 @@ if exists zellij; then
 fi
 
 if exists tmux; then
-	alias t="tmux"
-	alias tls="tmux list-sessions"
-	alias tlsk="tmux list-keys"
-	alias tlsw="tmux list-windows"
-	alias tlscm="tmux list-commands"
+	source $DOTFILES_SCRIPTS/lib/tmux-helpers.sh
 fi
 
 if exists glow; then
