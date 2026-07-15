@@ -239,16 +239,10 @@ install-zsh: homebrew install-curl
 	@if command -v zsh >/dev/null 2>&1; then echo "[zsh] already installed"; else \
 		echo "[zsh] installing via brew..."; \
 		brew install zsh; \
-		if [ ! -f /bin/zsh ]; then \
-			sudo ln -s $$(which zsh) /usr/bin/zsh; \
-		fi; \
-		if ! cat /etc/shells | grep -q zsh; then \
-			sudo echo "/bin/zsh" >> /etc/shells; \
-		fi \
 	fi
 	@if [ ! -d "$$HOME/.oh-my-zsh" ]; then \
 		echo "[zsh:oh-my-zsh] installing..."; \
-		sh -c "$$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended; \
+		sh -c "$$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --keep-zshrc; \
 	else \
 		echo "[zsh:oh-my-zsh] already installed"; \
 	fi
