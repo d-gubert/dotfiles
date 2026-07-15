@@ -1,6 +1,6 @@
 {
   "name": "tmux-window-status",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "Prefix the current tmux window name with a glyph while Claude Code waits for your input, and clear it once you reply.",
   "author": { "name": "Douglas Gubert" }
 }

@@ -9,16 +9,26 @@ set -eu
 
 # Not inside tmux (background/remote/plain terminal): nothing to decorate.
 [ -n "${TMUX:-}" ] || exit 0
-[ -n "${TMUX_PANE:-}" ] || exit 0
 
-case "${1:-clear}" in
-  attention) glyph="🔔 " ;;  # Notification: Claude needs permission / attention
-  busy-done) glyph="⬤  "  ;;  # Stop: Claude finished its turn, your move
-  clear | *) glyph=""    ;;
+action="$1"
+
+if [ "${action}" = "pane-focus-in" ]; then
+	TMUX_PANE=$2
+	# read -r currPaneId < <(tj -r '.pane.id')
+fi
+
+glyph=""
+
+case "${action:-clear}" in
+	attention) glyph="🔔 " ;;      # Notification: Claude needs permission / attention
+	busy-done) glyph="⬤  "  ;;     # Stop: Claude finished its turn, your move
+	pane-focus-in) TMUX_PANE=$2 ;; # If we've been called from the hook, second arg is the pane id
 esac
 
-# Target the window that owns this pane; leave other windows untouched.
+#Target the window that owns this pane; leave other windows untouched.
 tmux set-option -w -t "$TMUX_PANE" @status_glyph "$glyph"
-tmux refresh-client -S 2>/dev/null || true
+tmux refresh-client -S 2>/dev/null
 
-[ -n "$glyph" ] && tmux set-hook -t "$TMUX_PANE" pane-focus-in "run-shell '${0:A} clear; tmux set-hook -u -t $TMUX_PANE pane-focus-in'"
+if [ -n "$glyph" ]; then
+	printf '\a'
+fi
