@@ -336,6 +336,11 @@ if exists tmux; then
 	source $DOTFILES_SCRIPTS/lib/tmux-helpers.sh
 fi
 
+if exists vi-mongo; then
+	alias mvi='vi-mongo'
+fi
+
+#Glow suggestions
 if exists glow; then
 	source <(glow completion zsh)
 fi
