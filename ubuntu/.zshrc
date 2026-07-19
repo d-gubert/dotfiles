@@ -332,6 +332,18 @@ if exists zellij; then
 	function zei () { zellij edit --in-place "$*";}
 fi
 
+if exists docker; then
+	alias dps='docker ps'
+	alias dpsa='docker ps -a'
+	alias drrm='docker run --rm -it'
+	alias dc='docker compose'
+	alias dclf='docker compose logs --follow --tail 5'
+	alias dcls='docker compose ls'
+	alias dcup='docker compose up -d'
+	alias dcstop='docker compose stop'
+	alias dcdown='docker compose down'
+fi
+
 if exists tmux; then
 	source $DOTFILES_SCRIPTS/lib/tmux-helpers.sh
 fi
