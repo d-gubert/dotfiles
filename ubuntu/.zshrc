@@ -1,24 +1,15 @@
 # Add deno completions to search path
 if [[ ":$FPATH:" != *":$HOME/.zsh/completions:"* ]]; then export FPATH="$HOME/.zsh/completions:$FPATH"; fi
 
-# Helpers
-function exists() { command -v "$1" >/dev/null 2>&1 }
-
-local enableStarship
-
-if test -n "$SSH_CONNECTION" && test -n "$TMUX" && exists starship; then
-	enableStarship='true'
-fi
-
 # Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
 # Initialization code that may require console input (password prompts, [y/n]
 # confirmations, etc.) must go above this block; everything else may go below.
-if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]] && [[ -z $enableStarship ]]; then
+if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
 	source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
 fi
 
-# If you come from bash you might have to change your $PATH.
-export PATH=/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:$HOME/bin:$HOME/.local/bin:$PATH
+# Home binaries
+export PATH=$HOME/bin:$HOME/.local/bin:$PATH
 
 # cargo binaries (rust)
 export PATH=$HOME/.cargo/bin:$PATH
@@ -30,9 +21,7 @@ export ZSH="$HOME/.oh-my-zsh"
 # load a random theme each time oh-my-zsh is loaded, in which case,
 # to know which specific one was loaded, run: echo $RANDOM_THEME
 # See https://github.com/ohmyzsh/ohmyzsh/wiki/Themes
-if [[ -z $enableStarship ]]; then
-	ZSH_THEME="powerlevel10k/powerlevel10k"
-fi
+ZSH_THEME="powerlevel10k/powerlevel10k"
 
 # Set list of themes to pick from when loading at random
 # Setting this variable when ZSH_THEME=random will cause zsh to load
@@ -145,6 +134,18 @@ export EDITOR='nvim'
 export SUDO_EDITOR="$(which $EDITOR)"
 export ZVM_VI_EDITOR=$EDITOR
 
+if [[ "$(uname)" == "Darwin" ]]; then
+	BREW_PREFIX="/opt/homebrew"
+else
+	BREW_PREFIX="/home/linuxbrew/.linuxbrew"
+fi
+
+BREW_BIN="$BREW_PREFIX/bin/brew"
+
+if [[ -x "$BREW_BIN" ]]; then
+	eval "$($BREW_BIN shellenv)"
+fi
+
 # Compilation flags
 # export ARCHFLAGS="-arch x86_64"
 
@@ -229,6 +230,8 @@ function ccd() {
 	docker run --rm -e NODE_ENV=development -p "${port}:3456" -v "$profile:/data/.claude:ro" claude-devtools
 }
 
+function exists() { command -v "$1" >/dev/null 2>&1 }
+
 # Set personal aliases, overriding those provided by oh-my-zsh libs,
 # plugins, and themes. Aliases can be placed here, though oh-my-zsh
 # users are encouraged to define aliases within the ZSH_CUSTOM folder.
@@ -239,7 +242,6 @@ function ccd() {
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 
 alias pclaude='CLAUDE_CONFIG_DIR=~/.claude-personal claude'
-alias brave-browser='brave-browser --ozone-platform=x11'
 
 # Home dir encryption long file restriction messes up with this too
 # export PLAYWRIGHT_BROWSERS_PATH=/work/.cache/playwright

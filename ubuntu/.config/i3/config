@@ -45,6 +45,7 @@ exec --no-startup-id xss-lock --transfer-sleep-lock -- i3lock --nofork
 # NetworkManager is the most popular way to manage wireless networks on Linux,
 # and nm-applet is a desktop environment-independent system tray GUI for it.
 exec --no-startup-id nm-applet
+exec --no-startup-id blueman-applet
 exec --no-startup-id ~/.config/i3/scripts/dmenu-cliphist.sh start
 
 # Configure display - Do I need this now that I have the mode selector below?
@@ -160,10 +161,11 @@ workspace $ws8  output nonprimary
 workspace $ws9  output nonprimary
 workspace $ws10 output nonprimary
 
-assign [class="Rocket.Chat"] $ws7
+assign [class="rocket-chat"] $ws7
 
 for_window [class="Windscribe2"] floating enable
 for_window [class="gnome-calculator"] floating enable
+for_window [title="Quick Capture" class="ZenNotes"] floating enable, border pixel 3, resize 160px 90px
 
 default_border none
 
@@ -171,10 +173,11 @@ default_border none
 # bindsym $super+1 exec brave-browser
 # bindsym $super+2 exec spotify
 # bindsym $super+w exec /opt/Rocket.Chat/rocketchat-desktop %U
-bindsym $mod+c exec /opt/Rocket.Chat/rocketchat-desktop %U
 # bindsym $mod+s exec spotify
-bindsym $mod+b exec brave-browser --ozone-platform=x11
-bindsym $mod+Return exec alacritty
+bindsym $mod+c exec /opt/Rocket.Chat/rocketchat-desktop %U
+bindsym $mod+b exec brave-browser
+bindsym $mod+Return exec wezterm
+bindsym $mod+Shift+Return exec wezterm
 bindsym $mod+v exec --no-startup-id ~/.config/i3/scripts/dmenu-cliphist.sh sel
 
 # switch to workspace
@@ -269,6 +272,9 @@ bindsym $mod+r mode "resize"
 
 # Keyboard languages - Win + Space to toggle (resets xmodmap)
 exec_always --no-startup-id "setxkbmap -model pc105 -layout us\(intl\),br -option 'grp:win_space_toggle'"
+
+# Make sure $XDG_SESSION_TYPE is correct for this session
+exec --no-startup-id dbus-update-activation-environment --systemd XDG_SESSION_TYPE=x11
 
 # Adjust touchpad
 #exec --no-startup-id ~/.config/i3/scripts/touchpad-fix.sh

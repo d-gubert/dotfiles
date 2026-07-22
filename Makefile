@@ -43,7 +43,6 @@ all: essential development utilities
 # gh         — brew
 # glow       — brew
 # i3         — apt (X11 session manager, not in brew for Linux)
-#              also pulls xserver-xorg-input-libinput (Xorg keyboard/touchpad driver)
 # jq         — brew
 # kanata     — brew
 # neovim     — brew
@@ -54,31 +53,37 @@ all: essential development utilities
 # zellij     — brew
 # zsh        — brew
 
-.PHONY: essential
-essential: homebrew \
+.PHONY: base-essential
+base-essential: homebrew \
 	stow \
-	logind-config \
 	install-brave-browser \
-	install-alacritty \
 	install-enpass \
-	install-i3 \
 	install-zsh \
-	install-arandr \
 	install-bat \
 	install-btop \
 	install-docker \
 	install-ffmpeg \
 	install-fzf \
-	install-gh \
 	install-glow \
 	install-jq \
+	install-fd \
 	install-kanata \
 	install-neovim \
-	install-rofi \
 	install-ripgrep \
 	install-tmux \
-	install-xclip \
 	install-zellij
+
+.PHONY: essential
+ifeq ($(OS_NAME),Darwin)
+essential: base-essential
+else
+essential: base-essential \
+	logind-config \
+	install-i3 \
+	install-rofi \
+	install-xclip
+
+endif
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Development
@@ -96,6 +101,7 @@ development: homebrew \
 	stow \
 	install-ast-grep \
 	install-dvm \
+	install-gh \
 	install-lazygit \
 	install-meteor \
 	install-node \
@@ -122,8 +128,32 @@ utilities: homebrew \
 	install-tree-sitter
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Stow (symlink manager)
+# System pre-requisites
 # ─────────────────────────────────────────────────────────────────────────────
+
+# Prerequisite for the `curl | sh` script installers (homebrew, docker, volta, dvm, meteor)
+.PHONY: install-curl
+install-curl:
+	@if command -v curl >/dev/null 2>&1; then echo "[curl] already installed"; else \
+		echo "[curl] installing via apt..."; \
+		sudo apt-get install -y curl; \
+	fi
+
+.PHONY: homebrew
+homebrew: install-curl
+	@if command -v brew >/dev/null 2>&1; then echo "[homebrew] already installed"; else \
+		echo "[homebrew] installing..."; \
+		/bin/bash -c "$$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"; \
+		eval "$$($(BREW) shellenv)"; \
+	fi
+
+.PHONY: install-stow
+install-stow: homebrew
+	@if command -v stow >/dev/null 2>&1; then echo "[stow] already installed"; else \
+		echo "[stow] installing via brew..."; \
+		$(BREW_INSTALL) stow; \
+	fi
+
 # We create the symlinks for configuration BEFORE installing the software, otherwise
 # stow would fail due to content already existing
 
@@ -133,9 +163,12 @@ stow: install-stow
 	@echo
 	@stow -t ~ ubuntu
 
+ifeq ($(OS_NAME), Linux)
+
 # ─────────────────────────────────────────────────────────────────────────────
-# System config (root-owned /etc files — not stow-managed)
+# Linux exclusive targets
 # ─────────────────────────────────────────────────────────────────────────────
+
 # logind — make the laptop do nothing when the lid closes on AC power
 #          (battery still suspends). Lives under system/ mirroring /.
 
@@ -149,17 +182,22 @@ logind-config:
 		sudo systemctl kill -s HUP systemd-logind; \
 	fi
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Homebrew (prerequisite for most packages)
-# ─────────────────────────────────────────────────────────────────────────────
+# i3 installation and dependencies
+#
+# maim                        - screenshot tool
+# pulseaudio                  - audio control tool
+# playerctl                   - media player control tool
+# xserver-xorg-input-libinput - input (keyboard, mouse, etc) for x11
+# xinput                      - input (keyboard, mouse, etc) for x11
+# network-manager-applet      - i3 tray icon nm-applet
+# blueman                     - bluetooth manager
+# arandr                      - xrandr GUI display management
+.PHONY: install-i3
+install-i3:
+	@echo "[i3] installing via apt with dependencies..."
+	@sudo apt-get install -y i3 maim pulseaudio playerctl xserver-xorg-input-libinput xinput network-manager-applet blueman arandr rofi xclip
 
-.PHONY: homebrew
-homebrew: install-curl
-	@if command -v brew >/dev/null 2>&1; then echo "[homebrew] already installed"; else \
-		echo "[homebrew] installing..."; \
-		/bin/bash -c "$$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"; \
-		eval "$$($(BREW) shellenv)"; \
-	fi
+endif
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Fonts (nerd fonts, ligatures)
@@ -221,8 +259,16 @@ install-meteor: install-curl
 		curl -fsSL https://install.meteor.com | sh; \
 	fi
 
-# Not published on the Linux brew tap
 .PHONY: install-spotatui
+ifeq ($(OS_NAME),Darwin)
+install-spotatui: homebrew
+	@if command -v spotatui >/dev/null 2>&1; then echo "[spotatui] already installed"; else \
+		echo "[spotatui] installing via homebrew..."; \
+		$(BREW) tap LargeModGames/spotatui
+		$(BREW_INSTALL) spotatui; \
+	fi
+else
+# Not published on the Linux brew tap
 install-spotatui: install-curl install-jq
 	@if command -v spotatui >/dev/null 2>&1; then echo "[spotatui] already installed"; else \
 		echo "[spotatui] resolving latest release..."; \
@@ -242,6 +288,7 @@ install-spotatui: install-curl install-jq
 		sudo apt-get install -y "$$deb"; \
 		rm -rf "$$tmp"; \
 	fi
+endif
 
 .PHONY: install-zsh
 install-zsh: homebrew install-curl
@@ -291,13 +338,26 @@ install-zsh: homebrew install-curl
 		echo "[zsh:zsh-autopair] already installed"; \
 	fi
 
-.PHONY: install-tmux
-install-tmux: homebrew
+.PHONY: pre-tmux
+ifeq ($(OS_NAME),Darwin)
+# Install via homebrew in MacOS
+pre-tmux: homebrew
 	@if command -v tmux >/dev/null 2>&1; then echo "[tmux] already installed"; else \
 		echo "[tmux] installing via brew..."; \
 		$(BREW_INSTALL) tmux; \
 		sudo ln -s "$$(which tmux)" /usr/bin/tmux; \
 	fi
+else
+# Install via apt-get on Linux, homebrew version has weird bugs
+pre-tmux:
+	@if command -v tmux >/dev/null 2>&1; then echo "[tmux] already installed"; else \
+		echo "[tmux] installing via apt..."; \
+		sudo apt-get install tmux; \
+	fi
+endif
+
+.PHONY: install-tmux
+install-tmux: pre-tmux
 	@if [ -d "$$HOME/.tmux/plugins/tpm" ]; then echo "[tmux:tpm] already installed"; else \
 		echo "[tmux:tpm] installing with git..."; \
 		mkdir -p "$$HOME/.tmux/plugins"; \
@@ -313,18 +373,17 @@ install-tmux: homebrew
 	fi
 
 # ─────────────────────────────────────────────────────────────────────────────
-# APT managed packages
+# Package manager installation
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Prerequisite for the `curl | sh` script installers (homebrew, docker, volta, dvm, meteor)
-.PHONY: install-curl
-install-curl:
-	@if command -v curl >/dev/null 2>&1; then echo "[curl] already installed"; else \
-		echo "[curl] installing via apt..."; \
-		sudo apt-get install -y curl; \
-	fi
-
 .PHONY: install-enpass
+ifeq ($(OS_NAME),Darwin)
+install-enpass: homebrew
+	@if $(BREW) info enpass | grep installed | grep -i -v not; then echo "[enpass] already installed"; else \
+		echo "[enpass] installing via brew..."; \
+		$(BREW_INSTALL) --cask enpass; \
+	fi
+else
 install-enpass:
 	@if dpkg -s enpass >/dev/null 2>&1; then echo "[enpass] already installed"; else \
 		echo "[enpass] installing via apt..."; \
@@ -333,43 +392,39 @@ install-enpass:
 		sudo apt-get -y update; \
 		sudo apt-get -y install enpass; \
 	fi
-
-.PHONY: install-xclip
-install-xclip:
-	@if command -v xclip >/dev/null 2>&1; then echo "[xclip] already installed"; else \
-		echo "[xclip] installing via apt..."; \
-		sudo apt-get install -y xclip; \
-	fi
-
-.PHONY: install-arandr
-install-arandr:
-	@if command -v arandr >/dev/null 2>&1; then echo "[arandr] already installed"; else \
-		echo "[arandr] installing via apt..."; \
-		sudo apt-get install -y arandr; \
-	fi
+endif
 
 .PHONY: install-alacritty
+ifeq ($(OS_NAME),Darwin)
+install-alacritty: homebrew
+	@if command -v alacritty >/dev/null 2>&1; then echo "[alacritty] already installed"; else \
+		echo "[alacritty] installing via brew..."; \
+		$(BREW_INSTALL) --cask alacritty; \
+	fi
+else
 install-alacritty:
 	@if command -v alacritty >/dev/null 2>&1; then echo "[alacritty] already installed"; else \
 		echo "[alacritty] installing via apt..."; \
 		sudo apt-get install -y alacritty; \
 	fi
+endif
 
-.PHONY: install-i3
-install-i3:
-	@echo "[i3] installing via apt with dependencies..."
-	@sudo apt-get install -y i3 maim pulseaudio playerctl xserver-xorg-input-libinput xinput
-
-.PHONY: install-rofi
-install-rofi:
-	@if command -v rofi >/dev/null 2>&1; then echo "[rofi] already installed"; else \
-		echo "[rofi] installing via apt..."; \
-		sudo apt-get install -y rofi; \
+.PHONY: install-wezterm
+ifeq ($(OS_NAME),Darwin)
+install-wezterm: homebrew
+	@if command -v wezterm >/dev/null 2>&1; then echo "[alacritty] already installed"; else \
+		echo "[wezterm] installing via brew..."; \
+		$(BREW_INSTALL) --cask wezterm; \
 	fi
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Homebrew managed packages
-# ─────────────────────────────────────────────────────────────────────────────
+else
+install-wezterm:
+	@if command -v wezterm >/dev/null 2>&1; then echo "[alacritty] already installed"; else \
+		echo "[wezterm] installing via apt..."; \
+		curl -fsSL https://apt.fury.io/wez/gpg.key | sudo gpg --yes --dearmor -o /usr/share/keyrings/wezterm-fury.gpg; \
+		echo 'deb [signed-by=/usr/share/keyrings/wezterm-fury.gpg] https://apt.fury.io/wez/ * *' | sudo tee /etc/apt/sources.list.d/wezterm.list; \
+		sudo chmod 644 /usr/share/keyrings/wezterm-fury.gpg; \
+	fi
+endif
 
 .PHONY: install-bat
 install-bat: homebrew
@@ -390,6 +445,13 @@ install-jq: homebrew
 	@if command -v jq >/dev/null 2>&1; then echo "[jq] already installed"; else \
 		echo "[jq] installing via brew..."; \
 		$(BREW_INSTALL) jq; \
+	fi
+
+.PHONY: install-fd
+install-fd: homebrew
+	@if command -v fd >/dev/null 2>&1; then echo "[fd] already installed"; else \
+		echo "[fd] installing via brew..."; \
+		$(BREW_INSTALL) fd; \
 	fi
 
 .PHONY: install-jwt-ui
@@ -439,13 +501,6 @@ install-neovim: homebrew install-node
 	@if command -v nvim >/dev/null 2>&1; then echo "[neovim] already installed"; else \
 		echo "[neovim] installing via brew..."; \
 		$(BREW_INSTALL) neovim; \
-	fi
-
-.PHONY: install-stow
-install-stow: homebrew
-	@if command -v stow >/dev/null 2>&1; then echo "[stow] already installed"; else \
-		echo "[stow] installing via brew..."; \
-		$(BREW_INSTALL) install stow; \
 	fi
 
 .PHONY: install-gh
