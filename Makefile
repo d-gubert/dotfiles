@@ -134,14 +134,14 @@ utilities: homebrew \
 # Prerequisite for the `curl | sh` script installers (homebrew, docker, volta, dvm, meteor)
 .PHONY: install-curl
 install-curl:
-	@if command -v curl >/dev/null 2>&1; then echo "[curl] already installed"; else \
+	@if command -v curl >/q; then echo "[curl] already installed"; else \
 		echo "[curl] installing via apt..."; \
 		sudo apt-get install -y curl; \
 	fi
 
 .PHONY: homebrew
 homebrew: install-curl
-	@if command -v brew >/dev/null 2>&1; then echo "[homebrew] already installed"; else \
+	@if command -v brew >/q; then echo "[homebrew] already installed"; else \
 		echo "[homebrew] installing..."; \
 		/bin/bash -c "$$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"; \
 		eval "$$($(BREW) shellenv)"; \
@@ -149,7 +149,7 @@ homebrew: install-curl
 
 .PHONY: install-stow
 install-stow: homebrew
-	@if command -v stow >/dev/null 2>&1; then echo "[stow] already installed"; else \
+	@if command -v stow >/q; then echo "[stow] already installed"; else \
 		echo "[stow] installing via brew..."; \
 		$(BREW_INSTALL) stow; \
 	fi
@@ -205,7 +205,7 @@ endif
 
 .PHONY: fonts
 fonts: homebrew
-	@if $(BREW) info font-fira-code-nerd-font 2>&1 | grep Installed >/dev/null; then echo "[fira-code] already installed"; else \
+	@if $(BREW) info font-fira-code-nerd-font 2>&1 | grep -q Installed; then echo "[fira-code] already installed"; else \
 		echo "[fira-code] installing via brew..."; \
 		$(BREW_INSTALL) font-fira-code-nerd-font; \
 		echo "[fira-code] installed"; \
@@ -217,7 +217,7 @@ fonts: homebrew
 
 .PHONY: install-docker
 install-docker: install-curl
-	@if command -v docker >/dev/null 2>&1; then echo "[docker] already installed"; else \
+	@if command -v docker >/q; then echo "[docker] already installed"; else \
 		echo "[docker] installing via official script (docker-ce)..."; \
 		curl -fsSL https://get.docker.com | sudo sh; \
 		sudo usermod -aG docker $$USER; \
@@ -226,35 +226,35 @@ install-docker: install-curl
 
 .PHONY: install-brave-browser
 install-brave-browser: install-curl
-	@if command -v brave-browser >/dev/null 2>&1; then echo "[brave-browser] already installed"; else \
+	@if command -v brave-browser >/q; then echo "[brave-browser] already installed"; else \
 		echo "[brave-browser] installing via official script..."; \
 		curl -fsS https://dl.brave.com/install.sh | sh; \
 	fi
 
 .PHONY: install-volta
 install-volta: install-curl
-	@if command -v volta >/dev/null 2>&1; then echo "[volta] already installed"; else \
+	@if command -v volta >/q; then echo "[volta] already installed"; else \
 		echo "[volta] installing via official script..."; \
 		curl -fsSL https://get.volta.sh | bash; \
 	fi
 
 .PHONY: install-node
 install-node: install-volta
-	@if command -v node >/dev/null 2>&1; then echo "[node] already installed"; else \
+	@if command -v node >/q; then echo "[node] already installed"; else \
 		echo "[node] installing with volta..."; \
 		volta install node; \
 	fi
 
 .PHONY: install-dvm
 install-dvm: install-curl
-	@if command -v dvm >/dev/null 2>&1; then echo "[dvm] already installed"; else \
+	@if command -v dvm >/q; then echo "[dvm] already installed"; else \
 		echo "[dvm] installing via official script..."; \
 		curl -fsSL https://dvm.deno.dev | sh; \
 	fi
 
 .PHONY: install-meteor
 install-meteor: install-curl
-	@if command -v meteor >/dev/null 2>&1; then echo "[meteor] already installed"; else \
+	@if command -v meteor >/q; then echo "[meteor] already installed"; else \
 		echo "[meteor] installing via official script..."; \
 		curl -fsSL https://install.meteor.com | sh; \
 	fi
@@ -262,7 +262,7 @@ install-meteor: install-curl
 .PHONY: install-spotatui
 ifeq ($(OS_NAME),Darwin)
 install-spotatui: homebrew
-	@if command -v spotatui >/dev/null 2>&1; then echo "[spotatui] already installed"; else \
+	@if command -v spotatui >/q; then echo "[spotatui] already installed"; else \
 		echo "[spotatui] installing via homebrew..."; \
 		$(BREW) tap LargeModGames/spotatui
 		$(BREW_INSTALL) spotatui; \
@@ -270,7 +270,7 @@ install-spotatui: homebrew
 else
 # Not published on the Linux brew tap
 install-spotatui: install-curl install-jq
-	@if command -v spotatui >/dev/null 2>&1; then echo "[spotatui] already installed"; else \
+	@if command -v spotatui >/q; then echo "[spotatui] already installed"; else \
 		echo "[spotatui] resolving latest release..."; \
 		deb_url=$$(curl -fsSL https://api.github.com/repos/LargeModGames/spotatui/releases/latest \
 			| jq -r '.assets[] | select(.name | endswith("_amd64.deb")) | .browser_download_url'); \
@@ -292,7 +292,7 @@ endif
 
 .PHONY: install-zsh
 install-zsh: homebrew install-curl
-	@if command -v zsh >/dev/null 2>&1; then echo "[zsh] already installed"; else \
+	@if command -v zsh >/q; then echo "[zsh] already installed"; else \
 		echo "[zsh] installing via brew..."; \
 		$(BREW_INSTALL) zsh; \
 	fi
@@ -342,7 +342,7 @@ install-zsh: homebrew install-curl
 ifeq ($(OS_NAME),Darwin)
 # Install via homebrew in MacOS
 pre-tmux: homebrew
-	@if command -v tmux >/dev/null 2>&1; then echo "[tmux] already installed"; else \
+	@if command -v tmux >/q; then echo "[tmux] already installed"; else \
 		echo "[tmux] installing via brew..."; \
 		$(BREW_INSTALL) tmux; \
 		sudo ln -s "$$(which tmux)" /usr/bin/tmux; \
@@ -350,7 +350,7 @@ pre-tmux: homebrew
 else
 # Install via apt-get on Linux, homebrew version has weird bugs
 pre-tmux:
-	@if command -v tmux >/dev/null 2>&1; then echo "[tmux] already installed"; else \
+	@if command -v tmux >/q; then echo "[tmux] already installed"; else \
 		echo "[tmux] installing via apt..."; \
 		sudo apt-get install tmux; \
 	fi
@@ -379,13 +379,13 @@ install-tmux: pre-tmux
 .PHONY: install-enpass
 ifeq ($(OS_NAME),Darwin)
 install-enpass: homebrew
-	@if $(BREW) info enpass | grep installed | grep -i -v not; then echo "[enpass] already installed"; else \
+	@if $(BREW) info enpass | grep -q Installed; then echo "[enpass] already installed"; else \
 		echo "[enpass] installing via brew..."; \
 		$(BREW_INSTALL) --cask enpass; \
 	fi
 else
 install-enpass:
-	@if dpkg -s enpass >/dev/null 2>&1; then echo "[enpass] already installed"; else \
+	@if apt list enpass 2>/dev/null | grep -q installed; then echo "[enpass] already installed"; else \
 		echo "[enpass] installing via apt..."; \
 		echo "deb https://apt.enpass.io/  stable main" | sudo tee /etc/apt/sources.list.d/enpass.list; \
 		wget -O - https://apt.enpass.io/keys/enpass-linux.key | sudo tee /etc/apt/trusted.gpg.d/enpass.asc; \
@@ -397,13 +397,13 @@ endif
 .PHONY: install-alacritty
 ifeq ($(OS_NAME),Darwin)
 install-alacritty: homebrew
-	@if command -v alacritty >/dev/null 2>&1; then echo "[alacritty] already installed"; else \
+	@if command -v alacritty >/q; then echo "[alacritty] already installed"; else \
 		echo "[alacritty] installing via brew..."; \
 		$(BREW_INSTALL) --cask alacritty; \
 	fi
 else
 install-alacritty:
-	@if command -v alacritty >/dev/null 2>&1; then echo "[alacritty] already installed"; else \
+	@if command -v alacritty >/q; then echo "[alacritty] already installed"; else \
 		echo "[alacritty] installing via apt..."; \
 		sudo apt-get install -y alacritty; \
 	fi
@@ -412,13 +412,13 @@ endif
 .PHONY: install-wezterm
 ifeq ($(OS_NAME),Darwin)
 install-wezterm: homebrew
-	@if command -v wezterm >/dev/null 2>&1; then echo "[alacritty] already installed"; else \
+	@if command -v wezterm >/q; then echo "[alacritty] already installed"; else \
 		echo "[wezterm] installing via brew..."; \
 		$(BREW_INSTALL) --cask wezterm; \
 	fi
 else
 install-wezterm:
-	@if command -v wezterm >/dev/null 2>&1; then echo "[alacritty] already installed"; else \
+	@if command -v wezterm >/q; then echo "[alacritty] already installed"; else \
 		echo "[wezterm] installing via apt..."; \
 		curl -fsSL https://apt.fury.io/wez/gpg.key | sudo gpg --yes --dearmor -o /usr/share/keyrings/wezterm-fury.gpg; \
 		echo 'deb [signed-by=/usr/share/keyrings/wezterm-fury.gpg] https://apt.fury.io/wez/ * *' | sudo tee /etc/apt/sources.list.d/wezterm.list; \
@@ -428,98 +428,98 @@ endif
 
 .PHONY: install-bat
 install-bat: homebrew
-	@if command -v bat >/dev/null 2>&1; then echo "[bat] already installed"; else \
+	@if command -v bat >/q; then echo "[bat] already installed"; else \
 		echo "[bat] installing via brew..."; \
 		$(BREW_INSTALL) bat; \
 	fi
 
 .PHONY: install-btop
 install-btop: homebrew
-	@if command -v btop >/dev/null 2>&1; then echo "[btop] already installed"; else \
+	@if command -v btop >/q; then echo "[btop] already installed"; else \
 		echo "[btop] installing via brew..."; \
 		$(BREW_INSTALL) btop; \
 	fi
 
 .PHONY: install-jq
 install-jq: homebrew
-	@if command -v jq >/dev/null 2>&1; then echo "[jq] already installed"; else \
+	@if command -v jq >/q; then echo "[jq] already installed"; else \
 		echo "[jq] installing via brew..."; \
 		$(BREW_INSTALL) jq; \
 	fi
 
 .PHONY: install-fd
 install-fd: homebrew
-	@if command -v fd >/dev/null 2>&1; then echo "[fd] already installed"; else \
+	@if command -v fd >/q; then echo "[fd] already installed"; else \
 		echo "[fd] installing via brew..."; \
 		$(BREW_INSTALL) fd; \
 	fi
 
 .PHONY: install-jwt-ui
 install-jwt-ui: homebrew
-	@if command -v jwt-ui >/dev/null 2>&1; then echo "[jwt-ui] already installed"; else \
+	@if command -v jwt-ui >/q; then echo "[jwt-ui] already installed"; else \
 		echo "[jwt-ui] installing via brew..."; \
 		$(BREW_INSTALL) jwt-rs/jwt-ui/jwt-ui; \
 	fi
 
 .PHONY: install-zellij
 install-zellij: homebrew
-	@if command -v zellij >/dev/null 2>&1; then echo "[zellij] already installed"; else \
+	@if command -v zellij >/q; then echo "[zellij] already installed"; else \
 		echo "[zellij] installing via brew..."; \
 		$(BREW_INSTALL) zellij; \
 	fi
 
 .PHONY: install-kanata
 install-kanata: homebrew
-	@if command -v kanata >/dev/null 2>&1; then echo "[kanata] already installed"; else \
+	@if command -v kanata >/q; then echo "[kanata] already installed"; else \
 		echo "[kanata] installing via brew..."; \
 		$(BREW_INSTALL) kanata; \
 	fi
 
 .PHONY: install-ffmpeg
 install-ffmpeg: homebrew
-	@if command -v ffmpeg >/dev/null 2>&1; then echo "[ffmpeg] already installed"; else \
+	@if command -v ffmpeg >/q; then echo "[ffmpeg] already installed"; else \
 		echo "[ffmpeg] installing via apt..."; \
 		$(BREW_INSTALL) ffmpeg; \
 	fi
 
 .PHONY: install-fzf
 install-fzf: homebrew
-	@if command -v fzf >/dev/null 2>&1; then echo "[fzf] already installed"; else \
+	@if command -v fzf >/q; then echo "[fzf] already installed"; else \
 		echo "[fzf] installing via brew..."; \
 		$(BREW_INSTALL) fzf; \
 	fi
 
 .PHONY: install-ripgrep
 install-ripgrep: homebrew
-	@if command -v rg >/dev/null 2>&1; then echo "[ripgrep] already installed"; else \
+	@if command -v rg >/q; then echo "[ripgrep] already installed"; else \
 		echo "[ripgrep] installing via brew..."; \
 		$(BREW_INSTALL) ripgrep; \
 	fi
 
 .PHONY: install-neovim
 install-neovim: homebrew install-node
-	@if command -v nvim >/dev/null 2>&1; then echo "[neovim] already installed"; else \
+	@if command -v nvim >/q; then echo "[neovim] already installed"; else \
 		echo "[neovim] installing via brew..."; \
 		$(BREW_INSTALL) neovim; \
 	fi
 
 .PHONY: install-gh
 install-gh: homebrew
-	@if command -v gh >/dev/null 2>&1; then echo "[gh] already installed"; else \
+	@if command -v gh >/q; then echo "[gh] already installed"; else \
 		echo "[gh] installing via brew..."; \
 		$(BREW_INSTALL) gh; \
 	fi
 
 .PHONY: install-glow
 install-glow: homebrew
-	@if command -v glow >/dev/null 2>&1; then echo "[glow] already installed"; else \
+	@if command -v glow >/q; then echo "[glow] already installed"; else \
 		echo "[glow] installing via brew..."; \
 		$(BREW_INSTALL) glow; \
 	fi
 
 .PHONY: install-vi-mongo
 install-vi-mongo: homebrew
-	@if command -v vi-mongo >/dev/null 2>&1; then echo "[vi-mongo] already installed"; else \
+	@if command -v vi-mongo >/q; then echo "[vi-mongo] already installed"; else \
 		echo "[vi-mongo] installing via brew..."; \
 		$(BREW) tap kopecmaciej/vi-mongo; \
 		$(BREW) trust kopecmaciej/vi-mongo; \
@@ -528,58 +528,56 @@ install-vi-mongo: homebrew
 
 .PHONY: install-lazygit
 install-lazygit: homebrew
-	@if command -v lazygit >/dev/null 2>&1; then echo "[lazygit] already installed"; else \
+	@if command -v lazygit >/q; then echo "[lazygit] already installed"; else \
 		echo "[lazygit] installing via brew..."; \
 		$(BREW_INSTALL) lazygit; \
 	fi
 
 .PHONY: install-ast-grep
 install-ast-grep:
-	@if command -v ast-grep >/dev/null 2>&1 || command -v sg >/dev/null 2>&1; then echo "[ast-grep] already installed"; else \
+	@if command -v ast-grep >/q || command -v sg >/q; then echo "[ast-grep] already installed"; else \
 		echo "[ast-grep] installing via brew..."; \
 		$(BREW_INSTALL) ast-grep; \
 	fi
 
 .PHONY: install-lazyjira
 install-lazyjira: homebrew
-	@if command -v lazyjira >/dev/null 2>&1; then echo "[lazyjira] already installed"; else \
+	@if command -v lazyjira >/q; then echo "[lazyjira] already installed"; else \
 		echo "[lazyjira] installing via brew..."; \
 		$(BREW_INSTALL) textfuel/tap/lazyjira; \
 	fi
 
 .PHONY: install-rgx
 install-rgx: homebrew
-	@if command -v rgx >/dev/null 2>&1; then echo "[rgx] already installed"; else \
+	@if command -v rgx >/q; then echo "[rgx] already installed"; else \
 		echo "[rgx] installing via brew..."; \
 		$(BREW_INSTALL) brevity1swos/tap/rgx; \
 	fi
 
 .PHONY: install-sttr
 install-sttr: homebrew
-	@if command -v sttr >/dev/null 2>&1; then echo "[sttr] already installed"; else \
+	@if command -v sttr >/q; then echo "[sttr] already installed"; else \
 		echo "[sttr] installing via brew..."; \
 		$(BREW_INSTALL) sttr; \
 	fi
 
 .PHONY: install-tealdeer
 install-tealdeer: homebrew
-	@if command -v tldr >/dev/null 2>&1; then echo "[tealdeer] already installed"; else \
+	@if command -v tldr >/q; then echo "[tealdeer] already installed"; else \
 		echo "[tealdeer] installing via brew..."; \
 		$(BREW_INSTALL) tealdeer; \
 	fi
 
 .PHONY: install-carapace
 install-carapace: homebrew
-	@if command -v carapace >/dev/null 2>&1; then echo "[carapace] already installed"; else \
+	@if command -v carapace >/q; then echo "[carapace] already installed"; else \
 		echo "[carapace] installing via brew..."; \
 		$(BREW_INSTALL) carapace; \
 	fi
 
 .PHONY: install-tree-sitter
 install-tree-sitter:
-	@if $(BREW) info tree-sitter 2>&1 | grep -i 'not installed'; then  \
+	@if $(BREW) info tree-sitter 2>&1 | grep -q Installed; then echo "[tree-sitter] already installed"; else \
 		echo "[tree-sitter] installing via brew..."; \
 		$(BREW_INSTALL) tree-sitter; \
-	else \
-		echo "[tree-sitter] already installed"; \
 	fi
