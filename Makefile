@@ -79,9 +79,7 @@ essential: base-essential
 else
 essential: base-essential \
 	logind-config \
-	install-i3 \
-	install-rofi \
-	install-xclip
+	install-i3
 
 endif
 
@@ -192,10 +190,14 @@ logind-config:
 # network-manager-applet      - i3 tray icon nm-applet
 # blueman                     - bluetooth manager
 # arandr                      - xrandr GUI display management
+# xclip                       - clipboard manager
+# rofi                        - general purpose menu selector (fzf for GUI)
 .PHONY: install-i3
 install-i3:
-	@echo "[i3] installing via apt with dependencies..."
-	@sudo apt-get install -y i3 maim pulseaudio playerctl xserver-xorg-input-libinput xinput network-manager-applet blueman arandr rofi xclip
+	@if apt list i3 2>&1 | grep -q installed; then echo "[i3] already installed"; else \
+		echo "[i3] installing via apt with dependencies..."; \
+		sudo apt-get install -y i3 maim pulseaudio playerctl xserver-xorg-input-libinput xinput network-manager-applet blueman arandr rofi xclip; \
+	fi
 
 endif
 
