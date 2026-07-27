@@ -1,6 +1,7 @@
 local wezterm = require("wezterm")
 local config = wezterm.config_builder()
 local act = wezterm.action
+local build_target = wezterm.target_triple
 
 config.color_scheme = 'Catppuccin Mocha (Gogh)'
 
@@ -18,5 +19,22 @@ config.keys = {
 	{ key = '-', mods = 'CTRL', action = act.DecreaseFontSize },
 	{ key = '=', mods = 'CTRL', action = act.IncreaseFontSize },
 }
+
+if build_target:find('linux') then
+	config.audible_bell = "Disabled"
+
+	local sound = '/usr/share/code/resources/app/out/vs/platform/accessibilitySignal/browser/media/terminalBell.mp3'
+	local command = '/home/linuxbrew/.linuxbrew/bin/ffplay'
+	local child_process = { command, '-nodisp', '-autoexit', '-loglevel', 'quiet', '-volume', '40', sound }
+
+	wezterm.on("bell", function()
+		local supported = wezterm.run_child_process({ '[', '-r', sound, '-a', '-x', command, ']' })
+
+		if not supported then return end
+
+		wezterm.background_child_process(child_process)
+	end)
+
+end
 
 return config
