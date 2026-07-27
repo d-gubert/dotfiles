@@ -172,6 +172,7 @@ assign [class="rocket-chat"] $ws7
 for_window [class="Windscribe2"] floating enable
 for_window [class="gnome-calculator"] floating enable
 for_window [title="Quick Capture" class="ZenNotes"] floating enable, border pixel 3, resize 160px 90px
+for_window [class="Enpass"] floating enable, border pixel 3, resize 160px 90px
 
 default_border none
 
