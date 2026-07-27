@@ -3,14 +3,14 @@
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "\"${DOTFILES_PATH}\"/scripts/tmux-window-status.sh busy-done" }
+          { "type": "command", "command": "\"${DOTFILES_PATH}\"/scripts/tmux-window-status.sh busy-done --ignore-on-active-pane" }
         ]
       }
     ],
     "Notification": [
       {
         "hooks": [
-          { "type": "command", "command": "\"${DOTFILES_PATH}\"/scripts/tmux-window-status.sh attention" }
+          { "type": "command", "command": "\"${DOTFILES_PATH}\"/scripts/tmux-window-status.sh attention --ignore-on-active-pane" }
         ]
       }
     ],

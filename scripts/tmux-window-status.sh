@@ -7,14 +7,23 @@
 # into the catppuccin window label (see @catppuccin_window_text there).
 set -eu
 
+source $DOTFILES_SCRIPTS/lib/tmux-helpers.sh
+
 # Not inside tmux (background/remote/plain terminal): nothing to decorate.
 [ -n "${TMUX:-}" ] || exit 0
 
 action="$1"
+noop_on_active_pane=false
 
 if [ "${action}" = "pane-focus-in" ]; then
 	TMUX_PANE=$2
 	# read -r currPaneId < <(tj -r '.pane.id')
+elif [ "${2:-}" = "--ignore-on-active-pane" ]; then
+	noop_on_active_pane=true
+fi
+
+if $noop_on_active_pane && [ "$TMUX_PANE" = "$(tj -r '.pane.id')" ]; then
+	return 0
 fi
 
 glyph=""
