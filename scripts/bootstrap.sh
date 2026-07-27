@@ -10,8 +10,18 @@ DEST="$HOME/dev/dotfiles"
 # read would swallow the next script line and break parsing (case arm ')').
 # read -r -p "[bootstrap] would you like to run apt-get update? [y/N] " runupdate </dev/tty
 
-sudo apt-get -y update
-sudo apt-get -y install git build-essential
+OS=$(uname)
+
+if [[ "$OS" == "Darwin" ]]; then
+	i=0
+	until command -v make >/dev/null || test $i -gte 100; do
+		sleep 5
+		i++
+	done
+else
+	sudo apt-get -y update
+	sudo apt-get -y install git build-essential
+fi
 
 if [ -d "$DEST" ]; then
 	echo "[bootstrap] $DEST already exists, pulling latest..."
