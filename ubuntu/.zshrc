@@ -385,8 +385,21 @@ if exists mkcert; then
 	export NODE_EXTRA_CA_CERTS="$(mkcert -CAROOT)/rootCA.pem"
 fi
 
+if exists devcontainer; then
+	alias dv='devcontainer'
+	alias dvup='MONGODB_VERSION=7.0 devcontainer up --workspace-folder .'
+	alias dvex='devcontainer exec --workspace-folder .'
+fi
+
+if exists eza; then
+	alias lt='eza -lhT'
+	alias l='eza -lah'
+fi
+
 # opencode
-export PATH=$HOME/.opencode/bin:$PATH
+if [ -d $HOME/.opencode/bin ]; then
+	export PATH=$HOME/.opencode/bin:$PATH
+fi
 
 if [[ -n "$SSH_CONNECTION" ]]; then
 	export LANG=en_US.UTF-8
@@ -410,9 +423,5 @@ function zvm_after_init() {
 	alias grs='git rebase --skip'
 	alias gbgD='LANG=C git branch --no-color -vv | grep ": gone\]" | cut -c 3- | awk '\''{print $1}'\'' | xargs git branch -D'
 }
-
-if [[ -n $enableStarship ]]; then
-	eval "$(starship init zsh)"
-fi
 
 [ -f "$DOTFILES_SCRIPTS/watch_rocket.sh" ] && zsh -c "$DOTFILES_SCRIPTS/watch_rocket.sh start" &|
