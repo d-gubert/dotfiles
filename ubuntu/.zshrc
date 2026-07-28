@@ -196,6 +196,7 @@ function mypr() {
 function ccd() {
 	local profile="~/.claude"
 	local port=3456
+	local volume
 
 	while (( $# )); do
 		case "$1" in
@@ -207,6 +208,10 @@ function ccd() {
 				shift
 				port="$1"
 				;;
+			-v|--volume)
+				shift
+				volume="$1"
+				;;
 			*)
 				print -u2 "Unknown option or argument: $1"
 				print "Fuck you"
@@ -216,18 +221,35 @@ function ccd() {
 		shift
 	done
 
-	if [[ "$profile[1]" != "/" ]]; then
-		profile=${~profile}
+	if [[ -n "$volume" ]]; then
+		if ! docker volume inspect "$volume" >/dev/null 2>&1; then
+			print "Volume not found: $volume";
+			print "Fuck you"
+			return 1
+		fi
+		profile=
 	fi
 
-	if [[ ! -d $profile ]]; then
-		print "Profile directory not found: $profile"
-		print "Fuck you"
+	if [[ -n "$profile" ]]; then
+		if [[ "$profile[1]" != "/" ]]; then
+			profile=${~profile}
+		fi
+
+		if [[ ! -d $profile ]]; then
+			print "Profile directory not found: $profile"
+			print "Fuck you"
+			return 1
+		fi
+	fi
+
+	if [[ -z $volume -a -z $profile ]]; then
+		print "You gotta give me some Claude directory or volume to work with, bucko"
+		print "We all have our limitations"
 		return 1
 	fi
 
 	# Image is not published in the registry, needs to be built locally - https://github.com/matt1398/claude-devtools
-	docker run --rm -e NODE_ENV=development -p "${port}:3456" -v "$profile:/data/.claude:ro" claude-devtools
+	docker run --rm -e NODE_ENV=development -p "${port}:3456" -v "${profile:-$volume}:/data/.claude:ro" claude-devtools
 }
 
 function exists() { command -v "$1" >/dev/null 2>&1 }
