@@ -300,6 +300,9 @@ exec --no-startup-id dbus-update-activation-environment --systemd XDG_SESSION_TY
 
 bindsym Print exec ~/.config/i3/scripts/printscreen.sh
 
+# Screen recording: select an area to start, press again to stop
+bindsym $mod+s exec --no-startup-id ~/.config/i3/scripts/screenrecord.sh
+
 workspace_auto_back_and_forth yes
 
 # The i3bar blocks are not declared here. A bar's font can only be set inside its

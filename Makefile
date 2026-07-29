@@ -188,12 +188,13 @@ logind-config:
 # blueman                     - bluetooth manager
 # arandr                      - xrandr GUI display management
 # xclip                       - clipboard manager
+# slop                        - screen area selector (also used by maim)
 # rofi                        - general purpose menu selector (fzf for GUI)
 .PHONY: install-i3
 install-i3:
 	@if apt list i3 2>&1 | grep -q installed; then echo "[i3] already installed"; else \
 		echo "[i3] installing via apt with dependencies..."; \
-		sudo apt-get install -y i3 maim pulseaudio playerctl xserver-xorg-input-libinput xinput network-manager-applet blueman arandr rofi xclip; \
+		sudo apt-get install -y i3 maim pulseaudio playerctl xserver-xorg-input-libinput xinput network-manager-applet blueman arandr rofi xclip slop; \
 	fi
 
 endif
