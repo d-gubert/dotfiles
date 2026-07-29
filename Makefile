@@ -151,14 +151,12 @@ install-stow: homebrew
 		$(BREW_INSTALL) stow; \
 	fi
 
-# We create the symlinks for configuration BEFORE installing the software, otherwise
-# stow would fail due to content already existing
-
+# https://www.gnu.org/software/stow/manual/stow.html#Tree-unfolding-1
 .PHONY: stow
 stow: install-stow
 	@echo "Stowing dotfiles..."
 	@echo
-	@stow -t ~ ubuntu
+	@stow --no-folding -t ~ ubuntu
 
 ifeq ($(OS_NAME), Linux)
 
