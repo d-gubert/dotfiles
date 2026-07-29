@@ -58,6 +58,7 @@ base-essential: homebrew \
 	stow \
 	install-brave-browser \
 	install-enpass \
+	install-wezterm \
 	install-zsh \
 	install-bat \
 	install-btop \

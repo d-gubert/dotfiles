@@ -56,30 +56,43 @@ Stow is usually used by having one directory for each software you want to manag
 
 | Tool | Description | Installed via |
 | ------ | ------------- | --------------- |
-| [alacritty](https://github.com/alacritty/alacritty) | GPU-accelerated terminal emulator | apt |
-| [brave-browser](https://brave.com) | Brave Browser | install script |
 | [homebrew](https://brew.sh) | Package manager | install script |
+| [stow](https://www.gnu.org/software/stow) | Dotfiles symlink manager | brew |
+| [brave-browser](https://brave.com) | Brave Browser | install script |
+| [enpass](https://www.enpass.io) | Password manager | apt (Linux) / brew cask (macOS) |
 | [zsh](https://www.zsh.org) | Shell | brew |
 | [oh-my-zsh](https://ohmyz.sh) | Zsh framework | install script |
 | [powerlevel10k](https://github.com/romkatv/powerlevel10k) | Zsh theme and prompt | git |
-| [zellij](https://zellij.dev) | Terminal multiplexer | brew |
-| [kanata](https://github.com/jtroo/kanata) | Software keyboard remapper | brew |
-| [i3](https://i3wm.org) | Tiling window manager | apt |
+| [bat](https://github.com/sharkdp/bat) | `cat` with syntax highlighting | brew |
+| [btop](https://github.com/aristocratsbit/btop) | System resource monitor | brew |
+| [docker](https://docs.docker.com/engine) | Container runtime | install script |
+| [ffmpeg](https://ffmpeg.org) | Audio/video processing | brew |
 | [fzf](https://github.com/junegunn/fzf) | Fuzzy finder | brew |
-| [ripgrep](https://github.com/BurntSushi/ripgrep) | Fast grep replacement (`rg`) | brew |
-| [neovim](https://neovim.io) | Text editor | brew |
-| [stow](https://www.gnu.org/software/stow) | Dotfiles symlink manager | brew |
-| [gh](https://cli.github.com) | GitHub CLI | brew |
 | [glow](https://github.com/charmbracelet/glow) | Markdown renderer for the terminal | brew |
 | [jq](https://jqlang.org) | JSON processor | brew |
-| [arandr](https://christian.amsuess.com/tools/arandr/) | GUI front-end for xrandr (display configuration) | apt |
-| [bat](https://github.com/sharkdp/bat) | `cat` with syntax highlighting | brew |
-| [xclip](https://github.com/astrand/xclip) | Clipboard CLI tool | apt |
-| [docker](https://docs.docker.com/engine) | Container runtime | install script |
-| [btop](https://github.com/aristocratsbit/btop) | System resource monitor | brew |
-| [tmux](https://github.com/tmux/tmux) | The OG terminal multiplexer | brew |
-| [ffmpeg](https://ffmpeg.org) | Audio/video processing | brew |
+| [fd](https://github.com/sharkdp/fd) | Fast `find` replacement | brew |
+| [kanata](https://github.com/jtroo/kanata) | Software keyboard remapper | brew |
+| [neovim](https://neovim.io) | Text editor | brew |
+| [ripgrep](https://github.com/BurntSushi/ripgrep) | Fast grep replacement (`rg`) | brew |
+| [wezterm](https://wezterm.org) | GPU-accelerated terminal emulator | apt (Fury repo, Linux) / brew cask (macOS) |
 | [herdr](https://herdr.dev) | Terminal workspace manager for AI coding agents | brew |
+| [i3](https://i3wm.org) (Linux only) | Tiling window manager, with dependencies below | apt |
+
+#### i3 dependencies (Linux only)
+
+| Dependency | Description |
+| -------- | ------------- |
+| [maim](https://github.com/naelstrof/maim) | Screenshot tool |
+| [pulseaudio](https://www.freedesktop.org/wiki/Software/PulseAudio/) | Audio control |
+| [playerctl](https://github.com/altdesktop/playerctl) | Media player control |
+| [xserver-xorg-input-libinput](https://wiki.debian.org/InputDevices) | X11 input driver |
+| [xinput](https://www.x.org/wiki/) | X11 input device utility |
+| [network-manager-applet](https://gitlab.gnome.org/GNOME/network-manager-applet) | i3 tray icon (`nm-applet`) |
+| [blueman](https://github.com/blueman-project/blueman) | Bluetooth manager |
+| [arandr](https://christian.amsuess.com/tools/arandr/) | GUI front-end for xrandr (display configuration) |
+| [xclip](https://github.com/astrand/xclip) | Clipboard CLI tool |
+| [slop](https://github.com/naelstrof/slop) | Screen area selector |
+| [rofi](https://github.com/davatorium/rofi) | General purpose menu selector |
 
 #### Fonts (Nerd Fonts)
 
@@ -96,24 +109,16 @@ Stow is usually used by having one directory for each software you want to manag
 | [zsh-vi-mode](https://github.com/jeffreytse/zsh-vi-mode) | Better vi mode for zsh |
 | [zsh-autopair](https://github.com/jeffreytse/zsh-autopair) | Auto closes pairs of symbols |
 
-#### Tmux plugins
-
-| Plugin | Description |
-| -------- | ------------- |
-| [TPM](https://github.com/tmux-plugins/tpm) | Tmux Plugin Manager |
-| [tmux-sensible](https://github.com/tmux-plugins/tmux-sensible) | Sensible defaults for Tmux |
-| [tmux-resurrect](https://github.com/tmux-plugins/tmux-resurrect) | Save and restore sessions |
-| [tmux-yank](https://github.com/tmux-plugins/tmux-yank) | Better copy-mode |
-| [catppuccin](https://github.com/catppuccin/tmux) | Catppuccin for Tmux |
-
 ### Development
 
 | Tool | Description | Installed via |
 | ------ | ------------- | --------------- |
 | [ast-grep](https://ast-grep.github.io) | AST-based code search and rewrite (`sg`) | brew |
 | [dvm](https://github.com/justjavac/dvm) | Deno version manager | install script |
+| [gh](https://cli.github.com) | GitHub CLI | brew |
 | [lazygit](https://github.com/jesseduffield/lazygit) | Terminal UI for git | brew |
 | [meteor](https://www.meteor.com) | Full-stack JavaScript framework | install script |
+| [node](https://nodejs.org) | JavaScript runtime | volta |
 | [tealdeer](https://github.com/dbrgn/tealdeer) | Fast `tldr` client | brew |
 | [vi-mongo](https://github.com/nicholasgasior/vi-mongo) | MongoDB TUI | brew |
 | [volta](https://volta.sh) | Node.js toolchain manager | install script |
@@ -127,6 +132,28 @@ Stow is usually used by having one directory for each software you want to manag
 | [lazyjira](https://github.com/textfuel/jiratui) | Jira TUI client | brew |
 | [tree-sitter](https://tree-sitter.github.io) | Parser generator and incremental parsing | brew |
 | [spotatui](https://github.com/LargeModGames/spotatui) | Spotify TUI | prebuilt installer |
+
+### Standalone (not part of `all`/`essential`/`development`/`utilities`)
+
+These have a `make install-<tool>` target but aren't pulled in by any aggregate target above — install them individually if you want them.
+
+| Tool | Description | Installed via |
+| ------ | ------------- | --------------- |
+| [alacritty](https://github.com/alacritty/alacritty) | GPU-accelerated terminal emulator | apt (Linux) / brew cask (macOS) |
+| [tmux](https://github.com/tmux/tmux) | The OG terminal multiplexer | brew |
+| [zellij](https://zellij.dev) | Terminal multiplexer | brew |
+| [rgx](https://github.com/brevity1swos/rgx) | Regex TUI | brew |
+| [sttr](https://github.com/abhimanyu003/sttr) | String conversion CLI | brew |
+
+#### Tmux plugins
+
+| Plugin | Description |
+| -------- | ------------- |
+| [TPM](https://github.com/tmux-plugins/tpm) | Tmux Plugin Manager |
+| [tmux-sensible](https://github.com/tmux-plugins/tmux-sensible) | Sensible defaults for Tmux |
+| [tmux-resurrect](https://github.com/tmux-plugins/tmux-resurrect) | Save and restore sessions |
+| [tmux-yank](https://github.com/tmux-plugins/tmux-yank) | Better copy-mode |
+| [catppuccin](https://github.com/catppuccin/tmux) | Catppuccin for Tmux |
 
 ---
 
