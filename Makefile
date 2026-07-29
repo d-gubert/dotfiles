@@ -70,8 +70,7 @@ base-essential: homebrew \
 	install-kanata \
 	install-neovim \
 	install-ripgrep \
-	install-tmux \
-	install-zellij
+	install-herdr
 
 .PHONY: essential
 ifeq ($(OS_NAME),Darwin)
@@ -468,6 +467,13 @@ install-zellij: homebrew
 	@if command -v zellij >/q; then echo "[zellij] already installed"; else \
 		echo "[zellij] installing via brew..."; \
 		$(BREW_INSTALL) zellij; \
+	fi
+
+.PHONY: install-herdr
+install-herdr: homebrew
+	@if command -v herdr >/q; then echo "[herdr] already installed"; else \
+		echo "[herdr] installing via brew..."; \
+		$(BREW_INSTALL) herdr; \
 	fi
 
 .PHONY: install-kanata

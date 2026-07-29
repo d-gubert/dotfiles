@@ -176,7 +176,15 @@ function gwl() {
 		) || return
 	fi
 
-	[[ -n "${target}" ]] && cd "${target}"
+	if [[ -z "${target}" ]]; then
+		return 1;
+	fi
+
+	if [[ -n $HERDR_ENV ]]; then
+		herdr worktree open --path "${target}" --focus >/dev/null
+	else
+		cd "${target}"
+	fi
 }
 
 # List my open PRs
@@ -411,11 +419,17 @@ if exists devcontainer; then
 	alias dv='devcontainer'
 	alias dvup='MONGODB_VERSION=7.0 devcontainer up --workspace-folder .'
 	alias dvex='devcontainer exec --workspace-folder .'
+	alias dvclaude='HERDR_AGENT=claude devcontainer exec --workspace-folder . claude --dangerously-skip-permissions'
+	alias dvshell='devcontainer exec --workspace-folder . zsh'
 fi
 
 if exists eza; then
 	alias lt='eza -lhT'
 	alias l='eza -lah'
+fi
+
+if exists herdr; then
+	source <(herdr completion zsh)
 fi
 
 # opencode

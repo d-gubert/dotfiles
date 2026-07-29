@@ -79,6 +79,7 @@ Stow is usually used by having one directory for each software you want to manag
 | [btop](https://github.com/aristocratsbit/btop) | System resource monitor | brew |
 | [tmux](https://github.com/tmux/tmux) | The OG terminal multiplexer | brew |
 | [ffmpeg](https://ffmpeg.org) | Audio/video processing | brew |
+| [herdr](https://herdr.dev) | Terminal workspace manager for AI coding agents | brew |
 
 #### Fonts (Nerd Fonts)
 
