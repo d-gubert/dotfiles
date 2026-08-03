@@ -6,7 +6,7 @@ local build_target = wezterm.target_triple
 config.color_scheme = 'Catppuccin Mocha (Gogh)'
 
 config.font = wezterm.font "FiraCode"
-config.font_size = 11
+config.font_size = 10
 
 config.enable_tab_bar = false
 
@@ -18,6 +18,7 @@ config.keys = {
 	{ key = 'P', mods = 'CTRL', action = act.ActivateCommandPalette },
 	{ key = '-', mods = 'CTRL', action = act.DecreaseFontSize },
 	{ key = '=', mods = 'CTRL', action = act.IncreaseFontSize },
+	{ key = '0', mods = 'CTRL', action = act.ResetFontSize },
 }
 
 if build_target:find('linux') then
