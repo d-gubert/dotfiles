@@ -181,10 +181,13 @@ function gwl() {
 	fi
 
 	if [[ -n $HERDR_ENV ]]; then
-		herdr worktree open --path "${target}" --focus >/dev/null
-	else
-		cd "${target}"
+		herdr worktree open --path "${target}" --focus >/dev/null 2>&1
+		if [[ $? -eq 0 ]]; then
+			return 0
+		fi
 	fi
+	
+	cd "${target}"
 }
 
 # List my open PRs
