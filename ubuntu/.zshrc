@@ -420,10 +420,10 @@ fi
 
 if exists devcontainer; then
 	alias dv='devcontainer'
-	alias dvup='MONGODB_VERSION=7.0 devcontainer up --workspace-folder .'
-	alias dvex='devcontainer exec --workspace-folder .'
-	alias dvclaude='HERDR_AGENT=claude devcontainer exec --workspace-folder . claude --dangerously-skip-permissions'
-	alias dvshell='devcontainer exec --workspace-folder . zsh'
+	alias dvup='devcontainer up'
+	alias dvex='devcontainer exec'
+	alias dvclaude='HERDR_AGENT=claude devcontainer exec claude --dangerously-skip-permissions'
+	alias dvshell='devcontainer exec zsh'
 fi
 
 if exists eza; then
