@@ -1,3 +1,11 @@
+;; Home-row mods. Shared between Linux and macOS — lmet/rmet resolve to Super
+;; on Linux and Command on macOS, which is the key you want in that position on
+;; either platform, so no per-OS variant is needed.
+;;
+;; macOS additionally needs Karabiner's VirtualHIDDevice driver and Input
+;; Monitoring permission; `make install-kanata` installs it and prints what
+;; still has to be approved by hand.
+
 ;; defsrc is still necessary
 (defcfg
   process-unmapped-keys yes

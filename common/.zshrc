@@ -146,6 +146,10 @@ if [[ -x "$BREW_BIN" ]]; then
 	eval "$($BREW_BIN shellenv)"
 fi
 
+# OS-specific overrides — shipped by the ubuntu/ or mac/ stow package.
+# Defines OPEN_CMD and CLIP_CMD, plus any per-OS PATH entries.
+[[ -r ~/.zshrc.os ]] && source ~/.zshrc.os
+
 # Compilation flags
 # export ARCHFLAGS="-arch x86_64"
 
@@ -197,9 +201,9 @@ function mypr() {
 	column -t -s $'\t' |
 	fzf --prompt='PR > ' --height=~100% --layout=reverse --with-nth=2.. --accept-nth=1 --border --cycle \
 		--header=$'\n[ENTER]/[CTRL-O] Open | [CTRL-Y] Copy to clipboard\n\n' \
-		--bind 'enter:execute(xdg-open {1})+accept' \
-		--bind 'ctrl-o:execute-silent(xdg-open {1})' \
-		--bind 'ctrl-y:execute-silent(echo {1} | xclip -selection clipboard)' \
+		--bind "enter:execute($OPEN_CMD {1})+accept" \
+		--bind "ctrl-o:execute-silent($OPEN_CMD {1})" \
+		--bind "ctrl-y:execute-silent(echo {1} | $CLIP_CMD)" \
 		2>&1 >/dev/null
 }
 
@@ -312,7 +316,8 @@ export PATH="$DENO_INSTALL/bin:$PATH"
 export DVM_DIR="$HOME/.dvm"
 export PATH="$DVM_DIR/bin:$PATH"
 
-# Golang
+# Golang — /usr/local/go/bin is where the official installer puts the toolchain on
+# both Linux and macOS; a brew-installed go is covered by `brew shellenv` instead.
 export GOPATH="$HOME/dev/go"
 export PATH="$PATH:/usr/local/go/bin:$GOPATH/bin"
 

@@ -6,8 +6,17 @@ else
 BREW_PREFIX := /home/linuxbrew/.linuxbrew
 endif
 
+# Dotfiles are split into three stow packages: common/ holds everything that is
+# OS-agnostic, ubuntu/ and mac/ hold only what differs. Always stow common plus
+# the package for this OS.
+ifeq ($(OS_NAME),Darwin)
+STOW_PKGS := common mac
+else
+STOW_PKGS := common ubuntu
+endif
+
 BREW := $(BREW_PREFIX)/bin/brew
-BREW_INSTALL := $(BREW) --yes
+BREW_INSTALL := $(BREW) install --no-ask
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Help
@@ -153,11 +162,14 @@ install-stow: homebrew
 	fi
 
 # https://www.gnu.org/software/stow/manual/stow.html#Tree-unfolding-1
+# -R (restow) unstows before stowing, which clears out symlinks left behind when
+# a file moves between packages. Harmless on a fresh machine where nothing is
+# stowed yet — stow just warns and carries on.
 .PHONY: stow
 stow: install-stow
-	@echo "Stowing dotfiles..."
+	@echo "Stowing dotfiles: $(STOW_PKGS)"
 	@echo
-	@stow --no-folding -t ~ ubuntu
+	@stow -R --no-folding -t ~ $(STOW_PKGS)
 
 ifeq ($(OS_NAME), Linux)
 
@@ -346,7 +358,6 @@ pre-tmux: homebrew
 	@if command -v tmux >/q; then echo "[tmux] already installed"; else \
 		echo "[tmux] installing via brew..."; \
 		$(BREW_INSTALL) tmux; \
-		sudo ln -s "$$(which tmux)" /usr/bin/tmux; \
 	fi
 else
 # Install via apt-get on Linux, homebrew version has weird bugs
@@ -477,11 +488,32 @@ install-herdr: homebrew
 	fi
 
 .PHONY: install-kanata
+ifeq ($(OS_NAME),Darwin)
+# On macOS kanata drives the keyboard through Karabiner's VirtualHIDDevice
+# driver, which ships with Karabiner-Elements. The driver is a system extension,
+# so macOS requires it to be approved by hand — brew can install it but cannot
+# activate it.
 install-kanata: homebrew
 	@if command -v kanata >/q; then echo "[kanata] already installed"; else \
 		echo "[kanata] installing via brew..."; \
 		$(BREW_INSTALL) kanata; \
 	fi
+	@if [ -d "/Applications/Karabiner-Elements.app" ]; then \
+		echo "[kanata] Karabiner-Elements already installed"; \
+	else \
+		echo "[kanata] installing Karabiner-Elements (VirtualHIDDevice driver)..."; \
+		$(BREW_INSTALL) --cask karabiner-elements; \
+	fi
+	@echo "[kanata] NOTE: approve the driver under System Settings > Privacy &"
+	@echo "[kanata]       Security, and grant kanata Input Monitoring access,"
+	@echo "[kanata]       before it will capture keys."
+else
+install-kanata: homebrew
+	@if command -v kanata >/q; then echo "[kanata] already installed"; else \
+		echo "[kanata] installing via brew..."; \
+		$(BREW_INSTALL) kanata; \
+	fi
+endif
 
 .PHONY: install-ffmpeg
 install-ffmpeg: homebrew

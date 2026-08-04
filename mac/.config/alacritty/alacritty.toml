@@ -1,0 +1,44 @@
+# macOS variant of ubuntu/.config/alacritty/alacritty.toml.
+# Alacritty has no conditional syntax, so this is a full per-OS copy rather than
+# a branch — keep the keyboard bindings below in sync with the Linux file.
+
+[font]
+size = 13
+
+[font.normal]
+family = "FiraCode"
+
+[[keyboard.bindings]]
+chars = "^["
+key = "LBracket"
+mode = "Vi"
+mods = "Control"
+
+[[keyboard.bindings]]
+action = "SearchCancel"
+key = "LBracket"
+mode = "Search"
+mods = "Control"
+
+[[keyboard.bindings]]
+action = "SearchConfirm"
+key = "M"
+mode = "Search"
+mods = "Control"
+
+[window]
+dimensions = { columns = 160, lines = 45 }
+# "None" would strip the traffic-light buttons and the title bar, leaving no way
+# to move or close the window with the mouse. "Buttonless" keeps the draggable
+# bar but hides the buttons, which is the closest macOS equivalent.
+decorations = "Buttonless"
+# Send a real Meta/Alt rather than composing accented characters — required by
+# the M- bindings in .tmux.conf and .config/herdr/config.toml.
+option_as_alt = "Both"
+
+[general]
+# Resolves because stow --no-folding merges common/ and mac/ into the same
+# real ~/.config/alacritty directory; the theme is stowed from common/.
+import = [
+    "~/.config/alacritty/catppuccin-mocha.toml"
+]

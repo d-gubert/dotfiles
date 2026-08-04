@@ -44,9 +44,21 @@ make install-zsh     # also installs oh-my-zsh and all plugins
 
 Stow would error out if directories already exist and are not owned by it, so we actually run stow as the first step in `make`.
 
-If you add other configuration files to the `ubuntu` directory, you can get stow to manage them as well by running `make stow`.
+If you add other configuration files, you can get stow to manage them as well by running `make stow`.
 
-Stow is usually used by having one directory for each software you want to manage, with the internal structure of that directory being mirrored in the `target`. I didn't like that, so I just threw all config files into the `ubuntu` directory, then I can stow everything there to my home directory.
+Stow is usually used by having one directory for each software you want to manage, with the internal structure of that directory being mirrored in the `target`. I didn't like that, so config files are grouped by *operating system* instead:
+
+| Package | Contents |
+| --------- | ---------- |
+| `common/` | Everything OS-agnostic — zsh, tmux, wezterm, nvim, yazi, zellij, lazygit, herdr, kanata, starship, git, `.claude/` |
+| `ubuntu/` | Linux only — i3, i3status, rofi, clipmenu, nushell, `.Xresources`, `.xprofile` |
+| `mac/` | macOS only |
+
+`make` stows `common` plus the package matching `uname`, so a macOS machine never gets i3 or X11 config dropped into its home directory. The target uses `stow -R`, which also cleans up stale symlinks when a file moves between packages.
+
+Prefer branching inside a shared config over copying it into both OS packages — most tools already have a mechanism for it (`.zshrc` checks `uname`, `.tmux.conf` has `if-shell`, `.wezterm.lua` has `wezterm.target_triple`). Only copy the whole file when the format has no conditionals, as with `alacritty.toml`.
+
+For shell settings, each OS package ships a `.zshrc.os` fragment that `common/.zshrc` sources. That's where `$OPEN_CMD` (`xdg-open` vs `open`) and `$CLIP_CMD` (`xclip` vs `pbcopy`) are defined — use those variables rather than hardcoding either tool.
 
 ---
 
@@ -71,7 +83,7 @@ Stow is usually used by having one directory for each software you want to manag
 | [glow](https://github.com/charmbracelet/glow) | Markdown renderer for the terminal | brew |
 | [jq](https://jqlang.org) | JSON processor | brew |
 | [fd](https://github.com/sharkdp/fd) | Fast `find` replacement | brew |
-| [kanata](https://github.com/jtroo/kanata) | Software keyboard remapper | brew |
+| [kanata](https://github.com/jtroo/kanata) | Software keyboard remapper | brew (macOS also pulls in Karabiner-Elements for its VirtualHIDDevice driver, which needs manual approval) |
 | [neovim](https://neovim.io) | Text editor | brew |
 | [ripgrep](https://github.com/BurntSushi/ripgrep) | Fast grep replacement (`rg`) | brew |
 | [wezterm](https://wezterm.org) | GPU-accelerated terminal emulator | apt (Fury repo, Linux) / brew cask (macOS) |
@@ -163,5 +175,5 @@ These have a `make install-<tool>` target but aren't pulled in by any aggregate 
 
 A local [Claude Code plugin](https://code.claude.com/docs/en/plugins-reference) that prefixes the current tmux window name with a glyph while Claude waits for you — `● ` when it finishes a turn, `🔔 ` when it needs permission — and clears it once you reply. Tweak the glyphs in the plugin's `scripts/tmux-window-status.sh`.
 
-- **Plugin:** `ubuntu/.claude/skills/tmux-window-status/` (hooks + script). It's dropped into the config dir's `skills/`, so Claude Code auto-loads it as `tmux-window-status@skills-dir` — no marketplace or install step, and nothing added to `~/.claude/settings.json`.
-- **tmux side:** `ubuntu/.tmux.conf` splices a `@status_glyph` user option into the catppuccin window label
+- **Plugin:** `common/.claude/skills/tmux-window-status/` (hooks + script). It's dropped into the config dir's `skills/`, so Claude Code auto-loads it as `tmux-window-status@skills-dir` — no marketplace or install step, and nothing added to `~/.claude/settings.json`.
+- **tmux side:** `common/.tmux.conf` splices a `@status_glyph` user option into the catppuccin window label
