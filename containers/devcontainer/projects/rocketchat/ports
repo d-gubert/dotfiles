@@ -1,0 +1,10 @@
+# host:container, one per line.
+#
+# 3001 is Meteor's bundled mongod, which it starts itself and only while
+# MONGO_URL is UNSET — don't set it in env, or Meteor skips its local mongod and
+# tries to connect out.
+#
+# Running two workspaces of this profile at once needs different host ports for
+# the second: DEVBOX_PORTS="3100:3000,3101:3001" devbox up
+3000:3000
+3001:3001

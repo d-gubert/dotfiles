@@ -1,0 +1,15 @@
+# Extra egress allowlist for the claude-code feature — what the CLI itself needs
+# for auth, the API and telemetry. Merged into the firewall's list only while the
+# feature is declared in devcontainer.json (which is also the only case where
+# there is a firewall at all — init-firewall.sh belongs to this feature).
+#
+# https://code.claude.com/docs/en/network-config#network-access-requirements
+
+api.anthropic.com
+console.anthropic.com
+claude.ai
+sentry.io
+# Claude Code's telemetry host is statsig.anthropic.com, but that name has no
+# public A record; it lands on Statsig's CDN, which these two cover.
+statsig.com
+featuregates.org

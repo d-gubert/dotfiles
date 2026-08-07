@@ -1,0 +1,27 @@
+# Extra egress allowlist for the Rocket.Chat monorepo, merged into the firewall's
+# list for workspaces on this profile. Hostnames or CIDRs, `#` comments.
+# Takes effect on a container restart — no rebuild. See ../../allowed-domains.
+
+# Meteor: the distribution and per-project package downloads.
+install.meteor.com
+packages.meteor.com
+warehouse.meteor.com
+static.meteor.com
+
+# Deno, pinned from .tool-versions by setup.sh.
+deno.land
+dl.deno.land
+jsr.io
+
+# The supported-versions check, polled on every server start. Blocking it is not
+# fatal but floods the dev log with FetchError stacks.
+releases.rocket.chat
+# Cloud, marketplace and billing — including the staging hosts the commented-out
+# OVERWRITE_SETTING_* in `env` point at.
+cloud.rocket.chat
+marketplace.rocket.chat
+billing.rocket.chat
+collector.rocket.chat
+my.staging.cloud.rocket.chat
+marketplace.staging.cloud.rocket.chat
+billing.staging.cloud.rocket.chat

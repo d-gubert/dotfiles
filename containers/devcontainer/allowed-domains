@@ -1,0 +1,50 @@
+# Base egress allowlist for every devbox container.
+#
+# One entry per line, `#` starts a comment. An entry is either an IPv4 address or
+# CIDR, which goes into the ipset as-is, or a hostname, which is resolved at
+# container start (a name that fails to resolve is skipped with a warning — the
+# firewall still applies).
+#
+# This file is the *floor*: what the image's own toolchain needs, plus Claude
+# Code and the editor. Three other things add to it, and none of them belongs
+# here:
+#
+#   scripts/<feature>/allowed-domains       merged while that feature is declared
+#   projects/<profile>/allowed-domains      merged for the matching workspace
+#   DEVBOX_ALLOW_DOMAINS=a.example b.example  one-off, at `devbox up` time
+#
+# Changing any of them takes effect on a container *restart* — the firewall is
+# re-applied by postStartCommand — with no rebuild. Confirm what landed with
+# `sudo ipset list allowed-domains`.
+#
+# Anthropic's network access requirements list what Claude Code itself needs:
+# https://code.claude.com/docs/en/network-config#network-access-requirements
+
+# --- The shared Turborepo remote cache ---------------------------------------
+# It lives on a second docker network, which the automatic host-network rule does
+# NOT cover — that one is derived from the default route, i.e. this container's
+# own bridge. Pinned to this CIDR in turbo-cache/docker-compose.yml; keep the two
+# in sync. Without it turbo's cache requests are REJECTed and every build falls
+# back to local execution (slow, but not broken).
+172.30.0.0/24
+
+# --- GitHub -------------------------------------------------------------------
+# The published IP ranges are fetched from api.github.com/meta at start; these
+# names cover the Azure-hosted endpoints outside those blocks, and keep git
+# usable when the fetch fails.
+github.com
+api.github.com
+codeload.github.com
+raw.githubusercontent.com
+objects.githubusercontent.com
+
+# --- Node / package registries ------------------------------------------------
+registry.npmjs.org
+registry.yarnpkg.com
+repo.yarnpkg.com
+nodejs.org
+
+# --- VS Code server + extensions ----------------------------------------------
+marketplace.visualstudio.com
+vscode.blob.core.windows.net
+update.code.visualstudio.com

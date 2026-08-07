@@ -1,0 +1,35 @@
+# Environment for the Rocket.Chat monorepo. KEY=VALUE, one per line; see
+# ../README.md.
+
+# Meteor's warehouse — the ~1GB distribution setup.sh downloads — on the profile's
+# durable volume, so a container rebuild does not fetch it again. The launcher
+# resolves METEOR_WAREHOUSE_DIR="${METEOR_WAREHOUSE_DIR:-$HOME/.meteor}", so this
+# variable is the whole hookup.
+METEOR_WAREHOUSE_DIR=/home/vscode/.devbox/meteor
+
+# Same idea for Deno, pinned from .tool-versions by setup.sh.
+DENO_INSTALL=/home/vscode/.devbox/deno
+
+# Playwright's CLI is pinned by apps/meteor, not by the workspace root, so the
+# playwright feature's browser download has to be told where to find it.
+DEVBOX_PLAYWRIGHT_CMD=yarn workspace @rocket.chat/meteor playwright
+DEVBOX_PLAYWRIGHT_BROWSERS=chromium
+
+# --- Server settings ---------------------------------------------------------
+#
+# These came out of the old .devcontainer/.env, where they were inert: compose
+# reads that file for *interpolation*, not as container environment, and nothing
+# referenced them. Uncommenting them here does what they always looked like they
+# did — Rocket.Chat reads OVERWRITE_SETTING_* on boot and forces each setting.
+#
+# Convenient for a throwaway container (no setup wizard, no password policy),
+# so they are one edit away rather than deleted. The license key that went with
+# them is in env.local, which is gitignored.
+#
+#OVERWRITE_SETTING_Show_Setup_Wizard=completed
+#OVERWRITE_SETTING_Accounts_Password_Policy_Enabled=false
+#OVERWRITE_SETTING_Accounts_TwoFactorAuthentication_Enabled=false
+#OVERWRITE_SETTING_Log_Level=2
+#OVERWRITE_SETTING_Cloud_Url=https://my.staging.cloud.rocket.chat
+#OVERWRITE_SETTING_Cloud_Billing_Url=https://billing.staging.cloud.rocket.chat
+#OVERWRITE_INTERNAL_MARKETPLACE_URL=https://marketplace.staging.cloud.rocket.chat

@@ -1,0 +1,4 @@
+# Host path globs that pick this profile, one per line. `*` matches across `/`
+# too — these are shell globs matched with `case`, not path-aware ones.
+~/dev/RocketChat/worktrees/*
+~/dev/RocketChat/Rocket.Chat

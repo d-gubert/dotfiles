@@ -1,0 +1,81 @@
+services:
+  app:
+    build:
+      # This directory. Nothing is COPYed in — the image is workspace-agnostic,
+      # and everything workspace- or profile-specific arrives as a mount.
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      # The workspace bind mount and the read-only /opt/devbox mount are NOT
+      # here: their source or target is a host path only the `devbox` wrapper
+      # knows. They are `mounts` entries in devcontainer.json instead, which is
+      # where the reasoning for each lives.
+      #
+      # Nor is anything a devcontainer *feature* or a *profile* owns — the shared
+      # gh auth, Claude Code config, Playwright browser and per-profile tools
+      # volumes, the ports, the profile's environment. Those live in the
+      # generated docker-compose.overrides.yml, contributed by
+      # scripts/<feature>/initialize.sh and scripts/init-profile.sh, so that
+      # commenting a feature out of devcontainer.json takes its mounts with it.
+      # This file can't do that: compose is static, and an external volume
+      # nothing created fails the create outright. See scripts/lib/overrides.sh.
+      #
+      # So this file alone does not describe a usable container — bring the stack
+      # up with `devbox up`, never `docker compose up` by hand.
+      #
+      # Yarn's global folder — the downloaded package zips plus its metadata
+      # index — shared by every workspace through one external volume and a
+      # subpath the host creates before the container starts (see the volume
+      # declaration at the bottom). Mounted at the default `globalFolder` path so
+      # nothing has to be pointed at it; the only setting involved is
+      # YARN_ENABLE_GLOBAL_CACHE (devcontainer.json), which makes yarn treat
+      # this as THE cache instead of writing a second copy into the project's
+      # .yarn/cache on the bind mount.
+      - type: volume
+        source: yarn-cache
+        target: /home/vscode/.yarn/berry
+        volume:
+          subpath: berry
+    # `default` must be listed explicitly: naming any network here drops the
+    # implicit default, which is what carries the forwarded ports a profile adds.
+    # turbo-cache is the shared cache's network — see turbo-cache/docker-compose.yml.
+    # It resolves the `turbo-cache` container by name, so TURBO_API
+    # (devcontainer.json) needs no host-specific address.
+    networks:
+      - default
+      - turbo-cache
+    # No cap_add here: NET_ADMIN/NET_RAW exist only for the egress firewall, which
+    # belongs to the claude-code feature, so they are granted from
+    # scripts/claude-code/initialize.sh and only when that feature is declared.
+    # Keep the container running so VS Code / the CLI can attach into it.
+    command: sleep infinity
+
+volumes:
+  # The feature-owned volumes (devbox-gh-auth, devbox-claude-config,
+  # devbox-playwright-browsers) and the per-profile devbox-tools-<profile> are
+  # declared in the generated docker-compose.overrides.yml, beside the mounts
+  # that use them — see the note in the service's `volumes` above.
+  #
+  # Yarn's ~/.yarn/berry: the package cache and metadata index. External with a
+  # fixed name, which is what makes it shared: each workspace runs its own
+  # compose project, so an ordinary volume gets namespaced per workspace and
+  # would re-download every package for every checkout. What it saves is
+  # bandwidth and disk rather than a login — nothing in here is secret, and it is
+  # pure cache: `docker volume rm devbox-yarn-cache` costs one slow install,
+  # nothing more. Being external also keeps it out of reach of
+  # `docker compose down -v`.
+  #
+  # Created on the host by scripts/ensure-yarn-cache.sh (initializeCommand),
+  # which also creates the berry/ subdirectory — compose does not create missing
+  # external volumes, it errors out on create.
+  yarn-cache:
+    external: true
+    name: devbox-yarn-cache
+
+networks:
+  # Created by the standalone turbo-cache project, not by this one — it has to
+  # outlive any single devcontainer and be shared by every workspace.
+  # scripts/ensure-turbo-cache.sh (initializeCommand) guarantees it exists before
+  # this file is used; without it compose errors out on create.
+  turbo-cache:
+    external: true

@@ -1,0 +1,19 @@
+# Two build directories kept OFF the workspace bind mount. Ordinary (non-external)
+# volumes on purpose: compose namespaces them per project, i.e. per workspace,
+# which is exactly right for both.
+#
+# Docker orders mounts by target depth, so these nest inside the workspace bind
+# mount whatever order they appear in. Their mount points arrive root-owned —
+# setup.sh claims them.
+- type: volume
+  source: node-modules
+  target: %WORKSPACE%/node_modules
+# .meteor/local must NOT be shared with the host: Meteor writes absolute paths
+# into it (notably the dev_bundle symlink, which points into the running user's
+# ~/.meteor). A host-written dev_bundle dangles in the container — /home/<hostuser>
+# does not exist in there — and Meteor then spins on any in-project command,
+# burning CPU and printing nothing. It also holds db/, the mongod data dir
+# `meteor` populates in dev, which the two sides must not share.
+- type: volume
+  source: meteor-local
+  target: %WORKSPACE%/apps/meteor/.meteor/local

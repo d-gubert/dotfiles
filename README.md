@@ -169,6 +169,23 @@ These have a `make install-<tool>` target but aren't pulled in by any aggregate 
 
 ---
 
+## Dev containers — `devbox`
+
+`containers/devcontainer/` holds one devcontainer definition for *every* checkout on the machine, and `scripts/devbox` runs it over whatever directory you're in:
+
+```sh
+cd ~/dev/RocketChat/worktrees/main
+devbox up          # build/start a container with this checkout mounted
+devbox claude      # Claude Code, --dangerously-skip-permissions, behind an egress firewall
+devbox shell       # zsh in there
+```
+
+Nothing is added to the repo being worked on — no `.devcontainer/`, no committed compose file. The container is generic (Node/Yarn/pnpm through Volta); a repo's own setup lives in a **profile** under `containers/devcontainer/projects/<name>/`, picked by matching your path. Caches and logins (yarn, Claude Code, `gh`, Playwright browsers) are shared volumes, so you download and log in once for all checkouts.
+
+Egress is default-deny, re-applied on every start, which is what makes `--dangerously-skip-permissions` a bounded risk. See [`containers/devcontainer/README.md`](containers/devcontainer/README.md).
+
+---
+
 ## Claude Code
 
 ### `tmux-window-status` plugin
