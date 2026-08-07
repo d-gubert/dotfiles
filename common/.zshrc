@@ -230,7 +230,7 @@ function ccd() {
 			*)
 				print -u2 "Unknown option or argument: $1"
 				print "Fuck you"
-				return 1;
+				return 10;
 				;;
 		esac
 		shift
@@ -240,7 +240,7 @@ function ccd() {
 		if ! docker volume inspect "$volume" >/dev/null 2>&1; then
 			print "Volume not found: $volume";
 			print "Fuck you"
-			return 1
+			return 21
 		fi
 		profile=
 	fi
@@ -253,18 +253,109 @@ function ccd() {
 		if [[ ! -d $profile ]]; then
 			print "Profile directory not found: $profile"
 			print "Fuck you"
-			return 1
+			return 22
 		fi
 	fi
 
-	if [[ -z $volume -a -z $profile ]]; then
+	if [[ -z $volume && -z $profile ]]; then
 		print "You gotta give me some Claude directory or volume to work with, bucko"
 		print "We all have our limitations"
-		return 1
+		return 20
 	fi
 
 	# Image is not published in the registry, needs to be built locally - https://github.com/matt1398/claude-devtools
 	docker run --rm -e NODE_ENV=development -p "${port}:3456" -v "${profile:-$volume}:/data/.claude:ro" claude-devtools
+}
+
+# Claude code sniffly analytics
+function sniffly() {
+	local profile="~/.claude"
+	local port=8081
+	local volume
+	local cache="sniffly-cache"
+
+	while (( $# )); do
+		case "$1" in
+			-p|--profile)
+				shift
+				profile="$1"
+				;;
+			-e|--port) # -e as in "expose port"
+				shift
+				port="$1"
+				;;
+			-v|--volume)
+				shift
+				volume="$1"
+				;;
+			-c|--cache)
+				shift
+				cache="$1"
+				;;
+			--no-cache)
+				cache=
+				;;
+			*)
+				print -u2 "Unknown option or argument: $1"
+				print "Fuck you"
+				return 10;
+				;;
+		esac
+		shift
+	done
+
+	if [[ -n "$volume" ]]; then
+		if ! docker volume inspect "$volume" >/dev/null 2>&1; then
+			print "Volume not found: $volume";
+			print "Fuck you"
+			return 22
+		fi
+		profile=
+	fi
+
+	if [[ -n "$profile" ]]; then
+		if [[ "$profile[1]" != "/" ]]; then
+			profile=${~profile}
+		fi
+
+		if [[ ! -d $profile ]]; then
+			print "Profile directory not found: $profile"
+			print "Fuck you"
+			return 21
+		fi
+	fi
+
+	if [[ -z $volume && -z $profile ]]; then
+		print "You gotta give me some Claude directory or volume to work with, bucko"
+		print "We all have our limitations"
+		return 20
+	fi
+
+	# Image is not published in the registry - build it from containers/sniffly
+	if ! docker image inspect sniffly >/dev/null 2>&1; then
+		print "Image not found: sniffly - attempting build"
+		docker build -t sniffly $DOTFILES_PATH/containers/sniffly
+
+		if [[ $? -ne 0 ]]; then
+			print "Could not build the sniffly image"
+			return 30
+		fi
+	fi
+
+	# Array, not ${cache:+...}: zsh doesn't word-split parameter expansions, so
+	# the flag and its value would arrive as one mangled argument.
+	# The cache volume keeps parsed logs between runs - without it every start
+	# re-chews through every project from scratch.
+	local -a cache_mount
+	if [[ -n "$cache" ]]; then
+		cache_mount=(-v "${cache}:/home/sniffly/.sniffly")
+	fi
+
+	# Sniffly hardcodes ~/.claude/projects, so the mount target is not negotiable
+	docker run --rm -p "${port}:8081" \
+		-v "${profile:-$volume}:/home/sniffly/.claude:ro" \
+		"${cache_mount[@]}" \
+		sniffly
 }
 
 function exists() { command -v "$1" >/dev/null 2>&1 }
