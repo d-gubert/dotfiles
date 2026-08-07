@@ -53,6 +53,57 @@ RUN mkdir -p $VOLTA_HOME && \
     printf 'export VOLTA_HOME="/usr/local/volta"\nexport VOLTA_FEATURE_PNPM=1\nexport PATH="$VOLTA_HOME/bin:$PATH"\n' \
       >/etc/profile.d/volta.sh
 
+# --- GitNexus ----------------------------------------------------------------
+# Indexes a checkout into a code knowledge graph and serves it to Claude Code
+# over MCP. It belongs here rather than in a profile for the same reason Volta
+# does: it reads any repository and pins nothing, so one install serves every
+# checkout. https://github.com/abhigyanpatwari/GitNexus
+#
+# Baked into the image rather than installed by a lifecycle hook because the
+# install is ~250 packages and its postinstall activates native tree-sitter
+# bindings — work that should happen once per rebuild, not once per container.
+# It also needs the npm registry, which the egress firewall allows but which a
+# create-time install would make a hard dependency of every `devbox up`.
+#
+# Node >= 22 is a hard engine requirement, which the Volta default above meets.
+# The vendored grammars ship prebuilds for linux-x64/arm64, so nothing is
+# compiled here and no extra build tooling is needed (build-essential is
+# installed above regardless).
+ARG GITNEXUS_VERSION=1.6.9
+RUN npm install -g "gitnexus@$GITNEXUS_VERSION" && \
+    # npm ran as root and wrote into $VOLTA_HOME (the shim plus the package
+    # itself), so repeat the claim the Volta block makes above — otherwise
+    # `vscode` cannot install a project-pinned toolchain afterwards.
+    chown -R vscode:vscode "$VOLTA_HOME"
+
+# GitNexus's index is a LadybugDB database, and full-text/BM25 search needs that
+# engine's FTS extension — a separate download from extension.ladybugdb.com,
+# which `analyze` attempts on its own (its install policy defaults to `auto`).
+# Behind the egress firewall that attempt fails, and analyze then degrades to an
+# index with no text search, warning but succeeding — a failure mode that is easy
+# to miss.
+#
+# So fetch it here instead, where there is no firewall, and keep the host off the
+# allowlist entirely. The extension is cached under $HOME/.lbdb, so this MUST run
+# as `vscode`: a copy under /root is invisible to the user that later runs the
+# tool. `--verify-only` is the package's own build-time gate for exactly that
+# mistake — it re-resolves the extension in a fresh process under this HOME and
+# fails the build on a mismatch, instead of leaving search quietly broken.
+#
+# The positional argument is LBUG_MAX_DB_SIZE (16 GiB, the package default); the
+# installer only uses it to open a throwaway scratch database.
+#
+# The installer is located by search rather than with `npm root -g`, which under
+# Volta answers the *Node image's* node_modules — not where a `volta install`d
+# package actually lands ($VOLTA_HOME/tools/image/packages/<pkg>/lib/...).
+USER vscode
+RUN installer="$(find "$VOLTA_HOME/tools/image/packages/gitnexus" \
+      -name install-duckdb-extension.mjs -print -quit)" && \
+    [ -n "$installer" ] && \
+    node "$installer" fts 17179869184 && \
+    node "$installer" fts 17179869184 --verify-only
+USER root
+
 # Neither the lifecycle scripts nor the egress firewall are copied into the
 # image: this whole directory is bind-mounted read-only at /opt/devbox, so
 # postStartCommand runs them straight from there and edits take effect on a

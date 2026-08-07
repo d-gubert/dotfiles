@@ -308,6 +308,49 @@ so the checked-in config and CI are untouched. Verify with
 `yarn config get cacheFolder` — it should be under `/home/vscode/.yarn/berry`,
 not `/workspaces`.
 
+**GitNexus.** [GitNexus](https://github.com/abhigyanpatwari/GitNexus) indexes a
+checkout into a code knowledge graph and serves it to Claude Code over MCP. It is
+installed globally in the `Dockerfile`, not by a profile, because it reads any
+repository and pins nothing — the same reason Volta is there. Run it from a
+workspace:
+
+```bash
+devbox shell
+gitnexus analyze --index-only   # build the index
+gitnexus mcp                    # serve it (stdio)
+```
+
+- **Use `--index-only`.** A bare `gitnexus analyze` also injects `AGENTS.md`,
+  `CLAUDE.md` and `.claude/skills/gitnexus/` into the repository root — three
+  untracked entries in `git status`, in *your* checkout, through the bind mount.
+  `--index-only` skips all file injection. `--skip-agents-md` and `--skip-skills`
+  suppress them individually.
+- **The index does not dirty the checkout.** `.gitnexus/` cannot be relocated —
+  the path is hardcoded — but the tool writes `.gitnexus/.gitignore` containing
+  `*`, which hides the directory from `git status` on its own. It also appends
+  `.gitnexus/` to `.git/info/exclude`, though only when `.git` is a directory, so
+  that half is skipped in a linked worktree. The self-ignore covers both cases.
+- **The index is a volume anyway**, mounted over `<workspace>/.gitnexus` by
+  `scripts/initialize.sh`, so the database, its WAL and the parse caches never
+  reach the host checkout. Per workspace, not shared: an index describes one
+  checkout. Rebuilding it costs one `analyze`, so it is fine to lose.
+- The checkout still gets an **empty** `.gitnexus` directory on the host, because
+  Docker creates a missing mount target before the container runs. The volume
+  shadows it, so it stays empty and root-owned; git does not report empty
+  directories, so nothing shows up in `git status`. Removing it by hand needs
+  `sudo`.
+- **Full-text search needs an extension**, `fts` for LadybugDB, which `analyze`
+  otherwise downloads from `extension.ladybugdb.com` on first run — a host the
+  firewall blocks. Without it `analyze` still succeeds and only *warns*, leaving
+  an index whose BM25 search is dead. The `Dockerfile` fetches it at build time,
+  as `vscode` (the cache is `$HOME/.lbdb`), so nothing needs the allowlist.
+- `analyze` and `mcp` are otherwise **fully offline**. Only `--embeddings`
+  (semantic search) and `gitnexus wiki` (LLM-generated docs) reach the network,
+  and both are opt-in; add their hosts to `allowed-domains` if you want them.
+- The global registry of indexed repos lives at `~/.gitnexus`, which is *not* a
+  volume, so a rebuild loses it. It holds paths and metadata only — no index
+  data. Set `GITNEXUS_HOME` if you want it somewhere durable.
+
 **Skills staging.** The container's `~/.claude` is a volume that shares nothing
 with the host, so `stage-skills.sh` copies `$CLAUDE_CONFIG_DIR/skills` (falling
 back to `~/.claude/skills`) into `$DEVBOX_STATE/host-skills`, which is bind-mounted

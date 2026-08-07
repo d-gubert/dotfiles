@@ -38,6 +38,17 @@ sudo chown vscode:vscode /home/vscode/.yarn /home/vscode/.yarn/berry
 log "claiming $DEVBOX_TOOLS"
 sudo chown vscode:vscode "$DEVBOX_TOOLS"
 
+# GitNexus's index volume, mounted over `<workspace>/.gitnexus` by
+# scripts/initialize.sh because the tool hardcodes that path. Not recursive: an
+# index built by an earlier create is already ours, and it holds a lot of files.
+#
+# This claims the VOLUME's root, not the host directory of the same name. The
+# host one is the mount target Docker created inside the bind mount, and the
+# volume shadows it — it stays root-owned and empty over there, which git does
+# not report and nothing in here can reach.
+log "claiming $DEVBOX_WORKSPACE/.gitnexus"
+sudo chown vscode:vscode "$DEVBOX_WORKSPACE/.gitnexus"
+
 # Your git author identity, read off the host by scripts/init-git-identity.sh and
 # passed in as environment on the service. Written as real config rather than left
 # in the environment so `git config user.email` answers, and so a repo-local

@@ -70,6 +70,27 @@ trap overrides_cleanup EXIT
 	echo "  read_only: true"
 } | overrides_add devbox service-volumes
 
+# GitNexus writes its index to `<repo>/.gitnexus`, a path hardcoded in the tool
+# (storage/repo-manager.js `getStoragePath`); only the small global registry
+# moves, via GITNEXUS_HOME. A named volume over that one directory is therefore
+# the only way to keep a database, a WAL and a parse cache out of the checkout —
+# the same trick the rocketchat profile uses for node_modules.
+#
+# Ordinary (non-external) volume on purpose: compose namespaces it per project,
+# i.e. per workspace, and an index describes exactly one checkout.
+#
+# The checkout does still get a `.gitnexus` directory on the host, because Docker
+# creates a missing mount target before the container runs — but the volume
+# shadows it, so it stays *empty* and root-owned over there. Git does not report
+# empty directories, so `git status` is unaffected; removing it by hand needs
+# sudo. on-create.sh claims the volume's own root, which is a different inode.
+{
+	echo "- type: volume"
+	echo "  source: gitnexus-index"
+	echo "  target: ${DEVBOX_CONTAINER_WORKSPACE}/.gitnexus"
+} | overrides_add gitnexus service-volumes
+echo "gitnexus-index: {}" | overrides_add gitnexus volumes
+
 # Contributes the git-dir mounts when this checkout is a linked worktree, and
 # nothing at all when it is not.
 bash "$here/init-worktree.sh"
