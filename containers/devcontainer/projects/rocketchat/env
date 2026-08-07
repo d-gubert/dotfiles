@@ -15,6 +15,24 @@ DENO_INSTALL=/home/vscode/.devbox/deno
 DEVBOX_PLAYWRIGHT_CMD=yarn workspace @rocket.chat/meteor playwright
 DEVBOX_PLAYWRIGHT_BROWSERS=chromium
 
+# --- The database -------------------------------------------------------------
+#
+# The shared MongoDB from containers/local-mongo, not Meteor's bundled mongod:
+# one database for every worktree of this repo, still there after a rebuild, and
+# reachable from the host (127.0.0.1:27017) for Compass or mongosh at the same
+# time. ../initialize.sh starts it and compose/*.yml puts the container on its
+# network, which is what makes this hostname resolve.
+#
+# Setting MONGO_URL is what makes Meteor SKIP its own mongod — so nothing listens
+# on 3001 any more, see `ports`. Unset both lines to get the bundled one back.
+#
+# `mongo` and not `localhost` or a published port: the replica set advertises its
+# single member as `mongo:27017` (MONGODB_INITIAL_PRIMARY_HOST in that compose
+# file), and a driver connecting to a replica set discards the seed address and
+# uses the advertised one. `?replicaSet=rs0` for the same reason it is on every
+# Rocket.Chat MONGO_URL — the oplog needs a replica set, not a standalone.
+MONGO_URL=mongodb://mongo:27017/rocketchat?replicaSet=rs0
+
 # --- Server settings ---------------------------------------------------------
 #
 # These came out of the old .devcontainer/.env, where they were inert: compose

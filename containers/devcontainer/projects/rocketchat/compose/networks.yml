@@ -1,0 +1,13 @@
+# The network of the shared MongoDB stack (../../../../local-mongo/docker-compose.yml),
+# which that file pins the name of. External because it belongs to that stack:
+# it is one database for every Rocket.Chat workspace on this machine, started
+# and stopped independently of any container in here.
+#
+# Compose will not create an external network it cannot find, so a `devbox up`
+# with the stack down fails at create — which is why ../initialize.sh starts it
+# from initializeCommand rather than leaving it to whoever remembers.
+#
+# Attaching to it is ./service.yml; this only declares it.
+local-mongo:
+  external: true
+  name: local-mongo

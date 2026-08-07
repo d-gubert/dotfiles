@@ -101,12 +101,14 @@ its environment. One is picked per workspace by matching your path against each
 ```
 projects/rocketchat/
   match              ~/dev/RocketChat/worktrees/*
-  env                METEOR_WAREHOUSE_DIR=..., DENO_INSTALL=...
+  env                METEOR_WAREHOUSE_DIR=..., DENO_INSTALL=..., MONGO_URL=...
   env.local          gitignored — a license key
-  ports              3000:3000, 3001:3001
-  allowed-domains    *.meteor.com, *.rocket.chat
+  ports              3000:3000
+  allowed-domains    *.meteor.com, *.rocket.chat, the mongo network's CIDR
   setup.sh           pinned Meteor + Deno into $DEVBOX_TOOLS, then yarn install/build
-  compose/*.yml      node_modules and .meteor/local as volumes, off the bind mount
+  initialize.sh      host-side; brings up the shared MongoDB before create
+  compose/*.yml      node_modules and .meteor/local as volumes, off the bind mount;
+                     the mongo stack's network, attached as external
 ```
 
 Every file is optional; `default` is the fallback and is empty on purpose. Each
@@ -169,7 +171,7 @@ reaches the container, paste the code shown in the browser at the
 | `scripts/on-create.sh` | Container-side `onCreateCommand`; claims volume mount points, configures git |
 | `scripts/update-content.sh` | Container-side `updateContentCommand`; the profile's `setup.sh`, then the features' install steps |
 | `scripts/post-start.sh` | Container-side `postStartCommand`; the firewall, via the claude-code feature |
-| `scripts/init-profile.sh` | Host-side; the profile's env, ports, tools volume and compose fragments |
+| `scripts/init-profile.sh` | Host-side; the profile's env, ports, tools volume, compose fragments and its own `initialize.sh` |
 | `scripts/init-worktree.sh` | Host-side; exposes the real git dir when the checkout is a linked worktree |
 | `scripts/init-git-identity.sh` | Host-side; passes your git author identity through |
 | `scripts/ensure-*.sh` | Host-side; the shared volumes and the turbo cache, before create |
@@ -298,6 +300,30 @@ unavailable the script warns and builds simply run uncached.
   *are* the hookup. Both commands are TTY-only and fail with `IO error: not a
   terminal` from any lifecycle hook. To confirm the cache is live, run a
   cacheable task twice with `.turbo/cache` removed in between.
+
+**The shared MongoDB (`rocketchat` profile).** `../local-mongo/docker-compose.yml`
+is a stack of its own — one database for every worktree, up and down
+independently of any container in here — and the profile reaches it at
+`mongo:27017` over its network, which is named `local-mongo` and attached as
+`external`. `projects/rocketchat/initialize.sh` starts it at
+`initializeCommand`, because compose won't create a container whose external
+network is missing.
+
+- **Only the `mongo` service.** That file also defines nats and traefik, and
+  traefik publishes host port 3000 — the port this profile publishes for Meteor.
+  Bringing the whole file up from here would fail every `devbox up` on an
+  allocated port. Start the rest by hand when you want the microservices stack.
+- The hostname is not cosmetic: the replica set advertises its member as
+  `mongo:27017`, and a driver connecting to a replica set uses the *advertised*
+  address, not the one you gave it. A published port alone doesn't work.
+- Pinned to `172.31.0.0/24` because `projects/rocketchat/allowed-domains` has
+  that CIDR — a second network isn't covered by the rule the firewall derives
+  from its own bridge. Change one, change both.
+- `MONGO_URL` in `projects/rocketchat/env` is what makes Meteor skip its bundled
+  mongod, so nothing listens on 3001 any more and `ports` no longer publishes
+  it. Comment both back in to go back to the bundled database.
+- Still reachable from the host at `127.0.0.1:27017` (mongosh, Compass) while
+  the container uses it.
 
 **Yarn's global cache.** `YARN_ENABLE_GLOBAL_CACHE=true` (`devcontainer.json`) is
 the other half of the volume above. A repo whose `.yarnrc.yml` sets

@@ -1,0 +1,10 @@
+# Join the shared MongoDB's network (declared in ./networks.yml), which is what
+# makes `mongo:27017` — the address in MONGO_URL, and the one the replica set
+# advertises for itself — resolve inside the container.
+#
+# Only what this profile adds: compose merges a service's `networks` across
+# files, so `default` and `turbo-cache` from ../../../docker-compose.yml stay.
+# Repeating them here would work too, but then the base file's list would have a
+# second, silently diverging copy.
+networks:
+  - local-mongo

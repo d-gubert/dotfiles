@@ -19,7 +19,8 @@ bare toolchain container and a durable scratch volume.
 | `ports` | host, at `up` | `host:container` per line. `DEVBOX_PORTS=3100:3000 devbox up` overrides it, which is how a second workspace of the same profile avoids a port clash. |
 | `allowed-domains` | container, every start | Extra egress allowlist entries — hostnames or CIDRs. Merged with the base list and each declared feature's. Takes effect on a **restart**, no rebuild. |
 | `setup.sh` | container, at create | Installs whatever the repo needs, as `vscode`, with the network still **unrestricted** (`updateContentCommand` runs before the firewall). |
-| `compose/*.yml` | host, at `up` | Raw compose fragments for anything the above can't say. One file per override bucket: `service.yml`, `service-environment.yml`, `service-volumes.yml`, `volumes.yml`. |
+| `initialize.sh` | host, at `up` | The host-side counterpart of `setup.sh`, for whatever the fragments below *assume* and compose won't create: an external network, a companion stack. See `rocketchat`. |
+| `compose/*.yml` | host, at `up` | Raw compose fragments for anything the above can't say. One file per override bucket: `service.yml`, `service-environment.yml`, `service-volumes.yml`, `volumes.yml`, `networks.yml`. |
 
 ## Writing a `setup.sh`
 
@@ -38,6 +39,27 @@ expensive it puts in `$DEVBOX_TOOLS` is still there from last time.
 `sudo` is passwordless, which is what you need for a launcher in
 `/usr/local/bin` — and for claiming the mount point of any volume the profile
 mounts inside the workspace (they arrive `root:root`, see `rocketchat`).
+
+## Writing an `initialize.sh`
+
+It runs **on the host**, last of the profile's host-side steps, with the same
+environment as `scripts/initialize.sh` — note that `$DEVBOX_HOME` is this
+directory's parent *on the host* here, not `/opt/devbox`.
+
+Use it for what has to exist before the container is *created*, which is
+anything a fragment declares `external`: compose refuses to create a container
+whose external network or volume is missing, so there is no starting it later
+from inside. `rocketchat` brings up the shared MongoDB this way.
+
+It must be **idempotent** — it runs on every create and every start — and it
+must not fail for a reason the user can't act on: an error here means no
+container at all, so check whether docker is even available and exit cleanly if
+it isn't.
+
+Reaching a service it starts takes three more things: `compose/networks.yml`
+to declare that stack's network `external`, `compose/service.yml` to attach to
+it, and — since the firewall's automatic rule only covers the container's own
+bridge — that network's CIDR in `allowed-domains`.
 
 ## Placeholders in `compose/*.yml`
 

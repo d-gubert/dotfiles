@@ -11,6 +11,7 @@
 #   env, env.local     -> services.app.environment
 #   ports              -> services.app.ports
 #   compose/*.yml      -> the matching override bucket, verbatim
+#   initialize.sh      -> run on the host, for whatever has to exist before create
 #   (always)           -> the shared devbox-tools-<profile> volume at $DEVBOX_TOOLS
 #
 # The container-side half is projects/<name>/setup.sh, run from
@@ -126,6 +127,11 @@ ports_from_file() {
 		line="${line//[[:space:]]/}"
 		[ -n "$line" ] && printf '%s\n' "$line"
 	done <"$dir/ports"
+	# A loop's status is that of the last command in its body, and the last line
+	# of a `ports` file is very often a comment — which makes that `[ -n ]` false
+	# and the whole function return 1. Under `set -e` the caller's
+	# `ports="$(ports_from_file)"` then kills this script with no output at all.
+	return 0
 }
 
 if [ -n "${DEVBOX_PORTS:-}" ]; then
@@ -161,7 +167,7 @@ fi
 #   %WORKSPACE%  the workspace path inside the container
 #   %TOOLS%      the profile's durable scratch volume (= $DEVBOX_TOOLS)
 #   %PROFILE%    this profile's name
-for bucket in service service-environment service-volumes volumes; do
+for bucket in service service-environment service-volumes volumes networks; do
 	fragment="$dir/compose/$bucket.yml"
 	[ -f "$fragment" ] || continue
 	sed -e "s|%WORKSPACE%|${DEVBOX_CONTAINER_WORKSPACE:?}|g" \
@@ -171,3 +177,25 @@ for bucket in service service-environment service-volumes volumes; do
 		overrides_add "profile-compose-$bucket" "$bucket"
 	log "added compose/$bucket.yml"
 done
+
+# --- The profile's own host-side hook -----------------------------------------
+#
+# The counterpart of setup.sh, on this side of the container: for whatever a
+# profile's compose fragments *assume* and compose will not create itself — an
+# external network, a companion stack, a directory a mount points at. Compose
+# refuses to create the container when an external network or volume is missing,
+# so "start it later, from inside" is not an option.
+#
+# Runs last, so it can read anything the steps above exported, and with the same
+# environment as the rest of initialize.sh ($DEVBOX_HOME is the host path of this
+# directory here, not /opt/devbox). Contributing further fragments from it works
+# — the merge has not happened yet — but the four files above are the better
+# place for anything they can express.
+#
+# It must be idempotent and it must not be fatal for a reason outside the user's
+# control: this runs on every create and start, and failing here means no
+# container at all. See projects/rocketchat/initialize.sh.
+if [ -f "$dir/initialize.sh" ]; then
+	log "running the profile's initialize.sh"
+	bash "$dir/initialize.sh"
+fi

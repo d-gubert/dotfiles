@@ -27,6 +27,7 @@
 #   service-environment  KEY: "value" lines for services.app.environment
 #   service-volumes      list items for services.app.volumes
 #   volumes              entries for the top-level volumes map
+#   networks             entries for the top-level networks map
 #
 # Buckets exist because YAML has no merge: two fragments both opening `volumes:`
 # under the same node would be a duplicate key, which compose rejects. Within a
@@ -41,7 +42,14 @@
 
 # Buckets in emit order. `service` first only so the generated file reads with
 # the environment and volume lists last, like a hand-written one.
-_overrides_buckets=(service service-environment service-volumes volumes)
+#
+# A fragment in `networks` declares a network the container attaches to but does
+# not own — always `external`, because whatever creates it (the turbo cache, the
+# local mongo stack) has to outlive any one workspace. Attaching to it is a
+# separate `service` fragment: compose merges the service's `networks` with the
+# base file's list rather than replacing it, so a fragment names only what it
+# adds.
+_overrides_buckets=(service service-environment service-volumes volumes networks)
 
 _overrides_out() {
 	if [ -z "${DEVBOX_OVERRIDES_OUT:-}" ]; then
@@ -154,6 +162,10 @@ overrides_write() {
 		if _overrides_has volumes; then
 			echo "volumes:"
 			_overrides_emit volumes 2
+		fi
+		if _overrides_has networks; then
+			echo "networks:"
+			_overrides_emit networks 2
 		fi
 	} >"$out"
 }

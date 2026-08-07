@@ -34,7 +34,11 @@ if [ "$(docker inspect -f '{{.State.Running}}' turbo-cache 2>/dev/null || true)"
 fi
 
 log "starting shared remote cache..."
-if ! docker compose -f "$compose_file" up -d --wait; then
+# -p is not redundant: `devbox` exports COMPOSE_PROJECT_NAME for THIS workspace's
+# container and the env var outranks the `name:` in the compose file, so without
+# it the cache is adopted into the devcontainer's project — where `devbox down`,
+# which matches by project label, takes the shared cache down with the workspace.
+if ! docker compose -p turbo-cache -f "$compose_file" up -d --wait; then
 	warn "failed to start — continuing without a remote cache"
 	exit 0
 fi

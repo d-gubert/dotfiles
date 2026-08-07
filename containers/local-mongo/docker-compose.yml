@@ -1,5 +1,35 @@
+# Local MongoDB (single-node replica set), NATS and Traefik for Rocket.Chat
+# development on the host.
+#
+# Fixed project name so the stack is the same one no matter where it is started
+# from — the devcontainer's initializeCommand brings the `mongo` service up with
+# `-p local-mongo` from a different cwd, and with COMPOSE_PROJECT_NAME already
+# exported for the devcontainer's own project. See
+# ../devcontainer/projects/rocketchat/initialize.sh.
+name: local-mongo
+
 volumes:
   mongo-data-1:
+
+networks:
+  # The project's default network, renamed so every service in here keeps
+  # working with no per-service `networks:` while the network gets a stable name
+  # a devcontainer can attach to as `external`. That is how the Rocket.Chat
+  # devcontainer reaches `mongo:27017` by name — which it must, because the
+  # replica set advertises its member as `$MONGODB_INITIAL_PRIMARY_HOST:27017`
+  # (`mongo:27017`) and any driver connecting to it follows that hostname, so a
+  # published-port address alone is not enough.
+  default:
+    name: local-mongo
+    ipam:
+      config:
+        # Pinned because the devcontainer's egress firewall allowlists this exact
+        # CIDR (../devcontainer/projects/rocketchat/allowed-domains) — a second
+        # network is not covered by the rule it derives from its own bridge.
+        # Chosen outside the range Docker has handed out so far but inside its
+        # default pool, like ../devcontainer/turbo-cache/docker-compose.yml.
+        # Change one, change both.
+        - subnet: 172.31.0.0/24
 
 services:
   mongo:
