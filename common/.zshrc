@@ -280,6 +280,18 @@ function exists() { command -v "$1" >/dev/null 2>&1 }
 
 alias pclaude='CLAUDE_CONFIG_DIR=~/.claude-personal claude'
 
+# Claude Code telemetry -> local observability stack (containers/observability).
+# Opt-in: export DOTFILES_CLAUDE_TELEMETRY=1 (e.g. in ~/.zshrc.local) so runs
+# don't try to reach a collector that isn't up. Bring the stack up first with
+# `docker compose -f $DOTFILES_PATH/containers/observability/docker-compose.yml up -d`.
+if [[ -n "$DOTFILES_CLAUDE_TELEMETRY" ]]; then
+	export CLAUDE_CODE_ENABLE_TELEMETRY=1
+	export OTEL_METRICS_EXPORTER=otlp
+	export OTEL_LOGS_EXPORTER=otlp
+	export OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+	export OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4317}
+fi
+
 # Home dir encryption long file restriction messes up with this too
 # export PLAYWRIGHT_BROWSERS_PATH=/work/.cache/playwright
 

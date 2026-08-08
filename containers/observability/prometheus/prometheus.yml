@@ -1,0 +1,30 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Prometheus scraping itself.
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # App metrics that arrived over OTLP and were re-exported by the collector.
+  - job_name: otel-collector
+    static_configs:
+      - targets: ["otel-collector:8889"]
+
+  # The collector's own internal metrics (queue sizes, dropped points, ...).
+  - job_name: otel-collector-internal
+    static_configs:
+      - targets: ["otel-collector:8888"]
+
+  # Rocket.Chat exposes native Prometheus metrics on :9458 when the "Prometheus"
+  # setting is enabled. The devcontainer override in ../rocket.chat joins this
+  # `observability` network with the alias `rocketchat`, so this target resolves
+  # once that container is up. It's fine for it to be down otherwise.
+  - job_name: rocketchat
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["rocketchat:9458"]
+        labels:
+          source: rocket.chat

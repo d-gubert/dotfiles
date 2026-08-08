@@ -1,0 +1,34 @@
+# Rocket.Chat devcontainer -> local observability stack.
+#
+# A Compose override that connects the Rocket.Chat devcontainer `app` service to
+# the `observability` network created by ../../observability, enables
+# Rocket.Chat's native Prometheus endpoint, and points OTLP at the collector.
+#
+# It's an OVERRIDE: it's merged on top of the Rocket.Chat repo's own
+# `.devcontainer/docker-compose.yml` (which defines the `app` service). See
+# ../README.md for how to wire it into devcontainer.json.
+#
+# Prereq: the observability stack is up (it creates the `observability` network):
+#   docker compose -f <dotfiles>/containers/observability/docker-compose.yml up -d
+
+services:
+  app:
+    environment:
+      # Turn on Rocket.Chat's Prometheus exporter (served on :9458). Prometheus
+      # scrapes it over the shared network via the `rocketchat` alias below.
+      OVERWRITE_SETTING_Prometheus_Enabled: "true"
+      # OTLP endpoint for anything in Rocket.Chat that speaks OpenTelemetry
+      # (tracing/metrics). Harmless if unused.
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+      OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
+    networks:
+      # Keep the devcontainer's own default network AND join observability.
+      default: {}
+      observability:
+        aliases:
+          - rocketchat
+
+networks:
+  # Created by the observability stack; referenced here as external.
+  observability:
+    external: true
