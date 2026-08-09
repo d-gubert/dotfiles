@@ -212,6 +212,7 @@ function ccd() {
 	local profile="~/.claude"
 	local port=3456
 	local volume
+	local detached=false
 
 	while (( $# )); do
 		case "$1" in
@@ -226,6 +227,9 @@ function ccd() {
 			-v|--volume)
 				shift
 				volume="$1"
+				;;
+			-d|--detached)
+				detached=true
 				;;
 			*)
 				print -u2 "Unknown option or argument: $1"
@@ -263,8 +267,13 @@ function ccd() {
 		return 20
 	fi
 
+	local -a flags
+	if $detached; then
+		flags=(-d)
+	fi
+
 	# Image is not published in the registry, needs to be built locally - https://github.com/matt1398/claude-devtools
-	docker run --rm -e NODE_ENV=development -p "${port}:3456" -v "${profile:-$volume}:/data/.claude:ro" claude-devtools
+	docker run --rm -e NODE_ENV=development -p "${port}:3456" -v "${profile:-$volume}:/data/.claude:ro" "${flags[@]}" claude-devtools
 }
 
 # Claude code sniffly analytics
@@ -273,6 +282,7 @@ function sniffly() {
 	local port=8081
 	local volume
 	local cache="sniffly-cache"
+	local detached=true
 
 	while (( $# )); do
 		case "$1" in
@@ -291,6 +301,9 @@ function sniffly() {
 			-c|--cache)
 				shift
 				cache="$1"
+				;;
+			-d|--detached)
+				detached=true
 				;;
 			--no-cache)
 				cache=
@@ -349,6 +362,10 @@ function sniffly() {
 	local -a cache_mount
 	if [[ -n "$cache" ]]; then
 		cache_mount=(-v "${cache}:/home/sniffly/.sniffly")
+	fi
+
+	if $detached; then
+		cache_mount+=(-d)
 	fi
 
 	# Sniffly hardcodes ~/.claude/projects, so the mount target is not negotiable
