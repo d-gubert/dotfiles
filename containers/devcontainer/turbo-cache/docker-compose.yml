@@ -1,5 +1,33 @@
 # Shared Turborepo remote cache — https://ducktors.github.io/turborepo-remote-cache
 #
+# ****************************************************************************
+# DORMANT. Nothing starts this file and no container talks to it. Turbo's cache
+# is now a host directory bind-mounted into every workspace — see
+# ../scripts/ensure-turbo-cache-dir.sh for what it does and why it won.
+#
+# It is kept because the swap is reversible and this file is the hard part of
+# it. What was unwired, i.e. what to put back:
+#
+#   ../scripts/initialize.sh   call ensure-turbo-cache.sh instead of
+#                              ensure-turbo-cache-dir.sh
+#   ../docker-compose.yml      `turbo-cache` in the top-level networks (external)
+#                              and in services.app.networks
+#   ../devcontainer.json       TURBO_API=http://turbo-cache:3000, TURBO_TEAM,
+#                              TURBO_TOKEN
+#   ../allowed-domains         the 172.30.0.0/24 entry, or every artifact
+#                              request is REJECTed by the firewall
+#
+# WARNING: TURBO_TOKEN below and the one in devcontainer.json must match, and
+# nothing checks that they do. They drifted once and the whole cache went quiet:
+# the server keeps the token it was CREATED with (`restart: unless-stopped`, and
+# ../scripts/ensure-turbo-cache.sh returns early when the container is running),
+# so a stale value survives every reboot. Every artifact request 401s, turbo
+# prints one WARNING line per task and silently builds everything locally.
+# `/v8/artifacts/status` needs no auth and answers 200 throughout, so a
+# connectivity check does not catch it. Recreate the server after any change:
+# `docker compose -p turbo-cache -f <this file> up -d --force-recreate cache`.
+# ****************************************************************************
+#
 # This is a STANDALONE compose project (`name:` below), deliberately NOT part of
 # any devcontainer's own project: every workspace gets its own devcontainer
 # compose project, so anything defined there would be duplicated per workspace

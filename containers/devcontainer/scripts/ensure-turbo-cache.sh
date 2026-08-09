@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 #
-# Runs on the HOST from initialize.sh (devcontainer.json's initializeCommand),
+# DORMANT — initialize.sh calls ./ensure-turbo-cache-dir.sh instead, and turbo's
+# cache is a bind-mounted host directory now. Kept with the stack it starts; see
+# ../turbo-cache/docker-compose.yml for why, and for the four places to change to
+# put the server back.
+#
+# Ran on the HOST from initialize.sh (devcontainer.json's initializeCommand),
 # before the container is created.
 #
 # Brings up the shared Turborepo remote cache (../turbo-cache/docker-compose.yml)

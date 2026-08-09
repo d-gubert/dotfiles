@@ -87,13 +87,15 @@
 		// profile, so a rebuild does not re-download them. See scripts/init-profile.sh.
 		"DEVBOX_TOOLS": "/home/vscode/.devbox",
 
-		// Turbo "remote" cache config - server is on turbo-cache/docker-compose.yml
-		// May also be used by the host, but beware of OS differences
-		"TURBO_API": "http://turbo-cache:3000",
-		"TURBO_TEAM": "devbox",
-		"TURBO_TOKEN": "devbox-local-dev",
-		// Prevent turbo from using worktree-aware cache resolution
-		"TURBO_CACHE_DIR": ".turbo/cache",
+		// Turbo's cache: one host directory (~/.cache/devbox/turbo) bind-mounted
+		// here by scripts/ensure-turbo-cache-dir.sh, so every workspace shares it.
+		//
+		// An ABSOLUTE path, which does two jobs. It puts the cache on the shared
+		// mount instead of in the checkout, and it stops turbo >= 2.9 from
+		// resolving the cache the worktree-aware way — that writes into the MAIN
+		// worktree, a host path which exists in here only as a root-owned mount
+		// parent, and the build dies with `Permission denied`.
+		"TURBO_CACHE_DIR": "/home/vscode/.turbo-cache",
 
 		// Global cache for cross-workspace sharing
 		"YARN_ENABLE_GLOBAL_CACHE": "true"

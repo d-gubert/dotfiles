@@ -20,13 +20,10 @@
 # Anthropic's network access requirements list what Claude Code itself needs:
 # https://code.claude.com/docs/en/network-config#network-access-requirements
 
-# --- The shared Turborepo remote cache ---------------------------------------
-# It lives on a second docker network, which the automatic host-network rule does
-# NOT cover — that one is derived from the default route, i.e. this container's
-# own bridge. Pinned to this CIDR in turbo-cache/docker-compose.yml; keep the two
-# in sync. Without it turbo's cache requests are REJECTed and every build falls
-# back to local execution (slow, but not broken).
-172.30.0.0/24
+# Nothing for turbo's cache: it is a bind-mounted host directory, not a server,
+# so it needs no egress at all. The CIDR that used to be here belonged to the
+# remote cache in turbo-cache/docker-compose.yml — put it back together with
+# everything else in that file's header if you ever re-wire it.
 
 # --- GitHub -------------------------------------------------------------------
 # The published IP ranges are fetched from api.github.com/meta at start; these

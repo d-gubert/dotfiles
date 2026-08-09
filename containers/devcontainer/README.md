@@ -74,7 +74,7 @@ The allowlist is data, assembled at every start from four places:
 
 | | |
 | --- | --- |
-| `allowed-domains` | The floor: GitHub, the npm/yarn registries, the editor, the turbo cache's CIDR |
+| `allowed-domains` | The floor: GitHub, the npm/yarn registries, the editor |
 | `scripts/<feature>/allowed-domains` | Merged only while that feature is declared (Claude's own hosts, Playwright's CDN) |
 | `projects/<profile>/allowed-domains` | Merged for workspaces on that profile |
 | `DEVBOX_ALLOW_DOMAINS="a.example b.example"` | One-off, at `devbox up` time |
@@ -166,7 +166,7 @@ reaches the container, paste the code shown in the browser at the
 | `Dockerfile` | Base image and the generic toolchain |
 | `allowed-domains` | The base egress allowlist |
 | `projects/` | Per-repository profiles ([contract](projects/README.md)) |
-| `turbo-cache/docker-compose.yml` | Standalone [Turborepo remote cache](https://ducktors.github.io/turborepo-remote-cache), its own project so one cache serves every workspace |
+| `turbo-cache/docker-compose.yml` | Standalone [Turborepo remote cache](https://ducktors.github.io/turborepo-remote-cache). **Dormant** — turbo caches to a bind-mounted host directory now; the header says how to put it back |
 | `scripts/initialize.sh` | Host-side `initializeCommand`; runs the ensure-scripts, then merges the compose fragments |
 | `scripts/on-create.sh` | Container-side `onCreateCommand`; claims volume mount points, configures git |
 | `scripts/update-content.sh` | Container-side `updateContentCommand`; the profile's `setup.sh`, then the features' install steps |
@@ -174,7 +174,7 @@ reaches the container, paste the code shown in the browser at the
 | `scripts/init-profile.sh` | Host-side; the profile's env, ports, tools volume, compose fragments and its own `initialize.sh` |
 | `scripts/init-worktree.sh` | Host-side; exposes the real git dir when the checkout is a linked worktree |
 | `scripts/init-git-identity.sh` | Host-side; passes your git author identity through |
-| `scripts/ensure-*.sh` | Host-side; the shared volumes and the turbo cache, before create |
+| `scripts/ensure-*.sh` | Host-side; the shared volumes and the turbo cache directory, before create |
 | `scripts/lib/features.sh` | Which `scripts/<feature>/` directories are active, read off `devcontainer.json` |
 | `scripts/lib/overrides.sh` | How the generated compose override gets built |
 | `scripts/lib/ports.sh` | Moves a published host port off one the host already uses |
@@ -281,26 +281,32 @@ me who you are".
 - Applied at **create**, so changing your host identity needs a rebuild to take
   effect — or just run `git config --global user.email ...` in the container.
 
-**Turborepo remote cache.** Reached at `http://turbo-cache:3000` over the shared
-external `turbo-cache` network (`TURBO_API`/`TURBO_TEAM`/`TURBO_TOKEN` in
-`devcontainer.json`), and at `http://127.0.0.1:3399` from the host for builds
-outside the container. It starts via `initializeCommand`; if Docker is
-unavailable the script warns and builds simply run uncached.
+**Turborepo cache.** One host directory, `~/.cache/devbox/turbo`, bind-mounted
+into every container at `/home/vscode/.turbo-cache` — the path `TURBO_CACHE_DIR`
+names in `devcontainer.json`. `scripts/ensure-turbo-cache-dir.sh` creates it at
+`initializeCommand`. No server, no token, no network, no allowlist entry.
 
-- The network is pinned to `172.30.0.0/24` because the base allowlist has that
-  CIDR — the automatic host-network rule only covers the container's own bridge.
-  Change one, change both.
-- `TURBO_TOKEN` is a fixed local-dev value, not a secret. Change it in both
-  places or every request 401s. To wipe artifacts:
-  `docker compose -f turbo-cache/docker-compose.yml down -v`.
-- `TURBO_CACHE_DIR=.turbo/cache` is **required in a worktree**. turbo ≥ 2.9 is
-  worktree-aware and otherwise writes the local cache into the *main* worktree —
-  a host path that exists in here only as a root-owned mount parent, so builds
-  fail with `Permission denied`.
-- **No `turbo login`/`turbo link` is needed, or possible.** Those three env vars
-  *are* the hookup. Both commands are TTY-only and fail with `IO error: not a
-  terminal` from any lifecycle hook. To confirm the cache is live, run a
-  cacheable task twice with `.turbo/cache` removed in between.
+- **Shared by every workspace**, which is the whole point: turbo hashes a task
+  from its inputs, so two worktrees on the same commit hash it identically and
+  the second one gets a hit instead of a rebuild.
+- **Your host shares it too.** Export `TURBO_CACHE_DIR=~/.cache/devbox/turbo` for
+  a `turbo run` outside any container.
+- The path is **absolute on purpose**. turbo ≥ 2.9 is worktree-aware and
+  otherwise writes the cache into the *main* worktree — a host path that exists
+  in here only as a root-owned mount parent, so builds fail with `Permission
+  denied`.
+- To clear it: `rm -rf ~/.cache/devbox/turbo`. To size it: `du -sh` the same
+  path. Neither needs a container.
+- **No `turbo login`/`turbo link`, and nothing to log into.** Both are TTY-only
+  and fail with `IO error: not a terminal` from any lifecycle hook. To confirm
+  the cache works, run a cacheable task twice and look for `cache hit`.
+- Two containers that build the same task at the same time write the same hash
+  to the same directory. The contents are identical, so the loser of that race
+  overwrites the winner with its own copy — but this is the one thing a cache
+  *server* serialised for you and a directory does not.
+
+`turbo-cache/docker-compose.yml` is that server. It is still in the repo and
+wired to nothing; its header lists the four places to change to bring it back.
 
 **The shared MongoDB (`rocketchat` profile).** `../local-mongo/docker-compose.yml`
 is a stack of its own — one database for every worktree, up and down

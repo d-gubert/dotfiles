@@ -105,9 +105,10 @@ bash "$here/init-git-identity.sh"
 # profile that is just a `match` file.
 bash "$here/init-profile.sh"
 
-# Brings up the shared Turborepo remote cache. The devcontainer attaches to its
-# network as external, so the network must exist before compose runs.
-bash "$here/ensure-turbo-cache.sh"
+# Creates the host directory that holds turbo's cache and contributes the bind
+# mount for it. Host-side because the source is a host path, pre-create because
+# a profile's setup.sh (updateContentCommand) is usually the first thing to build.
+bash "$here/ensure-turbo-cache-dir.sh"
 
 # Creates the shared Yarn cache volume (~/.yarn/berry: the package zips and
 # metadata index) — external volume, mounted through a subpath that has to exist
