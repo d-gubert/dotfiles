@@ -177,6 +177,7 @@ reaches the container, paste the code shown in the browser at the
 | `scripts/ensure-*.sh` | Host-side; the shared volumes and the turbo cache, before create |
 | `scripts/lib/features.sh` | Which `scripts/<feature>/` directories are active, read off `devcontainer.json` |
 | `scripts/lib/overrides.sh` | How the generated compose override gets built |
+| `scripts/lib/ports.sh` | Moves a published host port off one the host already uses |
 | `scripts/lib/profile.sh` | How a workspace gets its profile |
 
 The `ensure-*` scripts are host-side and pre-create rather than lazy for one

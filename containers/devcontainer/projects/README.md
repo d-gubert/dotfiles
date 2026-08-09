@@ -16,7 +16,7 @@ bare toolchain container and a durable scratch volume.
 | `match` | host, at `up` | Host path globs, one per line. A leading `~/` is expanded. `default` never matches by path. |
 | `env` | container | `KEY=VALUE` lines, injected as the service's environment. |
 | `env.local` | container | The same, **gitignored** — for a license key or token that has no business in a dotfiles repo. Layered on top of `env`. |
-| `ports` | host, at `up` | `host:container` per line. `DEVBOX_PORTS=3100:3000 devbox up` overrides it, which is how a second workspace of the same profile avoids a port clash. |
+| `ports` | host, at `up` | `host:container` per line. A host port the host already uses moves to the next free one, with a warning — so a second workspace of the same profile just works. `DEVBOX_PORTS=3100:3000 devbox up` overrides the file when you want to pin which port it gets. |
 | `allowed-domains` | container, every start | Extra egress allowlist entries — hostnames or CIDRs. Merged with the base list and each declared feature's. Takes effect on a **restart**, no rebuild. |
 | `setup.sh` | container, at create | Installs whatever the repo needs, as `vscode`, with the network still **unrestricted** (`updateContentCommand` runs before the firewall). |
 | `initialize.sh` | host, at `up` | The host-side counterpart of `setup.sh`, for whatever the fragments below *assume* and compose won't create: an external network, a companion stack. See `rocketchat`. |

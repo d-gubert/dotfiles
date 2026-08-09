@@ -21,6 +21,7 @@ set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 source "$here/lib/overrides.sh"
+source "$here/lib/ports.sh"
 source "$here/lib/profile.sh"
 
 profile="${DEVBOX_PROFILE:?}"
@@ -118,8 +119,14 @@ emit_env_file() {
 # --- Published ports ----------------------------------------------------------
 #
 # `host:container` per line. DEVBOX_PORTS (comma or space separated) overrides
-# the file, which is how you run a second workspace of the same profile without
-# both of them fighting over the host port.
+# the file, which is how you pin the host port a second workspace of the same
+# profile gets.
+#
+# Pinning it is not required, though: whichever of the two the list comes from,
+# ports_resolve moves any host port the host is already using — by another
+# workspace, by another docker stack, by a process outside docker altogether — to
+# the next free one and warns. Without that, compose fails the create over a port
+# clash and you get no container at all.
 ports_from_file() {
 	[ -f "$dir/ports" ] || return 0
 	while IFS= read -r line || [ -n "$line" ]; do
@@ -141,6 +148,7 @@ else
 fi
 
 if [ -n "$ports" ]; then
+	ports="$(printf '%s\n' "$ports" | ports_resolve)"
 	{
 		echo "ports:"
 		while IFS= read -r port; do

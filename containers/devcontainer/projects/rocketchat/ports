@@ -1,7 +1,8 @@
 # host:container, one per line.
 #
-# Running two workspaces of this profile at once needs a different host port for
-# the second: DEVBOX_PORTS="3100:3000" devbox up
+# Running two workspaces of this profile at once needs no change here: the second
+# one finds 3000 taken and publishes 3001 instead, and says so. Pin the host port
+# with DEVBOX_PORTS="3100:3000" devbox up when you want a specific one.
 3000:3000
 
 # 3001 was Meteor's bundled mongod, which it starts itself and ONLY while
