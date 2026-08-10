@@ -492,6 +492,41 @@ if exists docker; then
 	alias dcdown='docker compose down'
 fi
 
+# Claude Code telemetry -> the local observability stack.
+#
+# containers/observability/README.md documents the same six variables for
+# ~/.claude/settings.json. Here instead, because a shell that starts before the
+# stack does exports nothing, and a `claude` with a dead collector retries the
+# export every OTEL_METRIC_EXPORT_INTERVAL and logs each failure.
+#
+# The trade of that: a shell already open when the stack comes up does not pick
+# the variables up. Re-source this file, or open a new shell.
+if exists claude; then
+	# ztcp, not `docker ps`: the builtin probe of the collector's published port
+	# costs no fork, and a docker call at every shell start is 100ms+ of latency
+	# on the prompt. A closed loopback port refuses at once, so there is nothing
+	# to time out on.
+	zmodload -F zsh/net/tcp b:ztcp 2>/dev/null
+
+	if (( $+builtins[ztcp] )) && ztcp 127.0.0.1 4317 2>/dev/null; then
+		ztcp -c $REPLY
+
+		export CLAUDE_CODE_ENABLE_TELEMETRY=1
+		export OTEL_METRICS_EXPORTER=otlp
+		export OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+		# The published port, not `otel-collector:4317` — that name only resolves
+		# inside the observability network.
+		export OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4317
+		# Claude Code defaults to delta and Prometheus counters are cumulative.
+		# The collector converts, so delta works — but the sender's own running
+		# total survives a collector restart and a reconstructed one does not.
+		export OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=cumulative
+		export OTEL_METRIC_EXPORT_INTERVAL=20000
+		# Separates the host from a devbox container in every query.
+		export OTEL_RESOURCE_ATTRIBUTES=workspace=host
+	fi
+fi
+
 if exists tmux; then
 	source $DOTFILES_SCRIPTS/lib/tmux-helpers.sh
 fi

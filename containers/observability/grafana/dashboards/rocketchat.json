@@ -1,0 +1,191 @@
+{
+  "uid": "devbox-rocketchat",
+  "title": "Rocket.Chat",
+  "description": "The Rocket.Chat server's own Prometheus endpoint, scraped from every devbox container that declares the devbox.metrics.* labels. `instance` is the container, so several worktrees appear side by side.",
+  "tags": ["devbox", "rocketchat"],
+  "editable": true,
+  "schemaVersion": 39,
+  "time": { "from": "now-1h", "to": "now" },
+  "refresh": "30s",
+  "templating": {
+    "list": [
+      {
+        "name": "instance",
+        "label": "Container",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "observability-prometheus" },
+        "query": { "query": "label_values(rocketchat_info, instance)", "refId": "instance" },
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": { "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Connected users",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "observability-prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "fixed", "fixedColor": "text" } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "graphMode": "area", "textMode": "auto" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "observability-prometheus" },
+          "expr": "sum(rocketchat_ddp_connected_users{instance=~\"$instance\"})"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "DDP sessions",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "observability-prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "fixed", "fixedColor": "text" } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "graphMode": "area", "textMode": "auto" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "observability-prometheus" },
+          "expr": "sum(rocketchat_ddp_sessions_count{instance=~\"$instance\"})"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Messages",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "observability-prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "fixed", "fixedColor": "text" } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "graphMode": "area", "textMode": "auto" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "observability-prometheus" },
+          "expr": "max(rocketchat_messages_total{instance=~\"$instance\"})"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Heap in use",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "observability-prometheus" },
+      "fieldConfig": { "defaults": { "unit": "bytes", "color": { "mode": "fixed", "fixedColor": "text" } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "graphMode": "area", "textMode": "auto" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "observability-prometheus" },
+          "expr": "sum(nodejs_heap_size_used_bytes{instance=~\"$instance\"})"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "REST API latency, 95th percentile by endpoint",
+      "description": "Top 10 endpoints only — a dev server touches a lot of them.",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "observability-prometheus" },
+      "fieldConfig": {
+        "defaults": { "unit": "s", "custom": { "drawStyle": "line", "fillOpacity": 0, "showPoints": "never" } },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "observability-prometheus" },
+          "expr": "topk(10, histogram_quantile(0.95, sum by (le, entrypoint) (rate(rocketchat_rest_api_seconds_bucket{instance=~\"$instance\"}[$__rate_interval]))))",
+          "legendFormat": "{{entrypoint}}"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Meteor method latency, 95th percentile",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "observability-prometheus" },
+      "fieldConfig": {
+        "defaults": { "unit": "s", "custom": { "drawStyle": "line", "fillOpacity": 0, "showPoints": "never" } },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "observability-prometheus" },
+          "expr": "topk(10, histogram_quantile(0.95, sum by (le, method) (rate(rocketchat_meteor_methods_seconds_bucket{instance=~\"$instance\"}[$__rate_interval]))))",
+          "legendFormat": "{{method}}"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Messages and notifications sent per second",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "observability-prometheus" },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "custom": { "drawStyle": "line", "fillOpacity": 20, "showPoints": "never" } },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "observability-prometheus" },
+          "expr": "sum(rate(rocketchat_messages_sent_total{instance=~\"$instance\"}[$__rate_interval]))",
+          "legendFormat": "messages"
+        },
+        {
+          "refId": "B",
+          "datasource": { "type": "prometheus", "uid": "observability-prometheus" },
+          "expr": "sum by (notification_type) (rate(rocketchat_notifications_sent_total{instance=~\"$instance\"}[$__rate_interval]))",
+          "legendFormat": "notifications {{notification_type}}"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Event loop lag and CPU",
+      "description": "The two numbers that explain a dev server that feels stuck.",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "observability-prometheus" },
+      "fieldConfig": {
+        "defaults": { "unit": "s", "custom": { "drawStyle": "line", "fillOpacity": 0, "showPoints": "never" } },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "cpu" },
+            "properties": [{ "id": "unit", "value": "percentunit" }]
+          }
+        ]
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "observability-prometheus" },
+          "expr": "max(nodejs_eventloop_lag_p99_seconds{instance=~\"$instance\"})",
+          "legendFormat": "event loop lag p99"
+        },
+        {
+          "refId": "B",
+          "datasource": { "type": "prometheus", "uid": "observability-prometheus" },
+          "expr": "sum(rate(process_cpu_seconds_total{instance=~\"$instance\"}[$__rate_interval]))",
+          "legendFormat": "cpu"
+        }
+      ]
+    }
+  ]
+}

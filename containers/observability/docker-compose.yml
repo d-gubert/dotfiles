@@ -1,0 +1,158 @@
+# Local observability stack: an OpenTelemetry Collector, Prometheus and Grafana.
+#
+# One stack per machine, shared by everything that produces metrics — Claude Code
+# on the host, Claude Code in a devbox container, the Rocket.Chat server in a
+# devbox container, and whatever you add next. Start it with ./up.sh, which is
+# also what a devbox profile calls from its initialize.sh.
+#
+# Two ways in, because the two starter sources speak different protocols:
+#
+#   push   OTLP on 4317 (gRPC) and 4318 (HTTP) -> the collector -> Prometheus,
+#          over remote write. This is Claude Code's path.
+#   pull   Prometheus scrapes a container that exposes /metrics. This is
+#          Rocket.Chat's path, and the target list is discovered from Docker
+#          labels — see prometheus/prometheus.yml.
+#
+# This is a STANDALONE compose project (`name:` below), never part of a
+# devcontainer's own project: every devbox workspace runs its own compose
+# project, so a copy defined in there would be one Prometheus per workspace, each
+# with its own empty database. Same argument as ../devcontainer/turbo-cache.
+name: observability
+
+services:
+  # --- The push door ----------------------------------------------------------
+  #
+  # Everything that exports OTLP sends here, and the collector forwards to
+  # Prometheus over remote write. A collector rather than Prometheus's own OTLP
+  # receiver, because this is where per-source processing goes when a source
+  # needs it (renaming, filtering, dropping a high-cardinality attribute) without
+  # touching the source or the database.
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.158.0
+    container_name: observability-otel-collector
+    restart: unless-stopped
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    volumes:
+      - ./otel-collector/config.yaml:/etc/otelcol-contrib/config.yaml:ro
+    ports:
+      # Loopback-only: the host's own Claude Code sends to 127.0.0.1:4317, and
+      # nothing on the LAN has any business pushing metrics in here. A container
+      # does NOT use these — it joins the `observability` network below and sends
+      # to `otel-collector:4317` directly.
+      - "127.0.0.1:4317:4317"
+      - "127.0.0.1:4318:4318"
+    networks:
+      - observability
+    depends_on:
+      # Remote write to a Prometheus that is not up yet costs a few retries and a
+      # wall of errors in the log. Only ordering — no healthcheck condition, the
+      # collector retries either way.
+      - prometheus
+
+  # --- The database -----------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v3.13.2
+    container_name: observability-prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      # The collector pushes; without this flag /api/v1/write 404s and every
+      # pushed metric is silently lost.
+      - --web.enable-remote-write-receiver
+      # Reload the scrape config with `curl -XPOST localhost:9090/-/reload`
+      # instead of restarting the container.
+      - --web.enable-lifecycle
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    networks:
+      - observability
+    depends_on:
+      - docker-socket-proxy
+
+  # --- Service discovery for the `devbox` scrape job --------------------------
+  #
+  # Prometheus finds its targets by asking the Docker API which containers carry
+  # the devbox.metrics.* labels (see prometheus/prometheus.yml). It asks through
+  # this proxy rather than through a mounted /var/run/docker.sock, for two
+  # reasons:
+  #
+  #   * The socket is root:docker 0660 and the Prometheus image runs as `nobody`,
+  #     so a direct mount needs the host's docker group id — a number that
+  #     differs per machine and cannot be checked into this file.
+  #   * `:ro` on a socket mount buys nothing. It makes the socket file
+  #     unwritable, not the API read-only: whoever reaches that socket can
+  #     create a privileged container and own the host. The proxy is a real
+  #     restriction — the variables below are an allowlist of API paths, and
+  #     everything not listed answers 403.
+  #
+  # Only the two endpoints Prometheus's Docker discovery calls are open, and both
+  # are GET-only while POST=0.
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:v0.5.0
+    container_name: observability-docker-socket-proxy
+    restart: unless-stopped
+    environment:
+      CONTAINERS: "1"
+      NETWORKS: "1"
+      POST: "0"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    # No `ports`: nothing outside this network has any business here.
+    networks:
+      - observability
+
+  # --- The front end ----------------------------------------------------------
+  grafana:
+    image: grafana/grafana:13.1.3
+    container_name: observability-grafana
+    restart: unless-stopped
+    environment:
+      # No login on a loopback-only local stack. Anonymous visitors are Admins so
+      # panels can be edited and explored without an account; the dashboards
+      # under ./grafana/dashboards are provisioned read-only anyway, so an edit
+      # is a "save as", never a change to a file in this repo.
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_BASIC_ENABLED: "false"
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      # Grafana phones home for version checks and plugin listings. Nothing here
+      # needs either.
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      # 3030, not Grafana's own 3000: that one is Rocket.Chat's, and this stack
+      # is meant to run at the same time as it.
+      - "127.0.0.1:3030:3000"
+    networks:
+      - observability
+
+volumes:
+  # Metrics history and Grafana's own database (users, saved dashboards,
+  # preferences). Ordinary volumes — the fixed project name above is what keeps
+  # them the same two volumes no matter where the stack is started from.
+  prometheus-data:
+  grafana-data:
+
+networks:
+  observability:
+    # Fixed name so a devcontainer can attach to it as an external network,
+    # without the `observability_` project prefix compose would otherwise add.
+    name: observability
+    ipam:
+      config:
+        # Pinned because the devbox egress firewall allowlists this exact CIDR
+        # (../devcontainer/projects/rocketchat/allowed-domains) — a second
+        # network is not covered by the rule the firewall derives from the
+        # container's own bridge. Chosen outside the range Docker has handed out
+        # so far but inside its default pool, beside turbo-cache (172.30.0.0/24)
+        # and local-mongo (172.31.0.0/24). Change one, change both.
+        - subnet: 172.29.0.0/24

@@ -1,0 +1,16 @@
+# Loads every dashboard JSON in ../../dashboards, which is mounted read-only.
+apiVersion: 1
+
+providers:
+  - name: devbox
+    folder: devbox
+    type: file
+    # The files are the source of truth: an edit in the UI cannot be saved back
+    # over them, so a dashboard in this repo never drifts from what is deployed.
+    # Use "Save as" to keep an experiment.
+    allowUiUpdates: false
+    # Deleting a JSON file removes its dashboard from Grafana too.
+    disableDeletion: false
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false

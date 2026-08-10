@@ -1,0 +1,103 @@
+# Prometheus — the database of the local observability stack.
+#
+# It gets data two ways. The collector pushes over remote write (Claude Code's
+# path, enabled by --web.enable-remote-write-receiver in ../docker-compose.yml),
+# and the jobs below pull from anything that exposes /metrics.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+storage:
+  tsdb:
+    # Remote write carries the sender's own timestamps, and several senders with
+    # clocks a few seconds apart write into the same series. Without a window,
+    # the later-arriving older sample is rejected and the graph has holes.
+    out_of_order_time_window: 30m
+
+scrape_configs:
+  # --- The stack watching itself ----------------------------------------------
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: otel-collector
+    static_configs:
+      - targets: ["otel-collector:8888"]
+
+  # --- Everything that exposes /metrics in a container ------------------------
+  #
+  # Discovered from Docker labels rather than listed here, because the targets
+  # are devbox containers: one per workspace, created and destroyed as you switch
+  # branches, each on an IP Docker picks. A static target list would name a
+  # container that is usually not running, and would monitor exactly one
+  # workspace out of however many are up.
+  #
+  # A container opts in with three labels — see
+  # ../../devcontainer/projects/rocketchat/compose/service.yml for a worked
+  # example:
+  #
+  #   devbox.metrics.port   required, the port /metrics listens on IN the
+  #                         container. Its presence is what makes the container
+  #                         a target at all.
+  #   devbox.metrics.job    optional, the `job` label. Defaults to the container
+  #                         name.
+  #   devbox.metrics.path   optional, the metrics path. Defaults to /metrics.
+  #
+  # The container must also be attached to the `observability` network, which is
+  # what gives Prometheus a route to it and this job an address to scrape.
+  - job_name: devbox
+    docker_sd_configs:
+      # The Docker API through the read-only proxy, not a mounted socket — see
+      # ../docker-compose.yml for why. Discovery calls exactly two endpoints,
+      # /containers/json and /networks, and the proxy allows only those.
+      - host: http://docker-socket-proxy:2375
+        # Ask the Docker API for labelled containers only, instead of listing
+        # every container on the machine and dropping most of them below.
+        filters:
+          - name: label
+            values: ["devbox.metrics.port"]
+        refresh_interval: 15s
+        # REQUIRED here, and its default is the opposite. Left true, a container
+        # on several networks is reported on ONE of them — the first by name —
+        # and a devbox container is on its own bridge, the shared MongoDB's
+        # network and this one, of which `observability` sorts last. Every target
+        # then arrives with an address Prometheus has no route to, the `keep`
+        # below drops all of them, and the job discovers nothing at all.
+        match_first_network: false
+    relabel_configs:
+      # Discovery yields one target per container per network. Keep the endpoint
+      # on the network Prometheus is actually on — the others are addresses it
+      # has no route to.
+      - source_labels: [__meta_docker_network_name]
+        regex: observability
+        action: keep
+      # The address: that network's IP, and the port from the label. Not the
+      # discovered port — a devbox container publishes its app port (3000), not
+      # its metrics port, and the metrics port is often not EXPOSEd at all.
+      #
+      # A container with several exposed ports is discovered several times over,
+      # and every copy relabels to this same address and label set. Prometheus
+      # keys targets within a job by their label set, so the duplicates collapse
+      # into one.
+      - source_labels: [__meta_docker_network_ip, __meta_docker_container_label_devbox_metrics_port]
+        separator: ":"
+        target_label: __address__
+      - source_labels: [__meta_docker_container_label_devbox_metrics_path]
+        regex: (.+)
+        target_label: __metrics_path__
+      # `instance` is the container name, minus the leading slash the Docker API
+      # puts on it. Unique per workspace, which is the point: two worktrees of the
+      # same repo are two instances of one job, not one flapping target.
+      - source_labels: [__meta_docker_container_name]
+        regex: "/(.*)"
+        target_label: instance
+      - source_labels: [__meta_docker_container_label_devbox_metrics_job]
+        regex: (.+)
+        target_label: job
+      # The workspace this container is a checkout of, when the container says so
+      # — a devbox container is labelled with it, so a panel can break a metric
+      # down by worktree.
+      - source_labels: [__meta_docker_container_label_devbox_workspace]
+        regex: (.+)
+        target_label: workspace

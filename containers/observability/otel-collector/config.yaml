@@ -1,0 +1,97 @@
+# OpenTelemetry Collector — the push door of the local observability stack.
+#
+# It accepts OTLP on 4317/4318 and writes to Prometheus. Everything that pushes
+# rather than exposing a /metrics endpoint arrives here: Claude Code today, any
+# OTLP-instrumented service later.
+#
+# Adding a source is normally nothing but pointing it at this collector. The
+# pipeline below is deliberately plain, so that per-source handling (dropping a
+# high-cardinality attribute, renaming a metric) can be added as a processor when
+# a source actually needs it.
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        # 0.0.0.0, not the default localhost: the senders are the host (through
+        # the published port) and sibling containers on the `observability`
+        # network. Both are off this container's loopback.
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  # First in the pipeline, which is where it has to be: it refuses new data when
+  # the collector is close to its memory limit, and a processor after it would
+  # already have allocated.
+  memory_limiter:
+    check_interval: 5s
+    limit_mib: 512
+    spike_limit_mib: 128
+
+  # The safety net for a source that exports delta temporality. Prometheus
+  # counters are cumulative, and the remote write exporter does not convert: a
+  # delta counter is dropped, with no warning in this log and no series in
+  # Prometheus. A new source that reports "exporting fine" while nothing arrives
+  # is the least debuggable failure this stack has, and this processor removes
+  # it by summing the increments into a running total.
+  #
+  # Senders should still ask for cumulative — Claude Code's
+  # OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE does, in every place this
+  # repo configures it. Converting here costs memory proportional to the number
+  # of live series, and the sender's own total is authoritative across a
+  # collector restart while this processor's is not.
+  #
+  # max_stale is when a series with no new increments is forgotten, and with it
+  # its running total.
+  deltatocumulative:
+    max_stale: 10m
+
+  batch:
+    timeout: 5s
+    send_batch_size: 1024
+
+exporters:
+  prometheusremotewrite:
+    endpoint: http://prometheus:9090/api/v1/write
+    tls:
+      # Plain HTTP on a private docker network.
+      insecure: true
+    # Keep the metric names the sources chose. With suffixes on, the OTLP-to-
+    # Prometheus translation appends the unit and a `_total` — `claude_code.cost.usage`
+    # (unit USD) becomes `claude_code_cost_usage_USD`, and every dashboard query
+    # then depends on a unit string chosen by the sender. Off, the rule is one
+    # line: dots become underscores, nothing else changes.
+    #
+    # The cost is the Prometheus naming convention, which nothing here enforces.
+    add_metric_suffixes: false
+    # The `target_info` series, which carries the sender's resource attributes
+    # (service.name, service.version, and anything in OTEL_RESOURCE_ATTRIBUTES).
+    # Join against it when you need one of them; keeping them off the metric
+    # series themselves is what stops a per-container hostname from making a new
+    # time series on every container rebuild.
+    target_info:
+      enabled: true
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, deltatocumulative, batch]
+      exporters: [prometheusremotewrite]
+
+  telemetry:
+    metrics:
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                # The collector's own metrics — how much it received, dropped and
+                # failed to send. Prometheus scrapes this at otel-collector:8888
+                # (see ../prometheus/prometheus.yml); it is the first place to
+                # look when a source says it is exporting and nothing arrives.
+                #
+                # host 0.0.0.0 for the same reason as the receivers: the scraper
+                # is another container.
+                host: 0.0.0.0
+                port: 8888
