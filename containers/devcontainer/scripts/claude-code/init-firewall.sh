@@ -105,18 +105,35 @@ apply_firewall() {
     iptables -A INPUT -i lo -j ACCEPT
     iptables -A OUTPUT -o lo -j ACCEPT
 
-    # The default route points at the compose bridge gateway, so this /24 covers
-    # forwarded-port traffic coming back from the host, plus any sibling compose
-    # service a profile adds (they land on the same bridge).
-    local host_ip host_network
-    host_ip=$(ip route | awk '/^default/ {print $3; exit}')
-    if [ -n "$host_ip" ]; then
-        host_network=$(echo "$host_ip" | sed "s/\.[0-9]*$/.0\/24/")
-        log "host network detected as $host_network"
-        iptables -A INPUT -s "$host_network" -j ACCEPT
-        iptables -A OUTPUT -d "$host_network" -j ACCEPT
-    else
-        warn "could not detect the host network — sibling services will be unreachable"
+    # Every docker network this container is attached to, in BOTH directions.
+    #
+    # That is its own compose bridge — which carries forwarded-port traffic back
+    # from the host and any sibling service a profile adds — plus each network a
+    # profile joins as external: the shared MongoDB, the observability stack.
+    # Those are all declared by this repo's own compose files, so a container on
+    # one of them is trusted the same way a sibling on the bridge always was.
+    #
+    # INPUT and not only OUTPUT because some of them start the conversation:
+    # Prometheus opens the connection to scrape /metrics, and an INPUT policy of
+    # DROP would leave the scrape timing out with nothing in any log to say why.
+    #
+    # Read out of the routing table, not derived from the default route. With
+    # several networks attached, which one gets the default route is decided by
+    # the order Docker connected them — so a profile that joins one more network
+    # could move it, and the old rule would then cover a network the container
+    # barely uses while leaving its own bridge, and with it every forwarded port,
+    # firewalled off. `scope link` is exactly the set of directly reachable
+    # subnets, one per attached network.
+    local subnet attached=0
+    while read -r subnet; do
+        [ -n "$subnet" ] || continue
+        log "attached network: $subnet"
+        iptables -A INPUT -s "$subnet" -j ACCEPT
+        iptables -A OUTPUT -d "$subnet" -j ACCEPT
+        attached=1
+    done < <(ip -4 route show scope link | awk '$1 ~ /\// { print $1 }' | sort -u)
+    if [ "$attached" -eq 0 ]; then
+        warn "no attached networks found — the host and sibling services will be unreachable"
     fi
 
     # Established connections for already-approved traffic.

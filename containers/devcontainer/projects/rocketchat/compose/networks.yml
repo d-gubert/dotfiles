@@ -11,3 +11,16 @@
 local-mongo:
   external: true
   name: local-mongo
+
+# The network of the local observability stack
+# (../../../../observability/docker-compose.yml), external for the same reason:
+# one Prometheus and one Grafana for the whole machine, holding metrics history
+# that has to outlive any workspace. ../initialize.sh starts it too.
+#
+# It carries traffic both ways — Claude Code pushes OTLP to `otel-collector:4317`
+# and Prometheus scrapes this container's 9458 — which is why the firewall's
+# rule for it is not the usual outbound-only allowlist entry. See
+# ../allowed-domains.
+observability:
+  external: true
+  name: observability

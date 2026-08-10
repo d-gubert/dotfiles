@@ -56,10 +56,16 @@ must not fail for a reason the user can't act on: an error here means no
 container at all, so check whether docker is even available and exit cleanly if
 it isn't.
 
-Reaching a service it starts takes three more things: `compose/networks.yml`
-to declare that stack's network `external`, `compose/service.yml` to attach to
-it, and — since the firewall's automatic rule only covers the container's own
-bridge — that network's CIDR in `allowed-domains`.
+Reaching a service it starts takes two more things: `compose/networks.yml` to
+declare that stack's network `external`, and `compose/service.yml` to attach to
+it. The firewall needs nothing — it accepts every network the container is
+attached to, in both directions — but put the CIDR in `allowed-domains` anyway,
+as the record of what this profile talks to.
+
+`rocketchat` does this twice: the shared MongoDB, and the observability stack
+in `containers/observability`. The second one also shows how a profile gets its
+own metrics scraped — three `devbox.metrics.*` labels in `compose/service.yml`
+and nothing else.
 
 ## Placeholders in `compose/*.yml`
 

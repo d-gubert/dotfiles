@@ -84,6 +84,17 @@ resolve is skipped with a warning rather than taking the firewall down with it.
 Adding one needs a container **restart**, no rebuild. Confirm what landed with
 `sudo ipset list allowed-domains`.
 
+The allowlist covers the *internet*. Every docker network the container is
+attached to is accepted separately, in both directions, and is not something a
+profile has to declare: that is its own compose bridge — which carries the
+forwarded ports back from the host — plus each network a profile joins as
+`external`, the shared MongoDB and the observability stack. Both directions
+because some of those start the conversation, Prometheus's scrape of
+`/metrics` being the one that matters. The subnets are read out of the routing
+table at start (`ip route show scope link`), so a profile that joins one more
+network needs no firewall change and cannot move the rule off its own bridge by
+changing which network happens to hold the default route.
+
 What the firewall does **not** bound is the workspace: it is a bind mount, so
 anything Claude writes lands in your host checkout, and your GitHub token and SSH
 key are reachable from inside. Use it on repositories you trust. See Anthropic's
@@ -104,11 +115,13 @@ projects/rocketchat/
   env                METEOR_WAREHOUSE_DIR=..., DENO_INSTALL=..., MONGO_URL=...
   env.local          gitignored — a license key
   ports              3000:3000
-  allowed-domains    *.meteor.com, *.rocket.chat, the mongo network's CIDR
+  allowed-domains    *.meteor.com, *.rocket.chat, the two stacks' CIDRs
   setup.sh           pinned Meteor + Deno into $DEVBOX_TOOLS, then yarn install/build
-  initialize.sh      host-side; brings up the shared MongoDB before create
+  initialize.sh      host-side; brings up the shared MongoDB and the observability
+                     stack before create
   compose/*.yml      node_modules and .meteor/local as volumes, off the bind mount;
-                     the mongo stack's network, attached as external
+                     the mongo and observability networks, attached as external;
+                     the labels that make Prometheus scrape this container
 ```
 
 Every file is optional; `default` is the fallback and is empty on purpose. Each
@@ -167,6 +180,7 @@ reaches the container, paste the code shown in the browser at the
 | `allowed-domains` | The base egress allowlist |
 | `projects/` | Per-repository profiles ([contract](projects/README.md)) |
 | `turbo-cache/docker-compose.yml` | Standalone [Turborepo remote cache](https://ducktors.github.io/turborepo-remote-cache). **Dormant** — turbo caches to a bind-mounted host directory now; the header says how to put it back |
+| `../observability/` | Standalone OpenTelemetry Collector, Prometheus and Grafana, shared by every workspace and by the host ([README](../observability/README.md)) |
 | `scripts/initialize.sh` | Host-side `initializeCommand`; runs the ensure-scripts, then merges the compose fragments |
 | `scripts/on-create.sh` | Container-side `onCreateCommand`; claims volume mount points, configures git |
 | `scripts/update-content.sh` | Container-side `updateContentCommand`; the profile's `setup.sh`, then the features' install steps |
@@ -323,14 +337,38 @@ network is missing.
 - The hostname is not cosmetic: the replica set advertises its member as
   `mongo:27017`, and a driver connecting to a replica set uses the *advertised*
   address, not the one you gave it. A published port alone doesn't work.
-- Pinned to `172.31.0.0/24` because `projects/rocketchat/allowed-domains` has
-  that CIDR — a second network isn't covered by the rule the firewall derives
-  from its own bridge. Change one, change both.
+- Pinned to `172.31.0.0/24`, which `projects/rocketchat/allowed-domains` records.
+  Change one, change both.
 - `MONGO_URL` in `projects/rocketchat/env` is what makes Meteor skip its bundled
   mongod, so nothing listens on 3001 any more and `ports` no longer publishes
   it. Comment both back in to go back to the bundled database.
 - Still reachable from the host at `127.0.0.1:27017` (mongosh, Compass) while
   the container uses it.
+
+**The observability stack (`rocketchat` profile).**
+`../observability/docker-compose.yml` is a stack of its own in the same sense —
+one OpenTelemetry Collector, one Prometheus and one Grafana for the machine,
+holding metrics history that outlives every workspace. Grafana is at
+`http://127.0.0.1:3030`. `projects/rocketchat/initialize.sh` calls that
+directory's `up.sh` at `initializeCommand`, and its network is attached as
+`external` for the same reason as mongo's. See
+[`../observability/README.md`](../observability/README.md).
+
+- Metrics go both ways, which is what makes this different from every other
+  network the container joins. **Claude Code pushes** OTLP to
+  `otel-collector:4317`, configured by the `CLAUDE_CODE_ENABLE_TELEMETRY` and
+  `OTEL_*` block in `projects/rocketchat/env`. **Prometheus pulls**
+  Rocket.Chat's own `/metrics` on 9458, which
+  `OVERWRITE_SETTING_Prometheus_Enabled` in the same file turns on.
+- Nothing is published to the host for the scrape and nothing is listed in the
+  observability stack's config. `projects/rocketchat/compose/service.yml` puts
+  three `devbox.metrics.*` labels on the container and Prometheus discovers it
+  from those — so a second worktree is a second `instance` of the same job the
+  moment it starts, with no edit anywhere.
+- Any other profile opts in the same way: attach to the network, add the labels,
+  call `up.sh` from its `initialize.sh`.
+- Pinned to `172.29.0.0/24`, which `projects/rocketchat/allowed-domains` records.
+  Change one, change both.
 
 **Yarn's global cache.** `YARN_ENABLE_GLOBAL_CACHE=true` (`devcontainer.json`) is
 the other half of the volume above. A repo whose `.yarnrc.yml` sets

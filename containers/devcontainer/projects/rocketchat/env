@@ -33,6 +33,45 @@ DEVBOX_PLAYWRIGHT_BROWSERS=chromium
 # Rocket.Chat MONGO_URL — the oplog needs a replica set, not a standalone.
 MONGO_URL=mongodb://mongo:27017/rocketchat?replicaSet=rs0
 
+# --- Metrics ------------------------------------------------------------------
+#
+# This profile is wired to the local observability stack
+# (../../../observability/docker-compose.yml), which ../initialize.sh starts and
+# compose/networks.yml attaches the container to. Two sources, two directions:
+#
+#   Rocket.Chat   exposes its own Prometheus endpoint, and Prometheus scrapes it.
+#   Claude Code   pushes OTLP to the collector.
+#
+# Turning the server's metrics server on. Prometheus_Enabled is a *setting*, so
+# OVERWRITE_SETTING_ forces it on every boot and no one has to remember the admin
+# page — and it is off by default, so without this line the port below answers
+# nothing. PROMETHEUS_PORT outranks the Prometheus_Port setting and pins the port
+# that compose/service.yml advertises to Prometheus in its labels; keep the two
+# in sync.
+OVERWRITE_SETTING_Prometheus_Enabled=true
+PROMETHEUS_PORT=9458
+# Node's own heap, event loop lag and CPU, from prom-client's default collectors.
+# Cheap, and it is what tells a slow dev server apart from a slow query.
+OVERWRITE_SETTING_Prometheus_Garbage_Collector=true
+
+# Claude Code's telemetry, pushed to the collector over the observability
+# network. `otel-collector` resolves because compose/service.yml joins that
+# network; the host's own Claude Code sends to 127.0.0.1:4317 instead.
+#
+# https://code.claude.com/docs/en/monitoring-usage
+CLAUDE_CODE_ENABLE_TELEMETRY=1
+OTEL_METRICS_EXPORTER=otlp
+OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+# Claude Code defaults to delta temporality; Prometheus counters are cumulative.
+# The collector converts either way (its deltatocumulative processor), so this is
+# not what makes the metrics arrive — it is that the sender's own running total
+# survives a collector restart and a reconstructed one does not.
+OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=cumulative
+# Every 20s rather than the default 60s: a dev session is short, and waiting a
+# minute to see whether the pipe works at all is most of the debugging time.
+OTEL_METRIC_EXPORT_INTERVAL=20000
+
 # --- Server settings ---------------------------------------------------------
 #
 # These came out of the old .devcontainer/.env, where they were inert: compose

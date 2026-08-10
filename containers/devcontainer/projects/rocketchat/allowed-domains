@@ -2,13 +2,21 @@
 # list for workspaces on this profile. Hostnames or CIDRs, `#` comments.
 # Takes effect on a container restart — no rebuild. See ../../allowed-domains.
 
-# --- The shared MongoDB -------------------------------------------------------
-# It sits on its own docker network, which the firewall's automatic host-network
-# rule does NOT cover: that one is derived from the default route, i.e. this
-# container's own bridge. Pinned to this CIDR in
-# containers/local-mongo/docker-compose.yml; keep the two in sync. Without it
-# every connection to mongo:27017 is REJECTed and the server never boots.
+# --- The two stacks this profile attaches to ----------------------------------
+#
+# Belt and braces, and a record of what this profile talks to. The firewall
+# already accepts every network the container is attached to, in both directions
+# (see ../../scripts/claude-code/init-firewall.sh), and these two arrive that way
+# — so neither line is what makes them reachable any more. They are kept because
+# the CIDRs are pinned on the other side and this is where a reader looks for
+# them; keep each in sync with the compose file named beside it.
+#
+# The shared MongoDB — containers/local-mongo/docker-compose.yml. Without a route
+# to it, every connection to mongo:27017 fails and the server never boots.
 172.31.0.0/24
+# The observability stack — containers/observability/docker-compose.yml. Carries
+# Claude Code's OTLP push out and Prometheus's scrape of port 9458 in.
+172.29.0.0/24
 
 # Meteor: the distribution and per-project package downloads.
 install.meteor.com
