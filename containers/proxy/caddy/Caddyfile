@@ -1,0 +1,37 @@
+# One block per local service. The address is what the browser must ask for,
+# the `reverse_proxy` target is the container's own name and port on a network
+# this proxy has joined — see ../docker-compose.yml.
+#
+# `http://` on every address is load-bearing. Without the scheme Caddy turns on
+# automatic HTTPS, issues a certificate from its internal CA, and redirects port
+# 80 to 443. That means a browser warning on every service and a CA to install,
+# to encrypt a hop that never leaves this machine.
+#
+# `.localhost` and not `.local`: systemd-resolved answers any name under
+# `.localhost` with 127.0.0.1 and ::1 by itself, so nothing has to be added to
+# /etc/hosts and a new name here works the moment Caddy reloads. `.local`
+# belongs to mDNS and would need a hosts entry per name.
+
+http://grafana.localhost {
+	reverse_proxy grafana:3000
+}
+
+http://prometheus.localhost {
+	reverse_proxy prometheus:9090
+}
+
+# Loki and Tempo have no web UI of their own — Grafana is how you read them.
+# These two are for `logcli`, curl and anything else that wants the API by name.
+http://loki.localhost {
+	reverse_proxy loki:3100
+}
+
+http://tempo.localhost {
+	reverse_proxy tempo:3200
+}
+
+# Any other name on port 80. Without it Caddy answers an unknown host with an
+# empty 200, which reads like a broken service rather than a missing route.
+http:// {
+	respond "no route for {http.request.host} — add one in containers/proxy/caddy/Caddyfile" 404
+}

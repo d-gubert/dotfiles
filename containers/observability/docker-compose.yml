@@ -176,6 +176,13 @@ services:
       GF_ANALYTICS_REPORTING_ENABLED: "false"
       GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
       GF_NEWS_NEWS_FEED_ENABLED: "false"
+      # Grafana builds every absolute link — a "copy link to panel", a share URL
+      # — from this and not from the address you arrived on. Left at its default
+      # it hands out http://localhost:3000, which is the port INSIDE the
+      # container and answers nowhere. The name is the one ../proxy serves;
+      # http://127.0.0.1:3030 keeps working either way, because the setting
+      # changes what Grafana writes, not what it accepts.
+      GF_SERVER_ROOT_URL: http://grafana.localhost
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro

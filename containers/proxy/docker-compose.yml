@@ -1,0 +1,50 @@
+# One reverse proxy for the machine, so a local service answers on a name
+# instead of a port number.
+#
+# `http://grafana.localhost` instead of `http://127.0.0.1:3030`. Caddy binds the
+# host's port 80, reads the Host header, and forwards to the right container.
+# Nothing about it is specific to the observability stack — that stack is only
+# the first tenant. See ./README.md for how to add the next one.
+#
+# STANDALONE compose project (`name:` below), like ../observability and
+# ../local-mongo. It is started by hand and it outlives any single workspace.
+name: proxy
+
+services:
+  caddy:
+    image: caddy:2.10-alpine
+    container_name: proxy-caddy
+    restart: unless-stopped
+    ports:
+      # Both loopback families, because a browser resolves `*.localhost` to ::1
+      # AND 127.0.0.1 and tries the IPv6 one first. Bound to IPv4 alone, every
+      # request pays a failed connection before it falls back, and a client with
+      # no fallback (some CLI tools) fails outright.
+      #
+      # Loopback-only, like every other published port in this repo. Caddy's
+      # own site addresses do not restrict the interface — Docker does.
+      - "127.0.0.1:80:80"
+      - "[::1]:80:80"
+    volumes:
+      # The directory, not ./caddy/Caddyfile alone. A single-file bind mount
+      # breaks on edit: an editor that writes a new file replaces the inode and
+      # the container keeps reading the old one, so a reload reloads the stale
+      # copy (../observability/README.md has the same warning). Mount the
+      # directory and `docker exec proxy-caddy caddy reload -c /etc/caddy/Caddyfile`
+      # picks up the real file.
+      - ./caddy:/etc/caddy:ro
+    networks:
+      # Caddy reaches a target the way any container reaches another: by name,
+      # over the target stack's network. It needs no published port on the
+      # target — `grafana:3000` is the container's own port, not 3030.
+      #
+      # One entry per stack the proxy serves. Add the next stack's network here
+      # and its hostname to ./caddy/Caddyfile.
+      - observability
+
+networks:
+  # Not created here — ../observability/docker-compose.yml owns it, and this is
+  # an attach. The cost is a start order: the proxy cannot come up while the
+  # network is missing, which ./up.sh checks and explains.
+  observability:
+    external: true

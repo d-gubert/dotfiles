@@ -13,6 +13,9 @@ http://127.0.0.1:3100                   # Loki
 http://127.0.0.1:3200                   # Tempo
 ```
 
+`../proxy` serves the same four under names — `http://grafana.localhost` and so
+on — if it is up. It is optional and the ports above never stop working.
+
 `up.sh` is idempotent and cheap when the stack is already up, which is why
 devbox calls it from `../devcontainer/scripts/ensure-observability.sh` on every
 container create and start.
