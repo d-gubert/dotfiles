@@ -14,4 +14,4 @@ datasources:
       # Must match `global.scrape_interval` in ../../../prometheus/prometheus.yml,
       # or Grafana's `$__rate_interval` comes out too short and rate() over a
       # single sample returns nothing.
-      timeInterval: 15s
+      timeInterval: 10s

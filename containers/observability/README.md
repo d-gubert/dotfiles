@@ -72,7 +72,7 @@ of one job rather than a single flapping target.
 | Service | |
 | --- | --- |
 | `otel-collector` | The push door, and the delta-to-cumulative conversion that lets any OTLP source work. `otel-collector/config.yaml`. |
-| `prometheus` | The database, 15d retention. `prometheus/prometheus.yml`. |
+| `prometheus` | The database, no retention limit. `prometheus/prometheus.yml`. |
 | `grafana` | The front end, anonymous Admin. Datasource and dashboards provisioned from `grafana/`. |
 | `docker-socket-proxy` | A read-only, two-endpoint window onto the Docker API, so Prometheus can discover targets without a socket mount. |
 

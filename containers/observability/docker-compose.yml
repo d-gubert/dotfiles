@@ -57,6 +57,14 @@ services:
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
+      # Keep every sample. Unset, Prometheus deletes anything older than 15 days,
+      # which loses the month-over-month comparisons this stack exists for.
+      #
+      # 100y, not 0: Prometheus treats a zero retention as "nothing was chosen"
+      # and falls back to the same 15 day default. 100y is its own ceiling, so
+      # this is as close to "no limit" as the flag goes. The disk is now the only
+      # bound — add --storage.tsdb.retention.size if that ever matters.
+      - --storage.tsdb.retention.time=100y
       # The collector pushes; without this flag /api/v1/write 404s and every
       # pushed metric is silently lost.
       - --web.enable-remote-write-receiver
