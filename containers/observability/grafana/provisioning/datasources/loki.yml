@@ -12,3 +12,22 @@ datasources:
     # Prometheus keeps `isDefault`. Explore is where these logs are read, and it
     # remembers the datasource you picked.
     isDefault: false
+    jsonData:
+      # The log-to-trace half of the correlation. Every Claude Code event carries
+      # a trace_id, and ../tempo.yml holds that same trace, so this turns the id
+      # into a button on each log line instead of a copy and a paste.
+      derivedFields:
+        # `label`, not `regex`: the collector writes trace_id as OTLP structured
+        # metadata, not into the log body. The body is only the event name
+        # (`claude_code.user_prompt`), so a regex over it matches nothing.
+        # matcherType `label` matches the metadata KEY, and the key's value
+        # becomes the field.
+        - name: TraceID
+          matcherType: label
+          matcherRegex: trace_id
+          # An internal link: with datasourceUid set, `url` is the query sent to
+          # that datasource, not an address. `$$` because Grafana expands a
+          # single `$` in a provisioning file as an environment variable.
+          datasourceUid: observability-tempo
+          url: '$${__value.raw}'
+          urlDisplayLabel: 'View trace'

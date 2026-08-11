@@ -18,3 +18,27 @@ datasources:
       # which this stack does not generate.
       nodeGraph:
         enabled: true
+      # The trace-to-log half of the correlation. ../loki.yml carries the other
+      # half; this one puts a "Logs for this span" button on each span.
+      tracesToLogsV2:
+        datasourceUid: observability-loki
+        # A span and its events are written by two different exporters, so their
+        # clocks are close but not equal. An hour each way costs nothing on a
+        # store this small and removes the edge case where a log sits just
+        # outside the span.
+        spanStartTimeShift: '-1h'
+        spanEndTimeShift: '1h'
+        # Both filters off, and a custom query instead. `filterByTraceID` builds
+        # a LINE filter — `{...} |= "<id>"` — which returns nothing here: the
+        # trace id is structured metadata, and the log body holds only the event
+        # name. The query below filters on the metadata field, which is what
+        # actually matches.
+        filterByTraceID: false
+        filterBySpanID: false
+        customQuery: true
+        # No `tags` mapping: a custom query replaces the generated selector, so a
+        # mapping would be dead config. `{service_name=~".+"}` because Loki
+        # demands a stream selector and a trace id is already unique — narrowing
+        # to one service would only risk dropping a match. `$$` escapes the
+        # variable past Grafana's environment expansion.
+        query: '{service_name=~".+"} | trace_id="$${__span.traceId}"'
