@@ -529,6 +529,7 @@ if exists claude; then
 		# nested under it. Two variables and not one — the exporter alone does
 		# nothing while the beta flag is off, and the flag alone produces spans
 		# that go nowhere.
+		export OTEL_LOG_TOOL_DETAILS=1
 		#
 		# Redaction is separate again, and shares the OTEL_LOG_* switches above:
 		# off, a span still carries tool_name, model, token counts and every
@@ -544,7 +545,7 @@ if exists claude; then
 		# The collector converts, so delta works — but the sender's own running
 		# total survives a collector restart and a reconstructed one does not.
 		export OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=cumulative
-		export OTEL_METRIC_EXPORT_INTERVAL=20000
+		export OTEL_METRIC_EXPORT_INTERVAL=10000
 		# Separates the host from a devbox container in every query.
 		export OTEL_RESOURCE_ATTRIBUTES=workspace=host
 	fi
@@ -579,8 +580,9 @@ if exists gh; then
 	source <(gh completion -s zsh)
 	alias prvw='gh pr view --web'
 	alias prv='gh pr view'
-	alias praction='gh pr checks --watch'
 	alias prco='gh pr checkout'
+	alias prcn='gh pr create --draft'
+	alias praction='gh pr checks --watch'
 	alias repovw='gh repo view --web'
 fi
 
