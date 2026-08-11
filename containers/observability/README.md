@@ -13,8 +13,9 @@ http://127.0.0.1:3100                   # Loki
 http://127.0.0.1:3200                   # Tempo
 ```
 
-`up.sh` is idempotent and cheap when the stack is already up, which is why a
-devbox profile calls it from its `initialize.sh` on every container start.
+`up.sh` is idempotent and cheap when the stack is already up, which is why
+devbox calls it from `../devcontainer/scripts/ensure-observability.sh` on every
+container create and start.
 
 ## The two ways in
 
@@ -29,8 +30,10 @@ pushes, and Rocket.Chat only exposes an endpoint.
 ## Adding a source that pushes
 
 Point it at the collector and let it send. For Claude Code that is nine
-variables. A devbox container gets them from its profile — see
-`../devcontainer/projects/rocketchat/env` for the annotated set.
+variables. A devbox container gets them from the `claude-code` feature, not from
+its profile — see `../devcontainer/scripts/claude-code/initialize.sh` for the
+annotated set. Every workspace that runs Claude Code therefore reports, whatever
+repository it is.
 
 The host's own Claude Code gets the same nine from `../../common/.zshrc`, which
 exports them only when `claude` is installed and the collector answers on
@@ -52,7 +55,10 @@ total survives a collector restart and a reconstructed one does not.
 
 ## Adding a source that is scraped
 
-Attach the container to the `observability` network and give it these labels:
+Attach the container to the `observability` network and give it these labels. A
+devbox container is attached already, by
+`../devcontainer/scripts/ensure-observability.sh`, so there the labels are the
+whole job:
 
 | Label | |
 | --- | --- |

@@ -3,15 +3,17 @@
 # Runs on the HOST from scripts/init-profile.sh (devcontainer.json's
 # initializeCommand), before the container is created.
 #
-# Brings up the two stacks this profile's container attaches to, and with them
-# the two networks compose/networks.yml declares `external` — compose requires
-# both to exist before it will create the container at all.
+# Brings up the shared MongoDB this profile's container attaches to, and with it
+# the network compose/networks.yml declares `external` — compose requires that to
+# exist before it will create the container at all.
 #
 #   local-mongo     ../../../local-mongo/docker-compose.yml, the database this
-#                   profile's MONGO_URL points at (see `env`). Started here.
-#   observability   ../../../observability/docker-compose.yml, where Rocket.Chat's
-#                   metrics are scraped to and Claude Code's are pushed. Started
-#                   by that directory's own up.sh, called at the bottom.
+#                   profile's MONGO_URL points at (see `env`).
+#
+# The observability stack, which Rocket.Chat's metrics are scraped to, used to be
+# started here as well. It is not any more: the claude-code feature pushes to the
+# same stack, so ../../scripts/ensure-observability.sh starts it and attaches the
+# container for every workspace, whatever its profile.
 #
 # Only the `mongo` service. The same file also defines nats and traefik, which
 # belong to running the microservices stack on the host and are not this
@@ -43,8 +45,6 @@ fi
 # project and `devbox down` would take the database with it.
 compose() { docker compose -p local-mongo -f "$compose_file" "$@"; }
 
-# A function, not the body of the script, because the observability stack below
-# has to start whether or not this one was already up.
 ensure_mongo() {
 	# `up -d` alone would do, but it also re-pulls and recreates on any config
 	# drift and prints noise on every container start, so check first. The
@@ -79,12 +79,3 @@ ensure_mongo() {
 }
 
 ensure_mongo
-
-# The observability stack, for the same reason: compose/networks.yml declares its
-# network `external`, so it has to exist before the container is created.
-#
-# Its own script, and it prints under its own tag — this profile is one of its
-# users, not its owner, and any other profile opts in with the same one line.
-# It is deliberately not fatal: no dashboards is a worse morning than no
-# container, but only just.
-bash "$(cd "$here/../../../observability" && pwd)/up.sh"

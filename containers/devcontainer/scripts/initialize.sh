@@ -117,6 +117,12 @@ bash "$here/ensure-turbo-cache-dir.sh"
 # Not feature-gated: the JS toolchain is what this image is, not an opt-in.
 bash "$here/ensure-yarn-cache.sh"
 
+# Starts the machine's observability stack and attaches the container to its
+# network. Gated by neither a feature nor a profile, because the claude-code
+# feature (which pushes) and a profile (which gets scraped) both need it and
+# neither can own it — see the script's header.
+bash "$here/ensure-observability.sh"
+
 # Per-feature host-side setup: scripts/<name>/initialize.sh for every feature
 # devcontainer.json actually declares. Each contributes its own compose fragment,
 # so a feature that is commented out leaves no volume to create and no mount

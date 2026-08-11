@@ -20,7 +20,7 @@ bare toolchain container and a durable scratch volume.
 | `allowed-domains` | container, every start | Extra egress allowlist entries — hostnames or CIDRs. Merged with the base list and each declared feature's. Takes effect on a **restart**, no rebuild. |
 | `setup.sh` | container, at create | Installs whatever the repo needs, as `vscode`, with the network still **unrestricted** (`updateContentCommand` runs before the firewall). |
 | `initialize.sh` | host, at `up` | The host-side counterpart of `setup.sh`, for whatever the fragments below *assume* and compose won't create: an external network, a companion stack. See `rocketchat`. |
-| `compose/*.yml` | host, at `up` | Raw compose fragments for anything the above can't say. One file per override bucket: `service.yml`, `service-environment.yml`, `service-volumes.yml`, `volumes.yml`, `networks.yml`. |
+| `compose/*.yml` | host, at `up` | Raw compose fragments for anything the above can't say. One file per override bucket: `service.yml`, `service-environment.yml`, `service-volumes.yml`, `service-networks.yml`, `volumes.yml`, `networks.yml`. |
 
 ## Writing a `setup.sh`
 
@@ -57,15 +57,19 @@ container at all, so check whether docker is even available and exit cleanly if
 it isn't.
 
 Reaching a service it starts takes two more things: `compose/networks.yml` to
-declare that stack's network `external`, and `compose/service.yml` to attach to
-it. The firewall needs nothing — it accepts every network the container is
-attached to, in both directions — but put the CIDR in `allowed-domains` anyway,
-as the record of what this profile talks to.
+declare that stack's network `external`, and `compose/service-networks.yml` to
+attach to it. The firewall needs nothing — it accepts every network the container
+is attached to, in both directions — but put the CIDR in `allowed-domains`
+anyway, as the record of what this profile talks to.
 
-`rocketchat` does this twice: the shared MongoDB, and the observability stack
-in `containers/observability`. The second one also shows how a profile gets its
-own metrics scraped — three `devbox.metrics.*` labels in `compose/service.yml`
-and nothing else.
+`rocketchat` does this for the shared MongoDB in `containers/local-mongo`.
+
+The observability stack in `containers/observability` is **not** a profile's to
+arrange, and is the one exception: `scripts/ensure-observability.sh` starts it
+and attaches every container, whatever its profile, because the `claude-code`
+feature pushes to it too and a network can only be declared once. Getting a
+profile's own metrics scraped is therefore three `devbox.metrics.*` labels in
+`compose/service.yml` and nothing else — `rocketchat` is the worked example.
 
 ## Placeholders in `compose/*.yml`
 

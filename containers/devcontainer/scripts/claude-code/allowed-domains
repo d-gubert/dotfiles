@@ -13,3 +13,13 @@ sentry.io
 # public A record; it lands on Statsig's CDN, which these two cover.
 statsig.com
 featuregates.org
+
+# The observability stack — containers/observability/docker-compose.yml — which
+# this feature pushes OTLP to (initialize.sh sets the OTEL_* variables).
+#
+# Belt and braces, and a record of what this feature talks to. The firewall
+# already accepts every network the container is attached to, in both directions
+# (see init-firewall.sh), and ../ensure-observability.sh attaches this one — so
+# the line is not what makes the collector reachable. The CIDR is pinned on the
+# other side; keep the two in sync.
+172.29.0.0/24

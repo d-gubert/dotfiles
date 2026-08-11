@@ -1,25 +1,17 @@
-# Join the shared MongoDB's network and the observability stack's (both declared
-# in ./networks.yml), which is what makes `mongo:27017` — the address in
-# MONGO_URL, and the one the replica set advertises for itself — and
-# `otel-collector:4317` resolve inside the container.
-#
-# Only what this profile adds: compose merges a service's `networks` across
-# files, so `default` from ../../../docker-compose.yml stays. Repeating it here
-# would work too, but then the base file's list would have a second, silently
-# diverging copy.
-networks:
-  - local-mongo
-  - observability
-
 # How Prometheus finds this container. It lists containers carrying
 # `devbox.metrics.port` and scrapes each one at that port on the `observability`
 # network — see ../../../../observability/prometheus/prometheus.yml for the
 # discovery rules, and ../allowed-domains for the firewall side.
 #
+# The attach to that network is not this profile's job: every container gets it
+# from ../../../scripts/ensure-observability.sh, because the claude-code feature
+# pushes over the same one. All this profile does to be scraped is turn the
+# endpoint on (../env) and carry these three labels.
+#
 # 9458 is Rocket.Chat's own metrics server, which `env` turns on with
 # OVERWRITE_SETTING_Prometheus_Enabled. It is NOT in ../ports and does not need
-# to be: Prometheus reaches it over the network above, so publishing it to the
-# host would only reserve a host port for nothing.
+# to be: Prometheus reaches it over that network, so publishing it to the host
+# would only reserve a host port for nothing.
 #
 # devbox.workspace is which checkout this container is, so a panel can tell two
 # worktrees of the same repo apart. The placeholder below is substituted with the

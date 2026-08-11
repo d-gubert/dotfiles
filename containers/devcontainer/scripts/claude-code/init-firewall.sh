@@ -108,10 +108,12 @@ apply_firewall() {
     # Every docker network this container is attached to, in BOTH directions.
     #
     # That is its own compose bridge — which carries forwarded-port traffic back
-    # from the host and any sibling service a profile adds — plus each network a
-    # profile joins as external: the shared MongoDB, the observability stack.
-    # Those are all declared by this repo's own compose files, so a container on
-    # one of them is trusted the same way a sibling on the bridge always was.
+    # from the host and any sibling service a profile adds — plus every network
+    # joined as external: the observability stack, which every container gets
+    # (../ensure-observability.sh), and whatever a profile adds on top, the
+    # shared MongoDB being the one that exists. Those are all declared by this
+    # repo's own compose files, so a container on one of them is trusted the same
+    # way a sibling on the bridge always was.
     #
     # INPUT and not only OUTPUT because some of them start the conversation:
     # Prometheus opens the connection to scrape /metrics, and an INPUT policy of

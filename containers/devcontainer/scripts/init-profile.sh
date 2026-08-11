@@ -175,7 +175,7 @@ fi
 #   %WORKSPACE%  the workspace path inside the container
 #   %TOOLS%      the profile's durable scratch volume (= $DEVBOX_TOOLS)
 #   %PROFILE%    this profile's name
-for bucket in service service-environment service-volumes volumes networks; do
+for bucket in service service-environment service-volumes service-networks volumes networks; do
 	fragment="$dir/compose/$bucket.yml"
 	[ -f "$fragment" ] || continue
 	sed -e "s|%WORKSPACE%|${DEVBOX_CONTAINER_WORKSPACE:?}|g" \

@@ -87,8 +87,8 @@ Adding one needs a container **restart**, no rebuild. Confirm what landed with
 The allowlist covers the *internet*. Every docker network the container is
 attached to is accepted separately, in both directions, and is not something a
 profile has to declare: that is its own compose bridge — which carries the
-forwarded ports back from the host — plus each network a profile joins as
-`external`, the shared MongoDB and the observability stack. Both directions
+forwarded ports back from the host — plus every network joined as
+`external`, the observability stack and the shared MongoDB. Both directions
 because some of those start the conversation, Prometheus's scrape of
 `/metrics` being the one that matters. The subnets are read out of the routing
 table at start (`ip route show scope link`), so a profile that joins one more
@@ -117,10 +117,9 @@ projects/rocketchat/
   ports              3000:3000
   allowed-domains    *.meteor.com, *.rocket.chat, the two stacks' CIDRs
   setup.sh           pinned Meteor + Deno into $DEVBOX_TOOLS, then yarn install/build
-  initialize.sh      host-side; brings up the shared MongoDB and the observability
-                     stack before create
+  initialize.sh      host-side; brings up the shared MongoDB before create
   compose/*.yml      node_modules and .meteor/local as volumes, off the bind mount;
-                     the mongo and observability networks, attached as external;
+                     the mongo network, declared external and attached;
                      the labels that make Prometheus scrape this container
 ```
 
@@ -188,6 +187,7 @@ reaches the container, paste the code shown in the browser at the
 | `scripts/init-profile.sh` | Host-side; the profile's env, ports, tools volume, compose fragments and its own `initialize.sh` |
 | `scripts/init-worktree.sh` | Host-side; exposes the real git dir when the checkout is a linked worktree |
 | `scripts/init-git-identity.sh` | Host-side; passes your git author identity through |
+| `scripts/ensure-observability.sh` | Host-side; starts `../observability/` and attaches every container to its network — the one thing neither a feature nor a profile can own |
 | `scripts/ensure-*.sh` | Host-side; the shared volumes and the turbo cache directory, before create |
 | `scripts/lib/features.sh` | Which `scripts/<feature>/` directories are active, read off `devcontainer.json` |
 | `scripts/lib/overrides.sh` | How the generated compose override gets built |
@@ -345,30 +345,37 @@ network is missing.
 - Still reachable from the host at `127.0.0.1:27017` (mongosh, Compass) while
   the container uses it.
 
-**The observability stack (`rocketchat` profile).**
+**The observability stack (every workspace).**
 `../observability/docker-compose.yml` is a stack of its own in the same sense —
-one OpenTelemetry Collector, one Prometheus and one Grafana for the machine,
-holding metrics history that outlives every workspace. Grafana is at
-`http://127.0.0.1:3030`. `projects/rocketchat/initialize.sh` calls that
-directory's `up.sh` at `initializeCommand`, and its network is attached as
-`external` for the same reason as mongo's. See
+one OpenTelemetry Collector, one Prometheus, one Loki, one Tempo and one Grafana
+for the machine, holding history that outlives every workspace. Grafana is at
+`http://127.0.0.1:3030`. `scripts/ensure-observability.sh` calls that directory's
+`up.sh` at `initializeCommand`, and its network is attached as `external` for the
+same reason as mongo's. See
 [`../observability/README.md`](../observability/README.md).
 
+- This one is neither feature-gated nor profile-gated, which makes it the
+  exception among the fragments. Two independent things want the same network:
+  the `claude-code` feature pushes, and a profile gets scraped. Whichever of the
+  two owned it would take the other one down when it was switched off, and a
+  network cannot be declared twice — so a shared owner has it.
 - Metrics go both ways, which is what makes this different from every other
   network the container joins. **Claude Code pushes** OTLP to
   `otel-collector:4317`, configured by the `CLAUDE_CODE_ENABLE_TELEMETRY` and
-  `OTEL_*` block in `projects/rocketchat/env`. **Prometheus pulls**
-  Rocket.Chat's own `/metrics` on 9458, which
-  `OVERWRITE_SETTING_Prometheus_Enabled` in the same file turns on.
+  `OTEL_*` fragment in `scripts/claude-code/initialize.sh` — so it follows the
+  feature, and every workspace reports, not only Rocket.Chat's. **Prometheus
+  pulls** Rocket.Chat's own `/metrics` on 9458, which
+  `OVERWRITE_SETTING_Prometheus_Enabled` in `projects/rocketchat/env` turns on.
 - Nothing is published to the host for the scrape and nothing is listed in the
   observability stack's config. `projects/rocketchat/compose/service.yml` puts
   three `devbox.metrics.*` labels on the container and Prometheus discovers it
   from those — so a second worktree is a second `instance` of the same job the
   moment it starts, with no edit anywhere.
-- Any other profile opts in the same way: attach to the network, add the labels,
-  call `up.sh` from its `initialize.sh`.
-- Pinned to `172.29.0.0/24`, which `projects/rocketchat/allowed-domains` records.
-  Change one, change both.
+- Any other profile opts in with those labels alone: the network and the `up.sh`
+  call are already there.
+- Pinned to `172.29.0.0/24`, which `scripts/claude-code/allowed-domains` and
+  `projects/rocketchat/allowed-domains` both record. Change one, change all
+  three.
 
 **Yarn's global cache.** `YARN_ENABLE_GLOBAL_CACHE=true` (`devcontainer.json`) is
 the other half of the volume above. A repo whose `.yarnrc.yml` sets

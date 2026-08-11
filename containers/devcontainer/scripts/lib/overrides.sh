@@ -26,6 +26,7 @@
 #   service              arbitrary keys under services.app (cap_add, ports, ...)
 #   service-environment  KEY: "value" lines for services.app.environment
 #   service-volumes      list items for services.app.volumes
+#   service-networks     list items for services.app.networks
 #   volumes              entries for the top-level volumes map
 #   networks             entries for the top-level networks map
 #
@@ -34,7 +35,9 @@
 # bucket, merging is concatenation at a fixed indent — so a fragment is authored
 # unindented and reads fine on its own. `environment` has a bucket of its own for
 # exactly that reason: the git identity and the profile both want to add
-# variables, and neither can open the key.
+# variables, and neither can open the key. `service-networks` is the same story
+# for the network attach — a profile joins its database's network and
+# ensure-observability.sh joins the metrics one, independently of each other.
 #
 # The staging directory is passed to child scripts through the environment
 # (DEVBOX_COMPOSE_OVERRIDES_DIR) because they run as separate `bash` processes,
@@ -49,7 +52,7 @@
 # separate `service` fragment: compose merges the service's `networks` with the
 # base file's list rather than replacing it, so a fragment names only what it
 # adds.
-_overrides_buckets=(service service-environment service-volumes volumes networks)
+_overrides_buckets=(service service-environment service-volumes service-networks volumes networks)
 
 _overrides_out() {
 	if [ -z "${DEVBOX_OVERRIDES_OUT:-}" ]; then
@@ -143,7 +146,8 @@ overrides_write() {
 		echo "# linked git worktree) and on which features devcontainer.json declares —"
 		echo "# see scripts/lib/overrides.sh."
 		echo "services:"
-		if _overrides_has service || _overrides_has service-environment || _overrides_has service-volumes; then
+		if _overrides_has service || _overrides_has service-environment ||
+			_overrides_has service-volumes || _overrides_has service-networks; then
 			echo "  app:"
 			_overrides_emit service 4
 			if _overrides_has service-environment; then
@@ -153,6 +157,10 @@ overrides_write() {
 			if _overrides_has service-volumes; then
 				echo "    volumes:"
 				_overrides_emit service-volumes 6
+			fi
+			if _overrides_has service-networks; then
+				echo "    networks:"
+				_overrides_emit service-networks 6
 			fi
 		else
 			# devcontainer.json includes this file unconditionally, so it has to be
