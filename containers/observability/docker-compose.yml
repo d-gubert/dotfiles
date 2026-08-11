@@ -44,11 +44,12 @@ services:
     networks:
       - observability
     depends_on:
-      # Writing to a Prometheus or a Loki that is not up yet costs a few retries
-      # and a wall of errors in the log. Only ordering — no healthcheck
+      # Writing to a Prometheus, a Loki or a Tempo that is not up yet costs a few
+      # retries and a wall of errors in the log. Only ordering — no healthcheck
       # condition, the collector retries either way.
       - prometheus
       - loki
+      - tempo
 
   # --- The database -----------------------------------------------------------
   prometheus:
@@ -100,6 +101,27 @@ services:
       # Loopback-only, like the rest. Grafana reaches it over the network below;
       # this port is for `logcli` and curl from the host.
       - "127.0.0.1:3100:3100"
+    networks:
+      - observability
+
+  # --- The trace store --------------------------------------------------------
+  #
+  # The third signal. A metric counts tool calls and an event records that one
+  # happened; a trace here says which API call and which tool ran inside which
+  # prompt, and how long each waited. Neither Prometheus nor Loki can hold that
+  # shape, so the collector forks its OTLP input once more and writes spans here.
+  tempo:
+    image: grafana/tempo:2.10.7
+    container_name: observability-tempo
+    restart: unless-stopped
+    command: ["-config.file=/etc/tempo/tempo.yml"]
+    volumes:
+      - ./tempo/tempo.yml:/etc/tempo/tempo.yml:ro
+      - tempo-data:/var/tempo
+    ports:
+      # Loopback-only, like the rest. Grafana reaches it over the network below;
+      # this port is for curl against the API from the host.
+      - "127.0.0.1:3200:3200"
     networks:
       - observability
 
@@ -175,6 +197,9 @@ volumes:
   # /loki owned by its own uid, and a fresh named volume inherits that ownership
   # while a bind mount would arrive root-owned and unwritable.
   loki-data:
+  # Tempo's WAL and blocks. Same argument as loki-data — the image ships
+  # /var/tempo owned by uid 10001 and runs as that user.
+  tempo-data:
 
 networks:
   observability:

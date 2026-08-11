@@ -1,8 +1,8 @@
 # OpenTelemetry Collector — the push door of the local observability stack.
 #
-# It accepts OTLP on 4317/4318 and writes to Prometheus. Everything that pushes
-# rather than exposing a /metrics endpoint arrives here: Claude Code today, any
-# OTLP-instrumented service later.
+# It accepts OTLP on 4317/4318 and splits by signal: metrics to Prometheus, logs
+# to Loki, spans to Tempo. Everything that pushes rather than exposing a /metrics
+# endpoint arrives here: Claude Code today, any OTLP-instrumented service later.
 #
 # Adding a source is normally nothing but pointing it at this collector. The
 # pipeline below is deliberately plain, so that per-source handling (dropping a
@@ -83,6 +83,15 @@ exporters:
       # Plain HTTP on a private docker network.
       insecure: true
 
+  # Spans to Tempo, over Tempo's own OTLP receiver (../tempo/tempo.yml). gRPC
+  # here rather than the HTTP of the Loki exporter above, only because Tempo's
+  # receiver is configured for it and one protocol is one thing to keep working.
+  otlp/tempo:
+    endpoint: tempo:4317
+    tls:
+      # Plain gRPC on a private docker network.
+      insecure: true
+
 service:
   pipelines:
     metrics:
@@ -99,6 +108,14 @@ service:
       receivers: [otlp]
       processors: [memory_limiter, batch]
       exporters: [otlp_http/loki]
+
+    # The third fork of the same receiver. A span is not sampled anywhere in this
+    # pipeline: the traffic is one developer's prompts, and a tail sampler that
+    # drops the boring 95% would also drop the session you came to read.
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlp/tempo]
 
   telemetry:
     metrics:

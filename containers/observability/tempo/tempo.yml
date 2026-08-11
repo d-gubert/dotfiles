@@ -1,0 +1,51 @@
+# Tempo — the trace store of the local observability stack.
+#
+# It holds the third signal. Metrics say how many tokens a session spent, the
+# events in Loki say which prompt and which tool, and a trace here says how they
+# nest and how long each part took: one `claude_code.interaction` span per
+# prompt, with an `llm_request` and a `tool` span under it.
+#
+# Single binary, local filesystem, no object store — the scale here is one
+# developer's machine. `target` is left at its default `all`, so one process runs
+# the distributor, ingester, compactor and querier together.
+#
+# The collector writes over OTLP (../otel-collector/config.yaml), which is the
+# only door in. Nothing sends here directly.
+
+server:
+  http_listen_port: 3200
+  # Tempo logs one line per flushed block and per successful push at `info`.
+  # Same argument as Loki: the noise buries the errors worth reading.
+  log_level: warn
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          # 0.0.0.0, not the default localhost: the sender is the collector, off
+          # this container's loopback. 4317 collides with nothing — the
+          # collector's own 4317 is on a different container.
+          endpoint: 0.0.0.0:4317
+
+storage:
+  trace:
+    backend: local
+    wal:
+      path: /var/tempo/wal
+    local:
+      path: /var/tempo/blocks
+
+compactor:
+  compaction:
+    # Keep every trace. Unset, Tempo deletes a block after 14 days.
+    #
+    # 100y and not 0, for the same reason as Prometheus's
+    # --storage.tsdb.retention.time: an explicit ceiling is unambiguous, while a
+    # zero is read as "nothing was chosen" by enough tools that it is not worth
+    # the guess. The disk is the only bound.
+    block_retention: 876000h
+
+usage_report:
+  # Tempo phones home with usage statistics. Nothing here needs that.
+  reporting_enabled: false

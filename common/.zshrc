@@ -494,7 +494,7 @@ fi
 
 # Claude Code telemetry -> the local observability stack.
 #
-# containers/observability/README.md documents the same six variables for
+# containers/observability/README.md documents the same variables for
 # ~/.claude/settings.json. Here instead, because a shell that starts before the
 # stack does exports nothing, and a `claude` with a dead collector retries the
 # export every OTEL_METRIC_EXPORT_INTERVAL and logs each failure.
@@ -524,6 +524,18 @@ if exists claude; then
 		# text. Local disk either way — the choice is whether prompt and file
 		# content lands in a log store that keeps it forever.
 		export OTEL_LOGS_EXPORTER=otlp
+		# Spans, which the collector routes to Tempo: one
+		# `claude_code.interaction` per prompt, with the API calls and tool calls
+		# nested under it. Two variables and not one — the exporter alone does
+		# nothing while the beta flag is off, and the flag alone produces spans
+		# that go nowhere.
+		#
+		# Redaction is separate again, and shares the OTEL_LOG_* switches above:
+		# off, a span still carries tool_name, model, token counts and every
+		# duration. What it drops is the prompt text, the command string and the
+		# file path.
+		export CLAUDE_CODE_ENHANCED_TELEMETRY_BETA=1
+		export OTEL_TRACES_EXPORTER=otlp
 		export OTEL_EXPORTER_OTLP_PROTOCOL=grpc
 		# The published port, not `otel-collector:4317` — that name only resolves
 		# inside the observability network.

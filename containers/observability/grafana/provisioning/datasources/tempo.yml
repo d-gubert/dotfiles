@@ -1,0 +1,20 @@
+# The trace half of the stack. Provisioned beside ./prometheus.yml and ./loki.yml
+# so a fresh grafana-data volume needs no clicking, and with a fixed `uid` for
+# the same reason as the other two.
+apiVersion: 1
+
+datasources:
+  - name: Tempo
+    uid: observability-tempo
+    type: tempo
+    access: proxy
+    url: http://tempo:3200
+    # Prometheus keeps `isDefault`. Explore is where traces are read, and it
+    # remembers the datasource you picked.
+    isDefault: false
+    jsonData:
+      # The service graph above a trace, drawn from that trace's own spans. It
+      # needs no metrics_generator — that one is for the graph ACROSS traces,
+      # which this stack does not generate.
+      nodeGraph:
+        enabled: true
