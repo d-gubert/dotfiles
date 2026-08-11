@@ -513,6 +513,17 @@ if exists claude; then
 
 		export CLAUDE_CODE_ENABLE_TELEMETRY=1
 		export OTEL_METRICS_EXPORTER=otlp
+		# The event records — one per prompt, tool call and API request — which
+		# the collector routes to Loki. Off by default in Claude Code, and
+		# without it the metrics counters are all this stack ever sees.
+		#
+		# What the events CONTAIN is a separate set of switches, all off:
+		# OTEL_LOG_USER_PROMPTS, OTEL_LOG_ASSISTANT_RESPONSES,
+		# OTEL_LOG_TOOL_DETAILS and OTEL_LOG_RAW_API_BODIES. Left off, an event
+		# says a prompt happened and how big it was; turned on, it carries the
+		# text. Local disk either way — the choice is whether prompt and file
+		# content lands in a log store that keeps it forever.
+		export OTEL_LOGS_EXPORTER=otlp
 		export OTEL_EXPORTER_OTLP_PROTOCOL=grpc
 		# The published port, not `otel-collector:4317` — that name only resolves
 		# inside the observability network.

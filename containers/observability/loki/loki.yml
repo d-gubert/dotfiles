@@ -1,0 +1,69 @@
+# Loki — the log store of the local observability stack.
+#
+# It holds what Prometheus cannot: the event records Claude Code emits for each
+# prompt, tool call and API request. Metrics answer "how much"; these answer
+# "what happened". One process, one filesystem, no object store — the scale here
+# is one developer's machine.
+#
+# The collector writes over OTLP (../otel-collector/config.yaml), so nothing
+# scrapes log files and no agent runs beside this one.
+
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  # Loki logs one line per successful push at `info`. That is one line every few
+  # seconds forever, and it drowns the errors worth reading.
+  log_level: warn
+
+common:
+  instance_addr: 127.0.0.1
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  # Single binary: one replica, and a ring in memory rather than in Consul.
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+schema_config:
+  configs:
+    - from: 2024-04-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+limits_config:
+  # Which OTLP resource attributes become stream labels. Everything not listed
+  # here is still stored and still queryable — it becomes structured metadata,
+  # which costs nothing per stream. Labels are the expensive kind: every distinct
+  # combination is another stream.
+  #
+  # These two match the labels the same sources carry in Prometheus, so a
+  # workspace reads the same in both halves of the stack. The defaults
+  # (service.name and friends) are kept — a listed attribute is added to that
+  # set, not a replacement for it.
+  otlp_config:
+    resource_attributes:
+      attributes_config:
+        - action: index_label
+          attributes:
+            - workspace
+            - devbox.profile
+
+# Retention is off, which in Loki means "keep everything" — the compactor only
+# deletes when `retention_enabled` is true. Same choice as Prometheus: this is a
+# local stack and the disk is the only bound.
+compactor:
+  working_directory: /loki/compactor
+  retention_enabled: false
+
+analytics:
+  # Loki phones home with usage statistics. Nothing here needs that.
+  reporting_enabled: false

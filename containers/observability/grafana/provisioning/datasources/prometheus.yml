@@ -1,6 +1,8 @@
-# The stack's only datasource, provisioned so a fresh grafana-data volume needs
-# no clicking. `uid` is fixed because the dashboards in ../../dashboards refer to
-# it by uid — let Grafana generate one and every panel loses its datasource.
+# The metrics datasource, provisioned so a fresh grafana-data volume needs no
+# clicking. `uid` is fixed because the dashboards in ../../dashboards refer to it
+# by uid — let Grafana generate one and every panel loses its datasource.
+#
+# The log datasource is ./loki.yml.
 apiVersion: 1
 
 datasources:

@@ -44,10 +44,11 @@ services:
     networks:
       - observability
     depends_on:
-      # Remote write to a Prometheus that is not up yet costs a few retries and a
-      # wall of errors in the log. Only ordering — no healthcheck condition, the
-      # collector retries either way.
+      # Writing to a Prometheus or a Loki that is not up yet costs a few retries
+      # and a wall of errors in the log. Only ordering — no healthcheck
+      # condition, the collector retries either way.
       - prometheus
+      - loki
 
   # --- The database -----------------------------------------------------------
   prometheus:
@@ -80,6 +81,27 @@ services:
       - observability
     depends_on:
       - docker-socket-proxy
+
+  # --- The log store ----------------------------------------------------------
+  #
+  # Metrics say how many tokens a session spent; the events here say which
+  # prompt, which tool and which API call. Prometheus cannot hold them — a log
+  # line is not a time series — so the collector forks its OTLP input and writes
+  # logs here instead.
+  loki:
+    image: grafana/loki:3.7.6
+    container_name: observability-loki
+    restart: unless-stopped
+    command: ["-config.file=/etc/loki/loki.yml"]
+    volumes:
+      - ./loki/loki.yml:/etc/loki/loki.yml:ro
+      - loki-data:/loki
+    ports:
+      # Loopback-only, like the rest. Grafana reaches it over the network below;
+      # this port is for `logcli` and curl from the host.
+      - "127.0.0.1:3100:3100"
+    networks:
+      - observability
 
   # --- Service discovery for the `devbox` scrape job --------------------------
   #
@@ -149,6 +171,10 @@ volumes:
   # them the same two volumes no matter where the stack is started from.
   prometheus-data:
   grafana-data:
+  # Loki's chunks and index. A named volume, not a bind mount: the image ships
+  # /loki owned by its own uid, and a fresh named volume inherits that ownership
+  # while a bind mount would arrive root-owned and unwritable.
+  loki-data:
 
 networks:
   observability:

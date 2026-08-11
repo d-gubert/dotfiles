@@ -73,12 +73,32 @@ exporters:
     target_info:
       enabled: true
 
+  # Logs to Loki, over Loki's own OTLP endpoint. Not the `loki` exporter — that
+  # one was removed from the contrib distribution, and its replacement is plain
+  # OTLP into ../loki/loki.yml, which decides there which resource attributes
+  # become stream labels.
+  otlp_http/loki:
+    logs_endpoint: http://loki:3100/otlp/v1/logs
+    tls:
+      # Plain HTTP on a private docker network.
+      insecure: true
+
 service:
   pipelines:
     metrics:
       receivers: [otlp]
       processors: [memory_limiter, deltatocumulative, batch]
       exporters: [prometheusremotewrite]
+
+    # The same OTLP receiver, forked by signal: a sender opens one connection
+    # and the collector routes its metrics to Prometheus and its logs to Loki.
+    #
+    # No deltatocumulative here — it is a metrics processor, and the pipeline
+    # fails to build if a logs pipeline names it.
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlp_http/loki]
 
   telemetry:
     metrics:

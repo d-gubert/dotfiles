@@ -1,0 +1,14 @@
+# The log half of the stack. Provisioned beside ./prometheus.yml so a fresh
+# grafana-data volume needs no clicking, and with a fixed `uid` for the same
+# reason as the other one: a dashboard refers to a datasource by uid.
+apiVersion: 1
+
+datasources:
+  - name: Loki
+    uid: observability-loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    # Prometheus keeps `isDefault`. Explore is where these logs are read, and it
+    # remembers the datasource you picked.
+    isDefault: false

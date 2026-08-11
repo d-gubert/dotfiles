@@ -1,14 +1,15 @@
 # Observability
 
-One OpenTelemetry Collector, one Prometheus and one Grafana for this machine.
-Every source on it reports here — Claude Code on the host, Claude Code in a
-devbox container, the Rocket.Chat server in a devbox container, and whatever
+One OpenTelemetry Collector, one Prometheus, one Loki and one Grafana for this
+machine. Every source on it reports here — Claude Code on the host, Claude Code
+in a devbox container, the Rocket.Chat server in a devbox container, and whatever
 comes next.
 
 ```
 containers/observability/up.sh          # start it
 http://127.0.0.1:3030                   # Grafana, no login
 http://127.0.0.1:9090                   # Prometheus
+http://127.0.0.1:3100                   # Loki
 ```
 
 `up.sh` is idempotent and cheap when the stack is already up, which is why a
@@ -18,7 +19,7 @@ devbox profile calls it from its `initialize.sh` on every container start.
 
 | | |
 | --- | --- |
-| **push** | The source sends OTLP to the collector, which writes to Prometheus over remote write. `127.0.0.1:4317` (gRPC) or `:4318` (HTTP) from the host; `otel-collector:4317` from a container on the `observability` network. |
+| **push** | The source sends OTLP to the collector, which splits it by signal: metrics to Prometheus over remote write, logs to Loki. `127.0.0.1:4317` (gRPC) or `:4318` (HTTP) from the host; `otel-collector:4317` from a container on the `observability` network. One connection carries both. |
 | **pull** | Prometheus scrapes a container that exposes `/metrics`. The target list comes from Docker labels — see below. |
 
 Which one a source uses is the source's choice, not ours: Claude Code only
@@ -26,11 +27,11 @@ pushes, and Rocket.Chat only exposes an endpoint.
 
 ## Adding a source that pushes
 
-Point it at the collector and let it send. For Claude Code that is six
+Point it at the collector and let it send. For Claude Code that is seven
 variables. A devbox container gets them from its profile — see
 `../devcontainer/projects/rocketchat/env` for the annotated set.
 
-The host's own Claude Code gets the same six from `../../common/.zshrc`, which
+The host's own Claude Code gets the same seven from `../../common/.zshrc`, which
 exports them only when `claude` is installed and the collector answers on
 `127.0.0.1:4317`. `~/.claude/settings.json` would work too, but it is a personal
 file that this repo does not stow, and it has no way to ask whether the stack is
@@ -72,7 +73,8 @@ of one job rather than a single flapping target.
 | Service | |
 | --- | --- |
 | `otel-collector` | The push door, and the delta-to-cumulative conversion that lets any OTLP source work. `otel-collector/config.yaml`. |
-| `prometheus` | The database, no retention limit. `prometheus/prometheus.yml`. |
+| `prometheus` | The metrics database, no retention limit. `prometheus/prometheus.yml`. |
+| `loki` | The log database, no retention limit. `loki/loki.yml`. |
 | `grafana` | The front end, anonymous Admin. Datasource and dashboards provisioned from `grafana/`. |
 | `docker-socket-proxy` | A read-only, two-endpoint window onto the Docker API, so Prometheus can discover targets without a socket mount. |
 
@@ -88,6 +90,22 @@ as" to keep an experiment.
 `claude_code_cost_usage` and not `claude_code_cost_usage_USD`. Dots become
 underscores; nothing else changes. It costs the Prometheus naming convention and
 buys queries that do not depend on a unit string the sender picked.
+
+**Claude Code's events arrive empty of content, on purpose.** `OTEL_LOGS_EXPORTER`
+turns the event stream on; four further switches decide what each event carries,
+and all four are off:
+
+| | |
+| --- | --- |
+| `OTEL_LOG_USER_PROMPTS` | the prompt text |
+| `OTEL_LOG_ASSISTANT_RESPONSES` | the response text |
+| `OTEL_LOG_TOOL_DETAILS` | tool parameters, commands, MCP server and tool names |
+| `OTEL_LOG_RAW_API_BODIES` | the full request and response JSON |
+
+Off, an event records that a prompt happened, its size and its timing — enough to
+follow a session's shape. On, it records what was said. Everything stays on this
+machine either way; the question is only whether a log store keeps a copy of the
+work forever. Set them in the same two files as the rest.
 
 **Editing a config file needs a container recreate, not a reload.** Each config
 is bind-mounted as a single file, and an editor that writes a new file replaces
