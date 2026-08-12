@@ -492,6 +492,10 @@ if exists docker; then
 	alias dcdown='docker compose down'
 fi
 
+if exists difft; then
+	alias gds='git -c diff.external=difft diff'
+fi
+
 # Claude Code telemetry -> the local observability stack.
 #
 # containers/observability/README.md documents the same variables for
