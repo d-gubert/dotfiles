@@ -31,7 +31,7 @@ DEVBOX_PLAYWRIGHT_BROWSERS=chromium
 # file), and a driver connecting to a replica set discards the seed address and
 # uses the advertised one. `?replicaSet=rs0` for the same reason it is on every
 # Rocket.Chat MONGO_URL — the oplog needs a replica set, not a standalone.
-MONGO_URL=mongodb://mongo:27017/rocketchat?replicaSet=rs0
+MONGO_URL=mongodb://mongo:27017/devbox?replicaSet=rs0
 
 # --- Metrics ------------------------------------------------------------------
 #
