@@ -53,6 +53,38 @@ RUN mkdir -p $VOLTA_HOME && \
     printf 'export VOLTA_HOME="/usr/local/volta"\nexport VOLTA_FEATURE_PNPM=1\nexport PATH="$VOLTA_HOME/bin:$PATH"\n' \
       >/etc/profile.d/volta.sh
 
+# --- Neovim -------------------------------------------------------------------
+# The editor for anything that opens one inside the container — `git commit`,
+# `git rebase -i`, a Claude Code prompt for an edit. It belongs here rather than
+# in a profile for the same reason Volta does: it reads any repository and pins
+# nothing.
+#
+# From the upstream tarball rather than apt: Ubuntu 24.04 ships 0.9.5, which is
+# past end of life and below the >= 0.11 floor that the nvim config in these
+# dotfiles (common/.config/nvim) needs. Nothing mounts that config into the
+# container today, but an old build would make it impossible later.
+#
+# Unpacked whole into /usr/local/nvim, with one symlink onto the default PATH,
+# so no profile.d file is needed and `rm -rf` removes every trace.
+ARG NVIM_VERSION=0.12.4
+RUN case "$(dpkg --print-architecture)" in \
+      amd64) nvim_arch=x86_64 ;; \
+      arm64) nvim_arch=arm64 ;; \
+      *) echo "unsupported architecture for neovim" >&2; exit 1 ;; \
+    esac && \
+    curl -fsSL -o /tmp/nvim.tar.gz \
+      "https://github.com/neovim/neovim/releases/download/v${NVIM_VERSION}/nvim-linux-${nvim_arch}.tar.gz" && \
+    mkdir -p /usr/local/nvim && \
+    tar -xzf /tmp/nvim.tar.gz -C /usr/local/nvim --strip-components=1 && \
+    rm /tmp/nvim.tar.gz && \
+    ln -s /usr/local/nvim/bin/nvim /usr/local/bin/nvim && \
+    nvim --version
+
+# An image-level ENV, not a `containerEnv` entry in devcontainer.json, so that a
+# plain `docker exec` into this container gets it too — not only the shells the
+# devcontainer CLI starts.
+ENV EDITOR=nvim
+
 # --- GitNexus ----------------------------------------------------------------
 # Indexes a checkout into a code knowledge graph and serves it to Claude Code
 # over MCP. It belongs here rather than in a profile for the same reason Volta
