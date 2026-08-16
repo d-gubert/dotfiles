@@ -4,9 +4,9 @@
 # and only when devcontainer.json declares the claude-code feature (feature.id).
 #
 # The host-side entry point for everything the claude-code feature needs: the
-# compose fragment (shared config volume, the staged skills, and the capabilities
-# the egress firewall requires), the volume itself, and the skills staged out of
-# your host config for the container to pick up.
+# compose fragment (shared config volume, the staged host config, and the
+# capabilities the egress firewall requires), the volume itself, and the skills
+# and CLAUDE.md staged out of your host config for the container to pick up.
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -39,13 +39,13 @@ overrides_add claude-code service-volumes <<-YAML
 	- type: volume
 	  source: claude-config
 	  target: /home/vscode/.claude
-	# Your host skills, dereferenced and copied out by stage-skills.sh below.
-	# Read-only and outside the workspace: install-skills.sh copies from here into
-	# the config volume on every start, and nothing in the container can write
-	# back towards your host config.
+	# Your host skills and CLAUDE.md, dereferenced and copied out by
+	# stage-host-config.sh below. Read-only and outside the workspace:
+	# install-host-config.sh copies from here into the config volume on every
+	# start, and nothing in the container can write back towards your host config.
 	- type: bind
-	  source: ${DEVBOX_STATE:?}/host-skills
-	  target: /opt/devbox-skills
+	  source: ${DEVBOX_STATE:?}/host-config
+	  target: /opt/devbox-host-config
 	  read_only: true
 YAML
 
@@ -119,4 +119,4 @@ YAML
 
 bash "$here/ensure-claude-config.sh"
 
-bash "$here/stage-skills.sh"
+bash "$here/stage-host-config.sh"

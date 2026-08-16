@@ -4,8 +4,8 @@
 # before the container is created.
 #
 # Creates the named volume that holds Claude Code's config directory — auth
-# (`.credentials.json`), settings, history, and the skills install-skills.sh
-# copies in. The volume root *is* ~/.claude: claude-code/initialize.sh mounts it
+# (`.credentials.json`), settings, history, and the skills and CLAUDE.md
+# install-host-config.sh copies in. The volume root *is* ~/.claude: claude-code/initialize.sh mounts it
 # whole at that canonical path, with no subpath in between, since there is only
 # ever the one directory in here to carry.
 #

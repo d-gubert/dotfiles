@@ -46,7 +46,7 @@ that path:
 | `DEVBOX_WORKSPACE_SLUG` | The path minus `$HOME`, so the container's workspace is `/workspaces/dev/RocketChat/worktrees/main` — distinct per checkout, with the checkout's own name still the leaf |
 | `COMPOSE_PROJECT_NAME` | `devbox-<dirname>-<hash of the full path>`, read by the devcontainer CLI, so two checkouts never share a container |
 | `DEVBOX_PROFILE` | The `projects/<name>` profile whose `match` claims this path |
-| `DEVBOX_STATE` | `~/.local/state/devbox/<project>/` — the generated compose override and the staged Claude Code skills |
+| `DEVBOX_STATE` | `~/.local/state/devbox/<project>/` — the generated compose override and the staged Claude Code config (skills, `CLAUDE.md`) |
 
 Nothing is stored: run any subcommand from the same directory and it resolves to
 the same container. The flip side is that **the CLI has to be driven through
@@ -138,7 +138,7 @@ editing.
 
 | Feature | Gives you |
 | --- | --- |
-| `anthropics/devcontainer-features/claude-code` | The Claude Code CLI, the egress firewall, your host skills, a shared login |
+| `anthropics/devcontainer-features/claude-code` | The Claude Code CLI, the egress firewall, your host skills and `CLAUDE.md`, a shared login |
 | `devcontainers/features/github-cli` | `gh`, plus a shared login and SSH key |
 | `postfinance/devcontainer-features/playwright-deps` | Headless-Chromium OS libraries, plus the browser build fetched by the *workspace's* Playwright and a shared cache volume |
 | `devcontainers-extra/features/npm-packages` | Global CLIs for every workspace (empty by default — project-specific ones belong in a profile) |
@@ -429,24 +429,33 @@ gitnexus mcp                    # serve it (stdio)
   volume, so a rebuild loses it. It holds paths and metadata only — no index
   data. Set `GITNEXUS_HOME` if you want it somewhere durable.
 
-**Skills staging.** The container's `~/.claude` is a volume that shares nothing
-with the host, so `stage-skills.sh` copies `$CLAUDE_CONFIG_DIR/skills` (falling
-back to `~/.claude/skills`) into `$DEVBOX_STATE/host-skills`, which is bind-mounted
-read-only at `/opt/devbox-skills`, and `install-skills.sh` installs from there on
-every start.
+**Host config staging.** The container's `~/.claude` is a volume that shares
+nothing with the host, so `stage-host-config.sh` copies the two parts worth
+sharing — `$CLAUDE_CONFIG_DIR/skills` and `$CLAUDE_CONFIG_DIR/CLAUDE.md`, falling
+back to `~/.claude` — into `$DEVBOX_STATE/host-config`, which is bind-mounted
+read-only at `/opt/devbox-host-config`, and `install-host-config.sh` installs
+both from there on every start.
+
+```
+host-config/
+  skills/<name>/...
+  CLAUDE.md
+```
 
 - Symlinks are dereferenced on the host — the reason for the staging step. A
-  skill pointing at another checkout isn't mounted into the container and the
-  link would dangle.
+  skill pointing at another checkout, or a `CLAUDE.md` pointing into a dotfiles
+  repo, isn't mounted into the container and the link would dangle.
 - Copies, not mounts: nothing in the container can write back to your host
-  skills, and changes made inside are overwritten on the next start.
-- Editing, adding or deleting a skill on the host only needs a **restart**.
-  Pruning is driven by `~/.claude/.host-skills.manifest`, so a skill you wrote
+  config, and changes made inside are overwritten on the next start.
+- Editing, adding or deleting either one on the host only needs a **restart**.
+  Pruning is driven by `~/.claude/.host-skills.manifest` and
+  `~/.claude/.host-claude-md.installed`, so a skill or a `CLAUDE.md` you wrote
   *inside* the container is left alone.
-- **To turn it off**, `touch ~/.local/state/devbox/<project>/skip-skills`, or set
-  `DEVBOX_SKIP_SKILLS=1` for the `devbox` invocation.
-- Project-level skills (`.claude/skills/`) need none of this — the workspace bind
-  mount already carries them.
+- **To turn it off**, `touch ~/.local/state/devbox/<project>/skip-host-config`,
+  or set `DEVBOX_SKIP_HOST_CONFIG=1` for the `devbox` invocation. One switch
+  covers both.
+- Project-level skills (`.claude/skills/`) and memory (`./CLAUDE.md`) need none
+  of this — the workspace bind mount already carries them.
 
 ## Anthropic's documentation
 

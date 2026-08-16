@@ -30,7 +30,7 @@ sudo \
 # volume, unlike the backups it is restored from.
 bash "$here/restore-claude-json.sh"
 
-# Installs the host's user-level skills, staged and mounted read-only by
-# initialize.sh. Here rather than on-create so editing a skill on the host takes
-# effect on a restart.
-bash "$here/install-skills.sh"
+# Installs the host's user-level skills and CLAUDE.md, staged and mounted
+# read-only by initialize.sh. Here rather than on-create so editing either on the
+# host takes effect on a restart.
+bash "$here/install-host-config.sh"

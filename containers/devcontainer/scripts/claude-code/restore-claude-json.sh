@@ -18,7 +18,7 @@
 # running against it.
 set -euo pipefail
 
-# Matches the CLI's own resolution, as install-skills.sh does. Both the config
+# Matches the CLI's own resolution, as install-host-config.sh does. Both the config
 # file and backups/ move with $CLAUDE_CONFIG_DIR when it is set.
 config_dir="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 if [ -n "${CLAUDE_CONFIG_DIR:-}" ]; then
