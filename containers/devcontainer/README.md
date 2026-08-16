@@ -46,7 +46,7 @@ that path:
 | `DEVBOX_WORKSPACE_SLUG` | The path minus `$HOME`, so the container's workspace is `/workspaces/dev/RocketChat/worktrees/main` — distinct per checkout, with the checkout's own name still the leaf |
 | `COMPOSE_PROJECT_NAME` | `devbox-<dirname>-<hash of the full path>`, read by the devcontainer CLI, so two checkouts never share a container |
 | `DEVBOX_PROFILE` | The `projects/<name>` profile whose `match` claims this path |
-| `DEVBOX_STATE` | `~/.local/state/devbox/<project>/` — the generated compose override and the staged Claude Code config (skills, `CLAUDE.md`) |
+| `DEVBOX_STATE` | `~/.local/state/devbox/<project>/` — the generated compose override and the staged Claude Code config (skills, agents, `CLAUDE.md`) |
 
 Nothing is stored: run any subcommand from the same directory and it resolves to
 the same container. The flip side is that **the CLI has to be driven through
@@ -138,7 +138,7 @@ editing.
 
 | Feature | Gives you |
 | --- | --- |
-| `anthropics/devcontainer-features/claude-code` | The Claude Code CLI, the egress firewall, your host skills and `CLAUDE.md`, a shared login |
+| `anthropics/devcontainer-features/claude-code` | The Claude Code CLI, the egress firewall, your host skills, agents and `CLAUDE.md`, a shared login |
 | `devcontainers/features/github-cli` | `gh`, plus a shared login and SSH key |
 | `postfinance/devcontainer-features/playwright-deps` | Headless-Chromium OS libraries, plus the browser build fetched by the *workspace's* Playwright and a shared cache volume |
 | `devcontainers-extra/features/npm-packages` | Global CLIs for every workspace (empty by default — project-specific ones belong in a profile) |
@@ -221,7 +221,7 @@ several mounts, and need Compose ≥ 2.26 / Engine ≥ 25.
 | --- | --- | --- | --- |
 | `devbox-yarn-cache` | `berry/` | `~/.yarn/berry` | Yarn's package cache and metadata index |
 | `devbox-playwright-browsers` | `ms-playwright/` | `~/.cache/ms-playwright` | Playwright's browser builds, one directory per version |
-| `devbox-claude-config` | — | `~/.claude` | Claude Code credentials, settings, history, skills |
+| `devbox-claude-config` | — | `~/.claude` | Claude Code credentials, settings, history, skills, agents |
 | `devbox-gh-auth` | `gh/` | `~/.config/gh` | `hosts.yml`, i.e. the GitHub OAuth token |
 | `devbox-gh-auth` | `ssh/` | `~/.ssh` | The SSH key `gh auth login` generates, plus `known_hosts` |
 | `devbox-tools-<profile>` | — | `~/.devbox` | Whatever the profile's `setup.sh` installs |
@@ -235,7 +235,7 @@ several mounts, and need Compose ≥ 2.26 / Engine ≥ 25.
 - The auth volumes are created `0700` and owned by the host uid (which is the
   container user's, since devcontainers matches them). The rest are cache:
   `docker volume rm devbox-yarn-cache` costs one slow install, nothing more.
-- `~/.claude` is shared *state* — login, settings, skills and history for every
+- `~/.claude` is shared *state* — login, settings, skills, agents and history for every
   workspace on the machine. Per-project state still stays apart: the workspace
   path carries the checkout's full host path, so each resolves to its own entry
   under `~/.claude/projects/` and `claude --resume` only lists that checkout's
@@ -430,30 +430,33 @@ gitnexus mcp                    # serve it (stdio)
   data. Set `GITNEXUS_HOME` if you want it somewhere durable.
 
 **Host config staging.** The container's `~/.claude` is a volume that shares
-nothing with the host, so `stage-host-config.sh` copies the two parts worth
-sharing — `$CLAUDE_CONFIG_DIR/skills` and `$CLAUDE_CONFIG_DIR/CLAUDE.md`, falling
-back to `~/.claude` — into `$DEVBOX_STATE/host-config`, which is bind-mounted
-read-only at `/opt/devbox-host-config`, and `install-host-config.sh` installs
-both from there on every start.
+nothing with the host, so `stage-host-config.sh` copies the three parts worth
+sharing — `$CLAUDE_CONFIG_DIR/skills`, `$CLAUDE_CONFIG_DIR/agents` and
+`$CLAUDE_CONFIG_DIR/CLAUDE.md`, falling back to `~/.claude` — into
+`$DEVBOX_STATE/host-config`, which is bind-mounted read-only at
+`/opt/devbox-host-config`, and `install-host-config.sh` installs all three from
+there on every start.
 
 ```
 host-config/
   skills/<name>/...
+  agents/<name>.md
   CLAUDE.md
 ```
 
 - Symlinks are dereferenced on the host — the reason for the staging step. A
-  skill pointing at another checkout, or a `CLAUDE.md` pointing into a dotfiles
-  repo, isn't mounted into the container and the link would dangle.
+  skill pointing at another checkout, or an agent or a `CLAUDE.md` pointing into
+  a dotfiles repo, isn't mounted into the container and the link would dangle.
 - Copies, not mounts: nothing in the container can write back to your host
   config, and changes made inside are overwritten on the next start.
-- Editing, adding or deleting either one on the host only needs a **restart**.
-  Pruning is driven by `~/.claude/.host-skills.manifest` and
-  `~/.claude/.host-claude-md.installed`, so a skill or a `CLAUDE.md` you wrote
-  *inside* the container is left alone.
+- Editing, adding or deleting any of them on the host only needs a **restart**.
+  Pruning is driven by `~/.claude/.host-skills.manifest`,
+  `~/.claude/.host-agents.manifest` and `~/.claude/.host-claude-md.installed`, so
+  a skill, an agent or a `CLAUDE.md` you wrote *inside* the container is left
+  alone.
 - **To turn it off**, `touch ~/.local/state/devbox/<project>/skip-host-config`,
   or set `DEVBOX_SKIP_HOST_CONFIG=1` for the `devbox` invocation. One switch
-  covers both.
+  covers all three.
 - Project-level skills (`.claude/skills/`) and memory (`./CLAUDE.md`) need none
   of this — the workspace bind mount already carries them.
 

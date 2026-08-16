@@ -4,22 +4,23 @@
 # created or started.
 #
 # Copies the parts of your user-level Claude Code config that the container
-# should share — your skills and your CLAUDE.md — into $DEVBOX_STATE/host-config,
-# which claude-code/initialize.sh binds read-only at /opt/devbox-host-config,
-# where install-host-config.sh puts them in place:
+# should share — your skills, your agents and your CLAUDE.md — into
+# $DEVBOX_STATE/host-config, which claude-code/initialize.sh binds read-only at
+# /opt/devbox-host-config, where install-host-config.sh puts them in place:
 #
 #     host-config/
 #       skills/<name>/...
+#       agents/<name>.md
 #       CLAUDE.md
 #
 # Two halves are needed because the container's ~/.claude is a named volume —
 # nothing on the host is visible inside it.
 #
-# Why copy instead of binding your config directory straight in: both halves are
-# commonly symlinks into another checkout (a skill at ~/.agents/skills/<name>, a
-# CLAUDE.md in a dotfiles repo), and those targets are not mounted into the
-# container, so the links would resolve to nothing in there. `cp -RL` and `cp -L`
-# here dereference them while the targets still exist.
+# Why copy instead of binding your config directory straight in: all three parts
+# are commonly symlinks into another checkout (a skill at ~/.agents/skills/<name>,
+# an agent or a CLAUDE.md in a dotfiles repo), and those targets are not mounted
+# into the container, so the links would resolve to nothing in there. `cp -RL` and
+# `cp -L` here dereference them while the targets still exist.
 #
 # It lands in the per-workspace state directory rather than in the dotfiles: that
 # directory is mounted read-only in the container, and several workspaces can be
@@ -30,8 +31,8 @@
 # devbox up` stages that profile's config instead.
 #
 # Idempotent: re-runs on every create/start and fully rebuilds the staging
-# directory, so removing a skill or the CLAUDE.md on the host removes it in the
-# container too.
+# directory, so removing a skill, an agent or the CLAUDE.md on the host removes it
+# in the container too.
 #
 # To opt out entirely, see the marker file / env var below.
 set -euo pipefail
@@ -47,10 +48,10 @@ warn() { printf '\033[1;33m[stage-host-config] WARNING:\033[0m %s\n' "$1" >&2; }
 # container side reads staging as authoritative, so this is what tells it to
 # remove what it installed on an earlier run. (It also has to exist either way —
 # a bind mount whose source is missing gets created as a root-owned directory by
-# Docker.) skills/ is always created for the same reason.
+# Docker.) skills/ and agents/ are always created for the same reason.
 stage_empty() {
 	rm -rf "$out"
-	mkdir -p "$out/skills"
+	mkdir -p "$out/skills" "$out/agents"
 }
 
 # Opting out. The marker file is the dependable one: initializeCommand inherits
@@ -78,7 +79,7 @@ fi
 # container reading a half-copied skill.
 tmp="$out.tmp.$$"
 rm -rf "$tmp"
-mkdir -p "$tmp/skills"
+mkdir -p "$tmp/skills" "$tmp/agents"
 trap 'rm -rf "$tmp"' EXIT
 
 count=0
@@ -99,6 +100,22 @@ for entry in "$src"/skills/*; do
 done
 shopt -u nullglob
 
+# Subagent definitions, under the same rules as the skills above. An agent is one
+# Markdown file, but Claude Code also reads the subdirectories some people group
+# them in, so anything that survives the broken-symlink check is copied as it is.
+agents=0
+shopt -s nullglob
+for entry in "$src"/agents/*; do
+	name="$(basename "$entry")"
+	if [ ! -e "$entry" ]; then
+		warn "skipping agent '$name' — broken symlink"
+		continue
+	fi
+	cp -RL "$entry" "$tmp/agents/$name"
+	agents=$((agents + 1))
+done
+shopt -u nullglob
+
 # The user-level memory file, next to skills/ and under the same rules. `-e` is
 # false for a dangling symlink too, so both cases land in the else branch.
 memory="no CLAUDE.md"
@@ -113,4 +130,4 @@ rm -rf "$out"
 mv "$tmp" "$out"
 trap - EXIT
 
-log "staged $count skill(s) and $memory from $src"
+log "staged $count skill(s), $agents agent(s) and $memory from $src"
