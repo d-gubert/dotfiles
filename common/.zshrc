@@ -375,7 +375,8 @@ function sniffly() {
 		sniffly
 }
 
-function exists() { command -v "$1" >/dev/null 2>&1 }
+function void() { "$@" >/dev/null 2>&1 }
+function exists() { void command -v "$1" }
 
 # Set personal aliases, overriding those provided by oh-my-zsh libs,
 # plugins, and themes. Aliases can be placed here, though oh-my-zsh
@@ -610,6 +611,60 @@ fi
 
 if exists herdr; then
 	source <(herdr completion zsh)
+
+	# notify '<command|pipeline>'   — quote the whole pipeline
+	#   notify 'make build'
+	#   notify 'grep foo big.log | sort | uniq -c'
+	# notify '<command|pipeline>'   or   notify <<'EOF' ... EOF
+	function notify() {
+		emulate -L zsh
+		setopt pipe_fail
+
+		local cmd
+
+		if (( $# )); then
+			cmd="$*"
+		else
+			cmd="$(cat)"                                  # heredoc / piped stdin
+		fi
+
+		[[ -z ${cmd//[[:space:]]/} ]] && { print -u2 "notify: nothing to run"; return 2 }
+
+		local summary=${cmd//[[:space:]]##/ }           # collapse whitespace/newlines to single spaces
+		summary=${summary## }                           # trim leading space
+		(( ${#summary} > 120 )) && summary="${summary[1,117]}…"   # cap length for the toast
+
+		local label=${${(z)cmd}[1]:t}                   # first word, basename → sidebar row
+		label=${label//[^a-zA-Z0-9_-]/}                 # sanitize to valid agent-label chars
+		[[ -z $label ]] && label=job
+
+		local src=notify
+
+		local in_herdr=0
+
+		[[ $HERDR_ENV == 1 && -n $HERDR_PANE_ID ]] && in_herdr=1
+
+		(( in_herdr )) && herdr pane report-agent "$HERDR_PANE_ID" \
+			--source $src --agent $label --state working >/dev/null 2>&1
+
+		herdr pane report-metadata "$HERDR_PANE_ID" --source ${src}-display --token summary=$summary
+
+		eval "$cmd"                                      # synchronous → waits for whole pipeline
+		local ret=$?
+
+		if (( in_herdr )); then
+			herdr pane report-agent "$HERDR_PANE_ID" --source $src --agent $label --state idle >/dev/null 2>&1
+			herdr pane release-agent "$HERDR_PANE_ID" --source $src --agent $label >/dev/null 2>&1
+		fi
+
+		if (( ret == 0 )); then
+			herdr notification show "✓ $summary"          --sound done    >/dev/null 2>&1
+		else
+			herdr notification show "✗ $summary ($ret)"   --sound request >/dev/null 2>&1
+		fi
+
+		return $ret
+	}
 fi
 
 # opencode
