@@ -19,6 +19,7 @@ prompt_new_tab_name = false
 hide_tab_bar_when_single_tab = true
 pane_gaps = false
 
+agent_panel_sort = "spaces"
 [keys]
 # tmux: set -g prefix M-Space  (M-Space send-prefix has no herdr equivalent)
 prefix = "alt+space"
