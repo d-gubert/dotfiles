@@ -76,7 +76,7 @@
       {
         "name": "session",
         "label": "Session",
-        "description": "Used by the One session row only. Pick an id from the Most expensive sessions table.",
+        "description": "Drives the One session row. Listed as workspace + id, ordered by spend over the last 30 days, and filtered by the workspace variable. Claude Code does not export its session titles, so the id is the name.",
         "type": "query",
         "datasource": {
           "type": "prometheus",
@@ -84,9 +84,10 @@
         },
         "query": {
           "qryType": 1,
-          "query": "label_values(claude_code_session_count, session_id)",
+          "query": "query_result(sort_desc(topk(50, label_join(label_replace(label_replace(sum by (session_id, workspace) (max_over_time(claude_code_cost_usage{workspace=~\"$workspace\"}[30d])), \"ws\", \"$1\", \"workspace\", \"(.*)\"), \"ws\", \"$1\", \"workspace\", \".*/([^/]+)\"), \"label\", \" · \", \"ws\", \"session_id\"))))",
           "refId": "session"
         },
+        "regex": "/label=\"(?<text>[^\"]*· (?<value>[0-9a-f-]{36}))\"/",
         "refresh": 2,
         "multi": false,
         "includeAll": true,
@@ -96,7 +97,7 @@
           "text": "All",
           "value": "$__all"
         },
-        "sort": 1
+        "sort": 0
       }
     ]
   },
