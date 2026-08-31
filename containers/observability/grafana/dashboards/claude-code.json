@@ -1,33 +1,151 @@
 {
   "uid": "devbox-claude-code",
   "title": "Claude Code",
-  "description": "Usage, cost and tokens for every Claude Code session that pushes OTLP to the local collector — the host's and every devbox container's. Metric names have no unit or _total suffix because the collector is configured with add_metric_suffixes: false.",
-  "tags": ["devbox", "claude-code"],
+  "description": "Usage, cost, tokens, tools and permissions for every Claude Code session that pushes OTLP to the local collector — the host's and every devbox container's. Reads all three signals: Prometheus for the counters, Loki for the event stream, Tempo for the spans. Metric names have no unit or _total suffix because the collector is configured with add_metric_suffixes: false. Several panels count with max_over_time rather than increase(); each says why in its own description.",
+  "tags": [
+    "devbox",
+    "claude-code"
+  ],
   "editable": true,
   "schemaVersion": 39,
-  "time": { "from": "now-24h", "to": "now" },
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
   "refresh": "1m",
+  "templating": {
+    "list": [
+      {
+        "name": "workspace",
+        "label": "Workspace",
+        "description": "host, or a devbox checkout path. Filters every panel on the dashboard.",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "observability-prometheus"
+        },
+        "query": {
+          "qryType": 1,
+          "query": "label_values(claude_code_cost_usage, workspace)",
+          "refId": "workspace"
+        },
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "sort": 1
+      },
+      {
+        "name": "model",
+        "label": "Model",
+        "description": "Filters the cost and token panels. Panels whose metric has no model label ignore it.",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "observability-prometheus"
+        },
+        "query": {
+          "qryType": 1,
+          "query": "label_values(claude_code_cost_usage, model)",
+          "refId": "model"
+        },
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "sort": 1
+      },
+      {
+        "name": "session",
+        "label": "Session",
+        "description": "Used by the One session row only. Pick an id from the Most expensive sessions table.",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "observability-prometheus"
+        },
+        "query": {
+          "qryType": 1,
+          "query": "label_values(claude_code_session_count, session_id)",
+          "refId": "session"
+        },
+        "refresh": 2,
+        "multi": false,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "sort": 1
+      }
+    ]
+  },
   "panels": [
     {
       "id": 1,
       "type": "stat",
       "title": "Sessions started",
-      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "observability-prometheus" },
+      "description": "Counts DISTINCT session_id, not increase(). Claude Code creates a session counter already holding 1 and it never moves again, so increase() measures a flat line and returns 0 at every range. max_over_time keeps the series alive across the window; count() then counts series, which is sessions.",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "observability-prometheus"
+      },
       "fieldConfig": {
-        "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "fixed", "fixedColor": "text" } },
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "decimals": 0
+        },
         "overrides": []
       },
       "options": {
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "graphMode": "none",
         "textMode": "auto"
       },
       "targets": [
         {
           "refId": "A",
-          "datasource": { "type": "prometheus", "uid": "observability-prometheus" },
-          "expr": "sum(increase(claude_code_session_count[$__range]))",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "observability-prometheus"
+          },
+          "expr": "count(count by (session_id) (max_over_time(claude_code_session_count{workspace=~\"$workspace\"}[$__range])))",
           "instant": true
         }
       ]
@@ -36,46 +154,109 @@
       "id": 2,
       "type": "stat",
       "title": "Cost",
-      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "observability-prometheus" },
+      "description": "max_over_time rather than increase() for the same reason as Sessions: the first sample of a session's counter is a step this dashboard would otherwise never see. The trade is that a session which started before the window contributes its whole total, not the part inside it.",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "observability-prometheus"
+      },
       "fieldConfig": {
-        "defaults": { "unit": "currencyUSD", "decimals": 2, "color": { "mode": "fixed", "fixedColor": "text" } },
+        "defaults": {
+          "unit": "currencyUSD",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "decimals": 2
+        },
         "overrides": []
       },
       "options": {
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "graphMode": "none",
         "textMode": "auto"
       },
       "targets": [
         {
           "refId": "A",
-          "datasource": { "type": "prometheus", "uid": "observability-prometheus" },
-          "expr": "sum(increase(claude_code_cost_usage[$__range]))",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "observability-prometheus"
+          },
+          "expr": "sum(max_over_time(claude_code_cost_usage{workspace=~\"$workspace\", model=~\"$model\"}[$__range]))",
           "instant": true
         }
       ]
     },
     {
       "id": 3,
-      "type": "stat",
-      "title": "Lines added",
-      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "observability-prometheus" },
+      "type": "gauge",
+      "title": "Cache read share",
+      "description": "Cache reads as a fraction of all tokens. Sits near 0.98 in normal use. A fall means the prompt cache is missing, and a cache miss is paid for at the full input rate.",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "observability-prometheus"
+      },
       "fieldConfig": {
-        "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "fixed", "fixedColor": "text" } },
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 3,
+          "min": 0,
+          "max": 1,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 0.9
+              }
+            ]
+          }
+        },
         "overrides": []
       },
       "options": {
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "graphMode": "none",
-        "textMode": "auto"
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdMarkers": true
       },
       "targets": [
         {
           "refId": "A",
-          "datasource": { "type": "prometheus", "uid": "observability-prometheus" },
-          "expr": "sum(increase(claude_code_lines_of_code_count{type=\"added\"}[$__range]))",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "observability-prometheus"
+          },
+          "expr": "sum(max_over_time(claude_code_token_usage{workspace=~\"$workspace\", model=~\"$model\", type=\"cacheRead\"}[$__range])) / sum(max_over_time(claude_code_token_usage{workspace=~\"$workspace\", model=~\"$model\"}[$__range]))",
           "instant": true
         }
       ]
@@ -83,117 +264,3201 @@
     {
       "id": 4,
       "type": "stat",
-      "title": "Commits",
-      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "observability-prometheus" },
+      "title": "Net lines",
+      "description": "Added minus removed. A negative number is a refactor.",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "observability-prometheus"
+      },
       "fieldConfig": {
-        "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "fixed", "fixedColor": "text" } },
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "decimals": 0
+        },
         "overrides": []
       },
       "options": {
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "graphMode": "none",
         "textMode": "auto"
       },
       "targets": [
         {
           "refId": "A",
-          "datasource": { "type": "prometheus", "uid": "observability-prometheus" },
-          "expr": "sum(increase(claude_code_commit_count[$__range]))",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "observability-prometheus"
+          },
+          "expr": "sum(max_over_time(claude_code_lines_of_code_count{workspace=~\"$workspace\", type=\"added\"}[$__range])) - sum(max_over_time(claude_code_lines_of_code_count{workspace=~\"$workspace\", type=\"removed\"}[$__range]))",
           "instant": true
         }
       ]
     },
     {
       "id": 5,
-      "type": "timeseries",
-      "title": "Tokens per minute, by type",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
-      "datasource": { "type": "prometheus", "uid": "observability-prometheus" },
+      "type": "stat",
+      "title": "Commits",
+      "description": "max_over_time, not increase(). increase() under-reports this counter by roughly half — it misses the step from the series being born.",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "observability-prometheus"
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "short",
-          "custom": { "drawStyle": "line", "fillOpacity": 20, "showPoints": "never", "stacking": { "mode": "normal" } }
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "decimals": 0
         },
         "overrides": []
       },
-      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["sum"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "graphMode": "none",
+        "textMode": "auto"
+      },
       "targets": [
         {
           "refId": "A",
-          "datasource": { "type": "prometheus", "uid": "observability-prometheus" },
-          "expr": "sum by (type) (rate(claude_code_token_usage[$__rate_interval])) * 60",
-          "legendFormat": "{{type}}"
+          "datasource": {
+            "type": "prometheus",
+            "uid": "observability-prometheus"
+          },
+          "expr": "sum(max_over_time(claude_code_commit_count{workspace=~\"$workspace\"}[$__range]))",
+          "instant": true
         }
       ]
     },
     {
       "id": 6,
-      "type": "timeseries",
-      "title": "Cost per hour, by model",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
-      "datasource": { "type": "prometheus", "uid": "observability-prometheus" },
+      "type": "stat",
+      "title": "Tool calls",
+      "description": "From the Loki event stream, which is the only place tool calls are counted at all. The Prometheus side has a decision counter for Edit and Write and nothing for every other tool.",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 0
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "observability-loki"
+      },
       "fieldConfig": {
         "defaults": {
-          "unit": "currencyUSD",
-          "custom": { "drawStyle": "line", "fillOpacity": 20, "showPoints": "never", "stacking": { "mode": "normal" } }
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "decimals": 0
         },
         "overrides": []
       },
-      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "graphMode": "none",
+        "textMode": "auto"
+      },
       "targets": [
         {
           "refId": "A",
-          "datasource": { "type": "prometheus", "uid": "observability-prometheus" },
-          "expr": "sum by (model) (rate(claude_code_cost_usage[$__rate_interval])) * 3600",
-          "legendFormat": "{{model}}"
+          "datasource": {
+            "type": "loki",
+            "uid": "observability-loki"
+          },
+          "expr": "sum(count_over_time({service_name=\"claude-code\", workspace=~\"$workspace\"} | event_name=\"tool_result\" [$__range]))",
+          "instant": true
         }
       ]
     },
     {
       "id": 7,
-      "type": "timeseries",
-      "title": "Active time (seconds of work per second of wall clock)",
-      "description": "type=user is keyboard interaction, type=cli is tool execution and model responses. Above 1 means several sessions at once.",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
-      "datasource": { "type": "prometheus", "uid": "observability-prometheus" },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "none",
-          "custom": { "drawStyle": "line", "fillOpacity": 20, "showPoints": "never", "stacking": { "mode": "normal" } }
-        },
-        "overrides": []
+      "type": "row",
+      "title": "Spend",
+      "description": "Where the money goes. Every panel here reads a label the cost counter already carries.",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 4
       },
-      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": { "type": "prometheus", "uid": "observability-prometheus" },
-          "expr": "sum by (type) (rate(claude_code_active_time_total[$__rate_interval]))",
-          "legendFormat": "{{type}}"
-        }
-      ]
+      "panels": []
     },
     {
       "id": 8,
       "type": "timeseries",
-      "title": "Edit tool decisions",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
-      "datasource": { "type": "prometheus", "uid": "observability-prometheus" },
+      "title": "Cost per hour, by model",
+      "description": "The rate of spend, not the total. Use the Spend per day panel below for 月 month-over-month comparison.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "observability-prometheus"
+      },
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
-          "custom": { "drawStyle": "bars", "fillOpacity": 60, "showPoints": "never", "stacking": { "mode": "normal" } }
+          "unit": "currencyUSD",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "lineWidth": 1
+          }
         },
         "overrides": []
       },
-      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["sum"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
       "targets": [
         {
           "refId": "A",
-          "datasource": { "type": "prometheus", "uid": "observability-prometheus" },
-          "expr": "sum by (decision, tool_name) (increase(claude_code_code_edit_tool_decision[$__rate_interval]))",
-          "legendFormat": "{{tool_name}} {{decision}}"
+          "datasource": {
+            "type": "prometheus",
+            "uid": "observability-prometheus"
+          },
+          "expr": "sum by (model) (rate(claude_code_cost_usage{workspace=~\"$workspace\", model=~\"$model\"}[$__rate_interval])) * 3600",
+          "legendFormat": "{{model}}"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "piechart",
+      "title": "Cost by query source",
+      "description": "main is your own prompts. subagent is everything an Agent call spawned. auxiliary is the background work — session titles, summaries, suggestions.",
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 12,
+        "y": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "observability-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "pieType": "donut",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "values": [
+            "value",
+            "percent"
+          ],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "observability-prometheus"
+          },
+          "expr": "sort_desc(sum by (query_source) (max_over_time(claude_code_cost_usage{workspace=~\"$workspace\", model=~\"$model\"}[$__range])))",
+          "instant": true,
+          "legendFormat": "{{query_source}}"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "bargauge",
+      "title": "Cost by effort",
+      "description": "What reaching for a higher effort level actually costs over the range.",
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "observability-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "color": {
+            "mode": "continuous-BlPu"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "observability-prometheus"
+          },
+          "expr": "sum by (effort) (max_over_time(claude_code_cost_usage{workspace=~\"$workspace\", model=~\"$model\", effort!=\"\"}[$__range]))",
+          "instant": true,
+          "legendFormat": "{{effort}}"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Spend per day",
+      "description": "Bars at one-day resolution. Set the dashboard range to a month or more and this is the panel the 100-year Prometheus retention exists for.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 13
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "observability-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 70,
+            "showPoints": "never",
+            "lineWidth": 1
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "observability-prometheus"
+          },
+          "expr": "sum(increase(claude_code_cost_usage{workspace=~\"$workspace\", model=~\"$model\"}[$__interval]))",
+          "legendFormat": "spend"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "barchart",
+      "title": "Cost by workspace",
+      "description": "host is Claude Code on this machine. The rest are devbox worktrees, labelled by their checkout path.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 13
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "observability-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "lineWidth": 0
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "xTickLabelRotation": 0,
+        "showValue": "auto",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "observability-prometheus"
+          },
+          "expr": "sort_desc(sum by (workspace) (max_over_time(claude_code_cost_usage{workspace=~\"$workspace\", model=~\"$model\"}[$__range])))",
+          "instant": true,
+          "format": "table",
+          "legendFormat": ""
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "bargauge",
+      "title": "Cost by subagent",
+      "description": "Only samples that carry an agent_name — the rest is main-thread work.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 21
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "observability-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "color": {
+            "mode": "continuous-BlPu"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "observability-prometheus"
+          },
+          "expr": "sort_desc(sum by (agent_name) (max_over_time(claude_code_cost_usage{workspace=~\"$workspace\", model=~\"$model\", agent_name!=\"\"}[$__range])))",
+          "instant": true,
+          "legendFormat": "{{agent_name}}"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "type": "barchart",
+      "title": "Cost by skill",
+      "description": "What each skill invocation cost. A skill that never appears here was never invoked in this range.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 21
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "observability-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "lineWidth": 0
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "xTickLabelRotation": 0,
+        "showValue": "auto",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "observability-prometheus"
+          },
+          "expr": "topk(12, sum by (skill_name) (max_over_time(claude_code_cost_usage{workspace=~\"$workspace\", model=~\"$model\", skill_name!=\"\"}[$__range])))",
+          "instant": true,
+          "format": "table",
+          "legendFormat": ""
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "type": "table",
+      "title": "Most expensive sessions",
+      "description": "session_id is a resume handle: claude --resume <id> reopens the session this row is about.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 29
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "observability-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "countRows": false,
+          "fields": ""
+        },
+        "sortBy": [
+          {
+            "displayName": "Cost",
+            "desc": true
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "observability-prometheus"
+          },
+          "expr": "topk(15, sum by (session_id) (max_over_time(claude_code_cost_usage{workspace=~\"$workspace\", model=~\"$model\"}[$__range])))",
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "session_id": "Session",
+              "Value": "Cost"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "type": "table",
+      "title": "Cost by MCP tool",
+      "description": "Thin until an MCP server does real work. Kept because an MCP round trip is the easiest cost to lose track of.",
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 37
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "observability-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "countRows": false,
+          "fields": ""
+        },
+        "sortBy": [
+          {
+            "displayName": "Cost",
+            "desc": true
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "observability-prometheus"
+          },
+          "expr": "sum by (mcp_server_name, mcp_tool_name) (max_over_time(claude_code_cost_usage{workspace=~\"$workspace\", model=~\"$model\", mcp_server_name!=\"\"}[$__range]))",
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "mcp_server_name": "Server",
+              "mcp_tool_name": "Tool",
+              "Value": "Cost"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "type": "row",
+      "title": "Cache economics",
+      "description": "98 of every 100 tokens are cache reads. On a linear stacked axis that hides the other three token types completely.",
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 43
+      },
+      "panels": [
+        {
+          "id": 18,
+          "type": "timeseries",
+          "title": "Tokens by type",
+          "description": "Log-2 axis and NOT stacked, because cache reads outweigh output tokens by about 160 to 1. Stacked on a linear axis this panel is one flat band.",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 44
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "observability-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "showPoints": "never",
+                "lineWidth": 1,
+                "scaleDistribution": {
+                  "type": "log",
+                  "log": 2
+                }
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "right",
+              "calcs": [
+                "mean",
+                "max"
+              ],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "observability-prometheus"
+              },
+              "expr": "sum by (type) (rate(claude_code_token_usage{workspace=~\"$workspace\", model=~\"$model\"}[$__rate_interval])) * 60",
+              "legendFormat": "{{type}}"
+            }
+          ]
+        },
+        {
+          "id": 19,
+          "type": "bargauge",
+          "title": "Output tokens per dollar",
+          "description": "Writing produced per dollar spent, by model. Cache reads are excluded — they are input, and they are what makes the denominator small.",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 44
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "observability-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "decimals": 0,
+              "color": {
+                "mode": "continuous-BlPu"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "text",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "orientation": "horizontal",
+            "displayMode": "gradient",
+            "showUnfilled": true,
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "observability-prometheus"
+              },
+              "expr": "sum by (model) (max_over_time(claude_code_token_usage{workspace=~\"$workspace\", model=~\"$model\", type=\"output\"}[$__range])) / sum by (model) (max_over_time(claude_code_cost_usage{workspace=~\"$workspace\", model=~\"$model\"}[$__range]))",
+              "instant": true,
+              "legendFormat": "{{model}}"
+            }
+          ]
+        },
+        {
+          "id": 20,
+          "type": "stat",
+          "title": "Cache writes per read",
+          "description": "cacheCreation over cacheRead. Around 0.015 in normal use — one write per 65 reads. A rise means the cache is being rebuilt instead of hit.",
+          "gridPos": {
+            "h": 7,
+            "w": 6,
+            "x": 0,
+            "y": 52
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "observability-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "text"
+              },
+              "decimals": 4
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "graphMode": "none",
+            "textMode": "auto"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "observability-prometheus"
+              },
+              "expr": "sum(max_over_time(claude_code_token_usage{workspace=~\"$workspace\", model=~\"$model\", type=\"cacheCreation\"}[$__range])) / sum(max_over_time(claude_code_token_usage{workspace=~\"$workspace\", model=~\"$model\", type=\"cacheRead\"}[$__range]))",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 21,
+          "type": "stat",
+          "title": "Tokens, all types",
+          "description": "The denominator behind every ratio on this row.",
+          "gridPos": {
+            "h": 7,
+            "w": 6,
+            "x": 6,
+            "y": 52
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "observability-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "text"
+              },
+              "decimals": 0
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "graphMode": "none",
+            "textMode": "auto"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "observability-prometheus"
+              },
+              "expr": "sum(max_over_time(claude_code_token_usage{workspace=~\"$workspace\", model=~\"$model\"}[$__range]))",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 22,
+          "type": "timeseries",
+          "title": "Cost per hour, by query source",
+          "description": "The same rate as the model panel above, split by who asked. auxiliary rising on its own is background work you did not request.",
+          "gridPos": {
+            "h": 7,
+            "w": 12,
+            "x": 12,
+            "y": 52
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "observability-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "currencyUSD",
+              "custom": {
+                "drawStyle": "bars",
+                "fillOpacity": 70,
+                "showPoints": "never",
+                "lineWidth": 1,
+                "stacking": {
+                  "mode": "normal"
+                }
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "calcs": [],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "observability-prometheus"
+              },
+              "expr": "sum by (query_source) (rate(claude_code_cost_usage{workspace=~\"$workspace\", model=~\"$model\"}[$__rate_interval])) * 3600",
+              "legendFormat": "{{query_source}}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "type": "row",
+      "title": "Tool activity",
+      "description": "From the Loki event stream. Prometheus counts Edit and Write decisions and nothing else — everything on this row is unavailable on the metrics side.",
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 59
+      },
+      "panels": [
+        {
+          "id": 24,
+          "type": "timeseries",
+          "title": "Tool calls by tool",
+          "description": "One count per tool_result event, which fires whether the call succeeded or not.",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 60
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "observability-loki"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": {
+                "drawStyle": "bars",
+                "fillOpacity": 70,
+                "showPoints": "never",
+                "lineWidth": 1,
+                "stacking": {
+                  "mode": "normal"
+                }
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "right",
+              "calcs": [
+                "sum"
+              ],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "observability-loki"
+              },
+              "expr": "sum by (tool_name) (count_over_time({service_name=\"claude-code\", workspace=~\"$workspace\"} | event_name=\"tool_result\" [$__auto]))",
+              "legendFormat": "{{tool_name}}"
+            }
+          ]
+        },
+        {
+          "id": 25,
+          "type": "timeseries",
+          "title": "Tool latency, p95 by tool",
+          "description": "duration_ms is structured metadata on the tool_result event, so it unwraps without a parser stage. WebFetch and WebSearch sit in the seconds; Read and Edit sit in the tens of milliseconds.",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 60
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "observability-loki"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms",
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "showPoints": "never",
+                "lineWidth": 1
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "right",
+              "calcs": [
+                "max"
+              ],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "observability-loki"
+              },
+              "expr": "quantile_over_time(0.95, {service_name=\"claude-code\", workspace=~\"$workspace\"} | event_name=\"tool_result\" | unwrap duration_ms [$__auto]) by (tool_name)",
+              "legendFormat": "{{tool_name}}"
+            }
+          ]
+        },
+        {
+          "id": 26,
+          "type": "timeseries",
+          "title": "Tool failures",
+          "description": "A flat zero is the expected reading. Anything else names the tool that started failing and when.",
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 0,
+            "y": 68
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "observability-loki"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": {
+                "drawStyle": "bars",
+                "fillOpacity": 70,
+                "showPoints": "never",
+                "lineWidth": 1,
+                "stacking": {
+                  "mode": "normal"
+                }
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "calcs": [],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "observability-loki"
+              },
+              "expr": "sum by (tool_name) (count_over_time({service_name=\"claude-code\", workspace=~\"$workspace\"} | event_name=\"tool_result\" | success=\"false\" [$__auto]))",
+              "legendFormat": "{{tool_name}}"
+            }
+          ]
+        },
+        {
+          "id": 27,
+          "type": "timeseries",
+          "title": "Prompts per interval",
+          "description": "One user_prompt event per prompt. The prompt TEXT is redacted unless OTEL_LOG_USER_PROMPTS is set; the count and prompt_length arrive either way.",
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 8,
+            "y": 68
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "observability-loki"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": {
+                "drawStyle": "bars",
+                "fillOpacity": 70,
+                "showPoints": "never",
+                "lineWidth": 1
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "calcs": [],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "observability-loki"
+              },
+              "expr": "sum(count_over_time({service_name=\"claude-code\", workspace=~\"$workspace\"} | event_name=\"user_prompt\" [$__auto]))",
+              "legendFormat": "prompts"
+            }
+          ]
+        },
+        {
+          "id": 28,
+          "type": "timeseries",
+          "title": "Prompt length, p95",
+          "description": "prompt_length in characters. Tracks how much context you hand over by hand.",
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 16,
+            "y": 68
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "observability-loki"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "showPoints": "never",
+                "lineWidth": 1
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "calcs": [],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "observability-loki"
+              },
+              "expr": "quantile_over_time(0.95, {service_name=\"claude-code\", workspace=~\"$workspace\"} | event_name=\"user_prompt\" | unwrap prompt_length [$__auto])",
+              "legendFormat": "p95 chars"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 29,
+      "type": "row",
+      "title": "Permission mode",
+      "description": "What the permission system decided, and which mode it was in when it decided. Read the caveat panel before trusting the source split.",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 75
+      },
+      "panels": []
+    },
+    {
+      "id": 30,
+      "type": "timeseries",
+      "title": "Permission mode changes",
+      "description": "One bar per permission_mode_changed event, by the mode being entered. Modes are default, plan, acceptEdits and auto.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 76
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "observability-loki"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 70,
+            "showPoints": "never",
+            "lineWidth": 1,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "sum"
+          ],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "observability-loki"
+          },
+          "expr": "sum by (to_mode) (count_over_time({service_name=\"claude-code\", workspace=~\"$workspace\"} | event_name=\"permission_mode_changed\" [$__auto]))",
+          "legendFormat": "→ {{to_mode}}"
+        }
+      ]
+    },
+    {
+      "id": 31,
+      "type": "table",
+      "title": "Mode transitions",
+      "description": "Which mode you leave for which. Records CHANGES only: a session that starts in a mode and stays there emits nothing, so this table cannot tell you what mode a session ran in.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 76
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "observability-loki"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "countRows": false,
+          "fields": ""
+        },
+        "sortBy": [
+          {
+            "displayName": "Changes",
+            "desc": true
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "observability-loki"
+          },
+          "expr": "sum by (from_mode, to_mode) (count_over_time({service_name=\"claude-code\", workspace=~\"$workspace\"} | event_name=\"permission_mode_changed\" [$__range]))",
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "from_mode": "From",
+              "to_mode": "To",
+              "Value": "Changes"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 32,
+      "type": "timeseries",
+      "title": "Tool grants by source",
+      "description": "config is a settings.json rule OR an auto-mode grant — the two are the same value. user_temporary and user_permanent are you, answering a prompt.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 84
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "observability-loki"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 70,
+            "showPoints": "never",
+            "lineWidth": 1,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "sum"
+          ],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "observability-loki"
+          },
+          "expr": "sum by (decision, source) (count_over_time({service_name=\"claude-code\", workspace=~\"$workspace\"} | event_name=\"tool_decision\" [$__auto]))",
+          "legendFormat": "{{decision}} / {{source}}"
+        }
+      ]
+    },
+    {
+      "id": 33,
+      "type": "text",
+      "title": "Why there is no auto-mode count",
+      "description": "The caveat that makes the source split above readable.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 84
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "Claude Code exports **no metric for permission mode**. Two events carry the signal and neither closes the loop:\n\n- `permission_mode_changed` fires on a **change**. A session that starts in `auto` emits nothing, so the mode a session ran in is not recoverable.\n- `tool_decision` carries `source`, and an auto-mode grant writes the same `config` as a settings.json allowlist rule. The two cannot be told apart.\n\nThe one measure that does separate them is the `claude_code.tool.blocked_on_user` span in Tempo — see the **Permission wait** row. It fires on every gate, auto-granted or not, and an auto-granted gate closes in ~15 ms where a gate you answered takes seconds. Duration is the discriminator."
+      }
+    },
+    {
+      "id": 34,
+      "type": "piechart",
+      "title": "Accepts and rejects",
+      "description": "The whole decision stream over the range, one slice per decision and source pair.",
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 92
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "observability-loki"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "pieType": "donut",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "values": [
+            "value",
+            "percent"
+          ],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "observability-loki"
+          },
+          "expr": "sum by (decision, source) (count_over_time({service_name=\"claude-code\", workspace=~\"$workspace\"} | event_name=\"tool_decision\" [$__range]))",
+          "instant": true,
+          "legendFormat": "{{decision}} / {{source}}"
+        }
+      ]
+    },
+    {
+      "id": 35,
+      "type": "stat",
+      "title": "Rejections",
+      "description": "Decisions you refused, or a settings.json deny rule refused for you.",
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 8,
+        "y": 92
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "observability-loki"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "observability-loki"
+          },
+          "expr": "sum(count_over_time({service_name=\"claude-code\", workspace=~\"$workspace\"} | event_name=\"tool_decision\" | decision=\"reject\" [$__range]))",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 36,
+      "type": "logs",
+      "title": "Rejected tool calls",
+      "description": "The commands that were stopped. The line carries full_command because OTEL_LOG_TOOL_DETAILS is on in common/.zshrc — with it off, the event still arrives but names no command.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 92
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "observability-loki"
+      },
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "observability-loki"
+          },
+          "expr": "{service_name=\"claude-code\", workspace=~\"$workspace\"} | event_name=\"tool_decision\" | decision=\"reject\"",
+          "queryType": "range"
+        }
+      ]
+    },
+    {
+      "id": 37,
+      "type": "row",
+      "title": "Session shape",
+      "description": "How a session begins, how the time inside it splits, and what it leaves in the repository.",
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 99
+      },
+      "panels": [
+        {
+          "id": 38,
+          "type": "piechart",
+          "title": "Fresh, resume or continue",
+          "description": "count of DISTINCT sessions per start_type. increase() returns 0 here for the reason described on the Sessions started panel.",
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 0,
+            "y": 100
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "observability-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": {
+                "mode": "palette-classic"
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "pieType": "donut",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "legend": {
+              "displayMode": "table",
+              "placement": "right",
+              "values": [
+                "value",
+                "percent"
+              ],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "observability-prometheus"
+              },
+              "expr": "count by (start_type) (max_over_time(claude_code_session_count{workspace=~\"$workspace\"}[$__range]))",
+              "instant": true,
+              "legendFormat": "{{start_type}}"
+            }
+          ]
+        },
+        {
+          "id": 39,
+          "type": "stat",
+          "title": "Claude working",
+          "description": "active_time type=cli: seconds Claude spent working, over the range.",
+          "gridPos": {
+            "h": 7,
+            "w": 4,
+            "x": 8,
+            "y": 100
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "observability-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "text"
+              },
+              "decimals": 0
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "graphMode": "none",
+            "textMode": "auto"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "observability-prometheus"
+              },
+              "expr": "sum(max_over_time(claude_code_active_time_total{workspace=~\"$workspace\", type=\"cli\"}[$__range]))",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 40,
+          "type": "stat",
+          "title": "You working",
+          "description": "active_time type=user: seconds you spent typing. The ratio against the panel to the left is the leverage this whole stack exists to measure.",
+          "gridPos": {
+            "h": 7,
+            "w": 4,
+            "x": 12,
+            "y": 100
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "observability-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "text"
+              },
+              "decimals": 0
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "graphMode": "none",
+            "textMode": "auto"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "observability-prometheus"
+              },
+              "expr": "sum(max_over_time(claude_code_active_time_total{workspace=~\"$workspace\", type=\"user\"}[$__range]))",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 41,
+          "type": "timeseries",
+          "title": "Active time",
+          "description": "Seconds of work per second of wall clock. Above 1 means concurrent sessions.",
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 16,
+            "y": 100
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "observability-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "showPoints": "never",
+                "lineWidth": 1
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "calcs": [],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "observability-prometheus"
+              },
+              "expr": "sum by (type) (rate(claude_code_active_time_total{workspace=~\"$workspace\"}[$__rate_interval]))",
+              "legendFormat": "{{type}}"
+            }
+          ]
+        },
+        {
+          "id": 42,
+          "type": "timeseries",
+          "title": "Lines of code",
+          "description": "Added and removed per interval, from the edit tools rather than from git.",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 107
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "observability-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": {
+                "drawStyle": "bars",
+                "fillOpacity": 70,
+                "showPoints": "never",
+                "lineWidth": 1
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "calcs": [],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "observability-prometheus"
+              },
+              "expr": "sum by (type) (rate(claude_code_lines_of_code_count{workspace=~\"$workspace\"}[$__rate_interval])) * 60",
+              "legendFormat": "{{type}}"
+            }
+          ]
+        },
+        {
+          "id": 43,
+          "type": "barchart",
+          "title": "Edits by language",
+          "description": "From the Edit and Write decision counter, which is the only Prometheus metric that knows what a file contained.",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 107
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "observability-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisPlacement": "auto",
+                "fillOpacity": 80,
+                "lineWidth": 0
+              },
+              "decimals": 0
+            },
+            "overrides": []
+          },
+          "options": {
+            "orientation": "horizontal",
+            "xTickLabelRotation": 0,
+            "showValue": "auto",
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": false
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "observability-prometheus"
+              },
+              "expr": "topk(12, sum by (language) (max_over_time(claude_code_code_edit_tool_decision{workspace=~\"$workspace\"}[$__range])))",
+              "instant": true,
+              "format": "table",
+              "legendFormat": ""
+            }
+          ],
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 44,
+      "type": "row",
+      "title": "Harness health",
+      "description": "The parts of the machine around the model: hooks, MCP servers, subagents and skills. Hook events outnumber every other event type in the store.",
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 115
+      },
+      "panels": [
+        {
+          "id": 45,
+          "type": "timeseries",
+          "title": "Hook runs by hook",
+          "description": "Two per Bash call in a normal configuration — one PreToolUse, one PostToolUse. These run on the critical path of every tool use.",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 116
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "observability-loki"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": {
+                "drawStyle": "bars",
+                "fillOpacity": 70,
+                "showPoints": "never",
+                "lineWidth": 1,
+                "stacking": {
+                  "mode": "normal"
+                }
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "right",
+              "calcs": [
+                "sum"
+              ],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "observability-loki"
+              },
+              "expr": "sum by (hook_name) (count_over_time({service_name=\"claude-code\", workspace=~\"$workspace\"} | event_name=\"hook_execution_complete\" [$__auto]))",
+              "legendFormat": "{{hook_name}}"
+            }
+          ]
+        },
+        {
+          "id": 46,
+          "type": "timeseries",
+          "title": "Hook latency, p95",
+          "description": "total_duration_ms per hook_name. This is the panel that catches a hook that got slow and started taxing every tool call.",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 116
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "observability-loki"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms",
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "showPoints": "never",
+                "lineWidth": 1
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "right",
+              "calcs": [
+                "max"
+              ],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "observability-loki"
+              },
+              "expr": "quantile_over_time(0.95, {service_name=\"claude-code\", workspace=~\"$workspace\"} | event_name=\"hook_execution_complete\" | unwrap total_duration_ms [$__auto]) by (hook_name)",
+              "legendFormat": "{{hook_name}}"
+            }
+          ]
+        },
+        {
+          "id": 47,
+          "type": "stat",
+          "title": "Hook errors",
+          "description": "hook_execution_complete events where a hook reported a non-blocking error. Expected reading is zero.",
+          "gridPos": {
+            "h": 6,
+            "w": 6,
+            "x": 0,
+            "y": 124
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "observability-loki"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "graphMode": "none",
+            "textMode": "auto"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "observability-loki"
+              },
+              "expr": "sum(count_over_time({service_name=\"claude-code\", workspace=~\"$workspace\"} | event_name=\"hook_execution_complete\" | num_non_blocking_error != \"0\" [$__range]))",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 48,
+          "type": "stat",
+          "title": "Blocking hook stops",
+          "description": "A blocking hook refused a tool call. Rare and worth reading the log for.",
+          "gridPos": {
+            "h": 6,
+            "w": 6,
+            "x": 6,
+            "y": 124
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "observability-loki"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "orange",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "graphMode": "none",
+            "textMode": "auto"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "observability-loki"
+              },
+              "expr": "sum(count_over_time({service_name=\"claude-code\", workspace=~\"$workspace\"} | event_name=\"hook_execution_complete\" | num_blocking != \"0\" [$__range]))",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 49,
+          "type": "table",
+          "title": "MCP server connections",
+          "description": "server_name, status and how long the handshake took. A server that is slow to start delays the session start behind it.",
+          "gridPos": {
+            "h": 6,
+            "w": 12,
+            "x": 12,
+            "y": 124
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "observability-loki"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                }
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "showHeader": true,
+            "cellHeight": "sm",
+            "footer": {
+              "show": false,
+              "reducer": [
+                "sum"
+              ],
+              "countRows": false,
+              "fields": ""
+            },
+            "sortBy": [
+              {
+                "displayName": "Connections",
+                "desc": true
+              }
+            ]
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "observability-loki"
+              },
+              "expr": "sum by (server_name, status, transport_type) (count_over_time({service_name=\"claude-code\", workspace=~\"$workspace\"} | event_name=\"mcp_server_connection\" [$__range]))",
+              "instant": true,
+              "format": "table"
+            }
+          ],
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true
+                },
+                "renameByName": {
+                  "server_name": "Server",
+                  "status": "Status",
+                  "transport_type": "Transport",
+                  "Value": "Connections"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": 50,
+          "type": "logs",
+          "title": "Subagent runs",
+          "description": "Expand a line for agent_type, duration_ms, total_tokens, total_tool_uses and model_swapped — the whole record of what a subagent did with its time.",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 130
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "observability-loki"
+          },
+          "options": {
+            "showTime": true,
+            "showLabels": false,
+            "showCommonLabels": false,
+            "wrapLogMessage": true,
+            "prettifyLogMessage": false,
+            "enableLogDetails": true,
+            "dedupStrategy": "none",
+            "sortOrder": "Descending"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "observability-loki"
+              },
+              "expr": "{service_name=\"claude-code\", workspace=~\"$workspace\"} | event_name=\"subagent_completed\"",
+              "queryType": "range"
+            }
+          ]
+        },
+        {
+          "id": 51,
+          "type": "table",
+          "title": "Skill activations",
+          "description": "invocation_trigger separates a slash command from claude-proactive, which is the answer to whether a skill's description is doing its job.",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 130
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "observability-loki"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                }
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "showHeader": true,
+            "cellHeight": "sm",
+            "footer": {
+              "show": false,
+              "reducer": [
+                "sum"
+              ],
+              "countRows": false,
+              "fields": ""
+            },
+            "sortBy": [
+              {
+                "displayName": "Activations",
+                "desc": true
+              }
+            ]
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "observability-loki"
+              },
+              "expr": "sum by (skill_name, invocation_trigger) (count_over_time({service_name=\"claude-code\", workspace=~\"$workspace\"} | event_name=\"skill_activated\" [$__range]))",
+              "instant": true,
+              "format": "table"
+            }
+          ],
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true
+                },
+                "renameByName": {
+                  "skill_name": "Skill",
+                  "invocation_trigger": "Trigger",
+                  "Value": "Activations"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 52,
+      "type": "row",
+      "title": "API health",
+      "description": "The api_request event knows 19 query sources where the cost metric knows 3, and it carries its own cost, duration and token counts.",
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 138
+      },
+      "panels": [
+        {
+          "id": 53,
+          "type": "barchart",
+          "title": "API calls by true source",
+          "description": "repl_main_thread is your prompts. Everything else — sdk, agent:builtin:Explore, generate_session_title, away_summary, prompt_suggestion, web_search_tool — is work the metric label collapses into main and auxiliary.",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 139
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "observability-loki"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisPlacement": "auto",
+                "fillOpacity": 80,
+                "lineWidth": 0
+              },
+              "decimals": 0
+            },
+            "overrides": []
+          },
+          "options": {
+            "orientation": "horizontal",
+            "xTickLabelRotation": 0,
+            "showValue": "auto",
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": false
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "observability-loki"
+              },
+              "expr": "topk(15, sum by (query_source) (count_over_time({service_name=\"claude-code\", workspace=~\"$workspace\"} | event_name=\"api_request\" [$__range])))",
+              "instant": true,
+              "format": "table",
+              "legendFormat": ""
+            }
+          ],
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": 54,
+          "type": "timeseries",
+          "title": "API latency, p95 by model",
+          "description": "Wall time of the API call itself, from the event rather than from a span.",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 139
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "observability-loki"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms",
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "showPoints": "never",
+                "lineWidth": 1
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "right",
+              "calcs": [
+                "max"
+              ],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "observability-loki"
+              },
+              "expr": "quantile_over_time(0.95, {service_name=\"claude-code\", workspace=~\"$workspace\"} | event_name=\"api_request\" | unwrap duration_ms [$__auto]) by (model)",
+              "legendFormat": "{{model}}"
+            }
+          ]
+        },
+        {
+          "id": 55,
+          "type": "stat",
+          "title": "API errors",
+          "description": "api_error and api_retries_exhausted together. A panel worth having at zero — it is the only place a failed call is recorded.",
+          "gridPos": {
+            "h": 7,
+            "w": 6,
+            "x": 0,
+            "y": 147
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "observability-loki"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "graphMode": "none",
+            "textMode": "auto"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "observability-loki"
+              },
+              "expr": "sum(count_over_time({service_name=\"claude-code\", workspace=~\"$workspace\"} | event_name=~\"api_error|api_retries_exhausted\" [$__range]))",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 56,
+          "type": "timeseries",
+          "title": "Cost per API call, p95",
+          "description": "The tail cost of one turn. cost_usd is on the event; cost_usd_micros is beside it if the float precision ever matters.",
+          "gridPos": {
+            "h": 7,
+            "w": 18,
+            "x": 6,
+            "y": 147
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "observability-loki"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "currencyUSD",
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "showPoints": "never",
+                "lineWidth": 1
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "calcs": [],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "observability-loki"
+              },
+              "expr": "quantile_over_time(0.95, {service_name=\"claude-code\", workspace=~\"$workspace\"} | event_name=\"api_request\" | unwrap cost_usd [$__auto]) by (model)",
+              "legendFormat": "{{model}}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 57,
+      "type": "row",
+      "title": "Permission wait",
+      "description": "From Tempo. Needs the metrics_generator block in tempo/tempo.yml — without it every panel here answers 'empty ring'. Counts start from the moment the generator was enabled, not from the start of retention.",
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 154
+      },
+      "panels": [
+        {
+          "id": 58,
+          "type": "timeseries",
+          "title": "Permission gates per second",
+          "description": "One blocked_on_user span per gate, auto-granted or not.",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 155
+          },
+          "datasource": {
+            "type": "tempo",
+            "uid": "observability-tempo"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": {
+                "drawStyle": "bars",
+                "fillOpacity": 70,
+                "showPoints": "never",
+                "lineWidth": 1
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "calcs": [],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "tempo",
+                "uid": "observability-tempo"
+              },
+              "queryType": "traceql",
+              "query": "{name=\"claude_code.tool.blocked_on_user\"} | rate()",
+              "limit": 20
+            }
+          ]
+        },
+        {
+          "id": 59,
+          "type": "timeseries",
+          "title": "Gates that reached you, p95 wait",
+          "description": "Filtered to gates slower than a second, which is the threshold that separates an auto grant (~15 ms) from a prompt you actually answered.",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 155
+          },
+          "datasource": {
+            "type": "tempo",
+            "uid": "observability-tempo"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "showPoints": "never",
+                "lineWidth": 1
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "calcs": [],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "tempo",
+                "uid": "observability-tempo"
+              },
+              "queryType": "traceql",
+              "query": "{name=\"claude_code.tool.blocked_on_user\" && duration > 1s} | quantile_over_time(duration, .95)",
+              "limit": 20
+            }
+          ]
+        },
+        {
+          "id": 60,
+          "type": "timeseries",
+          "title": "Time to first token, p95 by model",
+          "description": "ttft_ms lives on the llm_request span and nowhere else in this stack — neither Prometheus nor Loki carries it.",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 163
+          },
+          "datasource": {
+            "type": "tempo",
+            "uid": "observability-tempo"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms",
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "showPoints": "never",
+                "lineWidth": 1
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "calcs": [],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "tempo",
+                "uid": "observability-tempo"
+              },
+              "queryType": "traceql",
+              "query": "{name=\"claude_code.llm_request\"} | quantile_over_time(span.ttft_ms, .95) by (span.model)",
+              "limit": 20
+            }
+          ]
+        },
+        {
+          "id": 61,
+          "type": "timeseries",
+          "title": "Interaction duration, p95",
+          "description": "The root span: one per prompt, covering every API call and tool call nested under it.",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 163
+          },
+          "datasource": {
+            "type": "tempo",
+            "uid": "observability-tempo"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "showPoints": "never",
+                "lineWidth": 1
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "calcs": [],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "tempo",
+                "uid": "observability-tempo"
+              },
+              "queryType": "traceql",
+              "query": "{name=\"claude_code.interaction\"} | quantile_over_time(duration, .95)",
+              "limit": 20
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 62,
+      "type": "row",
+      "title": "One session",
+      "description": "Everything above, narrowed to the session picked in the $session variable. Set it from the Most expensive sessions table.",
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 171
+      },
+      "panels": [
+        {
+          "id": 63,
+          "type": "stat",
+          "title": "Session cost",
+          "description": "The whole session's spend, whatever the dashboard range.",
+          "gridPos": {
+            "h": 6,
+            "w": 6,
+            "x": 0,
+            "y": 172
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "observability-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "currencyUSD",
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "text"
+              },
+              "decimals": 2
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "graphMode": "none",
+            "textMode": "auto"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "observability-prometheus"
+              },
+              "expr": "sum(max_over_time(claude_code_cost_usage{session_id=~\"$session\"}[$__range]))",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 64,
+          "type": "stat",
+          "title": "Session tokens",
+          "description": "All four token types together.",
+          "gridPos": {
+            "h": 6,
+            "w": 6,
+            "x": 6,
+            "y": 172
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "observability-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "text"
+              },
+              "decimals": 0
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "graphMode": "none",
+            "textMode": "auto"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "observability-prometheus"
+              },
+              "expr": "sum(max_over_time(claude_code_token_usage{session_id=~\"$session\"}[$__range]))",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 65,
+          "type": "stat",
+          "title": "Session tool calls",
+          "description": "From the event stream, so every tool counts and not only the edit tools.",
+          "gridPos": {
+            "h": 6,
+            "w": 6,
+            "x": 12,
+            "y": 172
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "observability-loki"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "text"
+              },
+              "decimals": 0
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "graphMode": "none",
+            "textMode": "auto"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "observability-loki"
+              },
+              "expr": "sum(count_over_time({service_name=\"claude-code\"} | session_id=~\"$session\" | event_name=\"tool_result\" [$__range]))",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 66,
+          "type": "stat",
+          "title": "Session prompts",
+          "description": "user_prompt events in the session.",
+          "gridPos": {
+            "h": 6,
+            "w": 6,
+            "x": 18,
+            "y": 172
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "observability-loki"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "text"
+              },
+              "decimals": 0
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "graphMode": "none",
+            "textMode": "auto"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "observability-loki"
+              },
+              "expr": "sum(count_over_time({service_name=\"claude-code\"} | session_id=~\"$session\" | event_name=\"user_prompt\" [$__range]))",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 67,
+          "type": "timeseries",
+          "title": "Session cost per hour, by model",
+          "description": "Where the session's money went, over its own lifetime.",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 178
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "observability-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "currencyUSD",
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "showPoints": "never",
+                "lineWidth": 1
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "calcs": [],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "observability-prometheus"
+              },
+              "expr": "sum by (model) (rate(claude_code_cost_usage{session_id=~\"$session\"}[$__rate_interval])) * 3600",
+              "legendFormat": "{{model}}"
+            }
+          ]
+        },
+        {
+          "id": 68,
+          "type": "logs",
+          "title": "Session events",
+          "description": "Every event the session emitted, newest first. The TraceID field on a line opens the trace in Tempo.",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 178
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "observability-loki"
+          },
+          "options": {
+            "showTime": true,
+            "showLabels": false,
+            "showCommonLabels": false,
+            "wrapLogMessage": true,
+            "prettifyLogMessage": false,
+            "enableLogDetails": true,
+            "dedupStrategy": "none",
+            "sortOrder": "Descending"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "observability-loki"
+              },
+              "expr": "{service_name=\"claude-code\"} | session_id=~\"$session\"",
+              "queryType": "range"
+            }
+          ]
         }
       ]
     }
