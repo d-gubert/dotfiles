@@ -40,6 +40,17 @@ schema_config:
         period: 24h
 
 limits_config:
+  # No ceiling on how far back one query may reach. The default is 30d1h, and
+  # Loki measures a query's length as the dashboard range PLUS the range vector
+  # inside it — so `count_over_time(... [$__range])` over a 30 day dashboard is
+  # measured as 60 days and rejected. That is the exact shape of every
+  # month-over-month panel in ../grafana/dashboards/claude-code.json, and this
+  # stack keeps its logs forever precisely so those panels can be asked.
+  #
+  # 0 is genuinely unlimited here, unlike Prometheus's retention flag next door.
+  # The bound is the disk and the patience of whoever ran the query.
+  max_query_length: 0
+
   # Which OTLP resource attributes become stream labels. Everything not listed
   # here is still stored and still queryable — it becomes structured metadata,
   # which costs nothing per stream. Labels are the expensive kind: every distinct

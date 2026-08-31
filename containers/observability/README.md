@@ -142,7 +142,40 @@ puts tool input and output in span events.
 
 The `blocked_on_user` span is the one that pays for the rest. It is the only
 place in this stack that separates the time Claude worked from the time it waited
-for you to approve something.
+for you to approve something. It fires on every permission gate, not only the
+ones you saw: an auto-granted gate closes in about 15ms where one you answered
+takes seconds, so the duration is what tells them apart. Nothing else in the
+stack can — an auto-mode grant and a `settings.json` allowlist grant write the
+same `source=config` on the `tool_decision` event.
+
+**Spans are countable, not only readable.** `metrics_generator` in `tempo/tempo.yml`
+runs the `local-blocks` processor, which keeps the spans queryable in place. Without
+it every TraceQL metrics query — anything with `| rate()` or `| quantile_over_time()`
+— answers `error finding generators: empty ring`, while plain search keeps working.
+That split is why the gap survives a long time before anyone notices: traces read
+fine and only a dashboard panel fails.
+
+Two settings in that block are load-bearing and one of them is not the default:
+
+| | |
+| --- | --- |
+| `filter_server_spans: false` | **Required.** Left at its `true` default the processor keeps SERVER spans only, and Claude Code emits none — `interaction`, `llm_request` and `tool` are all INTERNAL. The generator then reports spans received and stores nothing, and every metrics query answers with an empty series rather than an error. |
+| `flush_to_storage: true` | Writes the processor's blocks to the same local path as the rest, so a query can reach past the few minutes still in memory. |
+
+Counting starts when the generator does. Spans ingested before it was enabled are
+still searchable and still readable; they are not in its blocks, so a metrics
+panel over them is empty. The root `claude_code.interaction` span also arrives
+late by design — it closes when the prompt does, so a long prompt reaches the
+generator minutes after its children.
+
+**Loki's query length limit is off, because the default contradicts the retention.**
+`max_query_length` defaults to `30d1h`, and Loki measures a query's length as the
+dashboard range PLUS the range vector inside it. A `count_over_time(... [$__range])`
+over a 30 day dashboard is therefore measured as 60 days and rejected — which is
+the exact shape of every month-over-month panel in
+`grafana/dashboards/claude-code.json`. `limits_config.max_query_length: 0` in
+`loki/loki.yml` removes the ceiling, matching the "keep everything" choice the
+other three stores already make.
 
 **Editing a config file needs a container recreate, not a reload.** Each config
 is bind-mounted as a single file, and an editor that writes a new file replaces

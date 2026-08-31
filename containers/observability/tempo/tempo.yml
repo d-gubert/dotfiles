@@ -36,6 +36,45 @@ storage:
     local:
       path: /var/tempo/blocks
 
+# --- TraceQL metrics ---------------------------------------------------------
+#
+# Without this block a trace can be READ but not COUNTED: every TraceQL metrics
+# query answers `error finding generators: empty ring`, because no generator is
+# registered to serve it. Search still works — it reads the blocks directly —
+# so the failure only shows up the moment a dashboard asks for a rate or a
+# quantile, which is exactly when a panel is being built.
+#
+# The cost of turning it on is one processor's memory. The thing it buys is the
+# `claude_code.tool.blocked_on_user` span as a time series, and that span is the
+# only place in this stack that separates the time Claude worked from the time
+# it waited for a permission answer. Neither Prometheus nor Loki holds it.
+metrics_generator:
+  processor:
+    # local-blocks, and nothing else. The other processors (service-graphs,
+    # span-metrics) write derived series to a remote_write endpoint, which would
+    # be Prometheus — a second copy of numbers the Claude Code counters already
+    # report. This one keeps the spans locally instead, and TraceQL metrics query
+    # them in place.
+    local_blocks:
+      # REQUIRED here, and its default is the opposite. Left true, the processor
+      # keeps only SERVER spans — and Claude Code emits none: an interaction, an
+      # llm_request and a tool span are all INTERNAL. The generator then reports
+      # spans received and stores nothing, and every metrics query below answers
+      # with an empty series instead of an error, which is the harder failure to
+      # read.
+      filter_server_spans: false
+      # Flush the processor's blocks to ../storage.trace.local below, so a
+      # metrics query can reach past the few minutes still held in memory. Off,
+      # every panel here goes blank as soon as the range is longer than the
+      # flush window.
+      flush_to_storage: true
+  storage:
+    # The generator's own WAL, separate from the ingester's. Same volume, its
+    # own directory — a shared path is two writers on one WAL.
+    path: /var/tempo/generator/wal
+  traces_storage:
+    path: /var/tempo/generator/traces
+
 compactor:
   compaction:
     # Keep every trace. Unset, Tempo deletes a block after 14 days.
@@ -49,3 +88,17 @@ compactor:
 usage_report:
   # Tempo phones home with usage statistics. Nothing here needs that.
   reporting_enabled: false
+
+# --- Who gets a generator ----------------------------------------------------
+#
+# The block above starts the generator; this one is what actually routes spans
+# into it. Tempo reads the processor list per tenant, and an empty list means the
+# distributor forwards nothing — the generator runs and stays idle, and the
+# `empty ring` error survives the restart that was meant to fix it.
+#
+# `defaults` and not a named tenant: auth_enabled is off in ../loki.yml's sense
+# here too, so every span arrives under the single anonymous tenant.
+overrides:
+  defaults:
+    metrics_generator:
+      processors: [local-blocks]
