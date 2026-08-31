@@ -403,7 +403,40 @@ export PATH=$DOTFILES_SCRIPTS:$PATH
 # ~/.zshrc — disable Powerlevel10k when Cursor Agent runs
 if [[ -z "$CURSOR_AGENT" ]]; then
 	# To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
-	[[ -f ~/.p10k.zsh ]] && source ~/.p10k.zsh
+	#
+	# The prompt has two profiles. `wide` is ~/.p10k.zsh alone. `narrow` adds
+	# ~/.p10k-narrow.zsh on top of it: one segment line, one command line, no
+	# frame. Below this many columns the shell picks `narrow`.
+	: ${PROMPT_NARROW_COLUMNS:=90}
+
+	# prompt-profile [narrow|wide|auto]
+	#   no argument   follow $COLUMNS — this is what the precmd hook does
+	#   narrow|wide   hold that profile until you run `prompt-profile auto`
+	#   auto          drop the hold and follow $COLUMNS again
+	prompt-profile() {
+		case $1 in
+			narrow|wide) PROMPT_PROFILE_HOLD=$1 ;;
+			auto) PROMPT_PROFILE_HOLD= ;;
+			'') ;;
+			*) print -u2 "prompt-profile: use narrow, wide or auto"; return 1 ;;
+		esac
+
+		local want=$PROMPT_PROFILE_HOLD
+		if [[ -z $want ]]; then
+			if (( COLUMNS < PROMPT_NARROW_COLUMNS )); then want=narrow; else want=wide; fi
+		fi
+		[[ $want == "$PROMPT_PROFILE" ]] && return 0
+
+		[[ -r ~/.p10k.zsh ]] || return 1
+		source ~/.p10k.zsh
+		[[ $want == narrow && -r ~/.p10k-narrow.zsh ]] && source ~/.p10k-narrow.zsh
+		typeset -g PROMPT_PROFILE=$want
+	}
+
+	prompt-profile
+	# Follow the width when it changes, for example when the phone rotates.
+	autoload -Uz add-zsh-hook
+	add-zsh-hook precmd prompt-profile
 fi
 
 # Load pyenv automatically
