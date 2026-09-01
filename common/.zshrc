@@ -539,7 +539,11 @@ fi
 #
 # The trade of that: a shell already open when the stack comes up does not pick
 # the variables up. Re-source this file, or open a new shell.
-if exists claude; then
+#
+# Host only. A sandbox reaches the same collector at a different address and
+# labels its sessions differently, and scripts/lib/sandbox.sh — sourced near the
+# top of this file — has already exported the whole set by the time this runs.
+if [[ -z $IS_SANDBOX ]] && exists claude; then
 	# ztcp, not `docker ps`: the builtin probe of the collector's published port
 	# costs no fork, and a docker call at every shell start is 100ms+ of latency
 	# on the prompt. A closed loopback port refuses at once, so there is nothing
@@ -764,5 +768,13 @@ function zvm_after_init() {
 	alias grs='git rebase --skip'
 	alias gbgD='LANG=C git branch --no-color -vv | grep ": gone\]" | cut -c 3- | awk '\''{print $1}'\'' | xargs git branch -D'
 }
+
+# Sandbox overrides — everything that differs inside a Docker Sandboxes sandbox
+# (`sbx`). Same idea as ~/.zshrc.os above: the environment varies by where this
+# file runs, and the arms live in their own file rather than in this one.
+#
+# IS_SANDBOX is set by sbx. The script tests it again, so the guard here only
+# saves a source on the host.
+[[ -n $IS_SANDBOX ]] && source $DOTFILES_SCRIPTS/lib/sandbox.sh
 
 # [ -f "$DOTFILES_SCRIPTS/watch_rocket.sh" ] && zsh -c "$DOTFILES_SCRIPTS/watch_rocket.sh start" &|
