@@ -6,9 +6,10 @@
 #   1. workspace       - this is a git worktree that holds apps/meteor
 #   2. node_modules    - dependencies are installed
 #   3. built packages  - no changed package source is newer than its dist (meteor loads dist)
-#   4. headless shell  - the chromium-headless-shell browser, which records without a gray strip
-#   5. ffmpeg          - ffmpeg and ffprobe, for the mp4 transcode and the frame check
-#   6. server          - a Rocket.Chat dev server that serves THIS worktree
+#   4. chromium        - the playwright browser the recording drives, headed
+#   5. capture         - Xvfb for the virtual display, ffmpeg with x11grab
+#   6. audio           - a PulseAudio server and parec, to record what the app plays (optional)
+#   7. server          - a Rocket.Chat dev server that serves THIS worktree
 #
 # Usage:
 #   preflight.sh              # report only; exit 0 when ready, 1 when something is missing
@@ -120,33 +121,57 @@ else
 fi
 echo
 
-# --- 4. chromium-headless-shell --------------------------------------------------------------
-# The new headless mode pads the video with a gray strip (microsoft/playwright#36032). The
-# legacy headless-shell records the full viewport, so the spec pins it.
-echo '4. chromium-headless-shell'
+# --- 4. chromium -------------------------------------------------------------------------------
+# The recording drives a headed Chromium on a virtual display, so the full browser is needed.
+# chromium-headless-shell cannot do it: it has no window to grab.
+echo '4. chromium'
 PW_CACHE=${PLAYWRIGHT_BROWSERS_PATH:-$HOME/.cache/ms-playwright}
-if compgen -G "$PW_CACHE/chromium_headless_shell-*" >/dev/null; then
-	ok "$(basename "$(compgen -G "$PW_CACHE/chromium_headless_shell-*" | tail -1)")"
+if compgen -G "$PW_CACHE/chromium-[0-9]*" >/dev/null; then
+	ok "$(basename "$(compgen -G "$PW_CACHE/chromium-[0-9]*" | tail -1)")"
 else
-	bad "no chromium_headless_shell-* under $PW_CACHE"
-	auto_fixes+=("cd '$REPO_ROOT/apps/meteor' && yarn playwright install chromium-headless-shell")
+	bad "no chromium-* under $PW_CACHE"
+	auto_fixes+=("cd '$REPO_ROOT/apps/meteor' && yarn playwright install chromium")
 fi
 echo
 
-# --- 5. ffmpeg -------------------------------------------------------------------------------
-# Optional: without it the webm still records, only the mp4 and the frame check are lost.
-echo '5. ffmpeg (optional)'
+# --- 5. capture ------------------------------------------------------------------------------
+# ffmpeg grabs the X display, so it must have the x11grab device compiled in. The calibration
+# grabs one frame with it too, to find where the page sits on that display.
+echo '5. capture'
+if command -v Xvfb >/dev/null; then
+	ok "Xvfb ($(command -v Xvfb))"
+else
+	bad 'Xvfb is not on PATH'
+	manual_fixes+=('Install Xvfb: `sudo apt install xvfb`. The recording runs the browser on a display of its own.')
+fi
 if command -v ffmpeg >/dev/null && command -v ffprobe >/dev/null; then
-	ok "$(ffmpeg -version 2>&1 | head -1 | cut -d' ' -f1-3)"
+	if ffmpeg -hide_banner -devices 2>/dev/null | grep -q x11grab; then
+		ok "$(ffmpeg -version 2>&1 | head -1 | cut -d' ' -f1-3) with x11grab"
+	else
+		bad 'this ffmpeg has no x11grab device'
+		manual_fixes+=('Install an ffmpeg built with x11grab: `sudo apt install ffmpeg`.')
+	fi
 else
-	printf '  ABSENT  ffmpeg or ffprobe is not on PATH\n'
-	info 'the webm still records; the mp4 and the frame check do not run'
-	manual_fixes+=('Install ffmpeg yourself: `brew install ffmpeg` or `sudo apt install ffmpeg`.')
+	bad 'ffmpeg or ffprobe is not on PATH'
+	manual_fixes+=('Install ffmpeg: `sudo apt install ffmpeg` or `brew install ffmpeg`.')
 fi
 echo
 
-# --- 6. server -------------------------------------------------------------------------------
-echo '6. server'
+# --- 6. audio --------------------------------------------------------------------------------
+# Optional. Without it the video still records, silently. The browser plays into a null sink of
+# its own and parec reads that sink's monitor, so nothing else on the machine is picked up.
+echo '6. audio (optional)'
+if command -v pactl >/dev/null && command -v parec >/dev/null && pactl info >/dev/null 2>&1; then
+	ok "$(pactl info | sed -n 's/^Server Name: //p')"
+else
+	printf '  ABSENT  no PulseAudio server, or pactl/parec are missing\n'
+	info 'the video records without sound; pass --no-audio to silence the warning'
+	manual_fixes+=('For sound, install pulseaudio-utils (`sudo apt install pulseaudio-utils`) and make sure a PulseAudio or PipeWire server is running for your session.')
+fi
+echo
+
+# --- 7. server -------------------------------------------------------------------------------
+echo '7. server'
 if server_env=$("$SCRIPT_DIR/find-server.sh" --env 2>/dev/null); then
 	eval "$server_env"
 	ok "port $SERVER_PORT, version $SERVER_VERSION, branch $SERVER_BRANCH"

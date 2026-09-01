@@ -1,9 +1,11 @@
 /**
- * Throwaway screen-recording spec. Copy into apps/meteor/tests/e2e/apps/<name>-demo.spec.ts,
- * edit the scenario, run it, keep the video, then delete this file. See the record-ui-video skill.
+ * Throwaway screen-recording spec. Copy into apps/meteor/tests/e2e/demos/<name>-demo.spec.ts,
+ * edit the scenario, run it with `scripts/record.sh`, keep the video. See the record-ui-video skill.
  *
  * It is a recording, not an assertion suite: the expects only gate the video so a broken run does
  * not record a broken screen. The parts that make recording work are marked KEEP.
+ *
+ * ffmpeg records this run off a virtual display; Playwright's own recorder stays off.
  */
 import type { Locator, Page } from '@playwright/test';
 
@@ -15,7 +17,11 @@ import { expect, test } from '../utils/test';
 // If the scenario needs a custom app, point this at an absolute path to a hand-built zip.
 // const CUSTOM_APP_ZIP = '/absolute/path/to/app_0.0.1.zip';
 
-/** KEEP: records the pointer as a visible dot, so the recording shows where each click lands. */
+/**
+ * KEEP: draws the pointer as a visible dot, so the recording shows where each click lands.
+ * `page.mouse` moves a synthetic cursor inside the browser and never moves the X pointer, so the
+ * capture runs with `-draw_mouse 0` and this dot is the only cursor in the video.
+ */
 const showPointer = (page: Page): Promise<void> =>
 	page.addInitScript(() => {
 		const draw = (): void => {
@@ -55,11 +61,10 @@ const showPointer = (page: Page): Promise<void> =>
 const beat = (page: Page, ms = 1400): Promise<void> => page.waitForTimeout(ms);
 
 /**
- * KEEP: glide the pointer to a target, then click it, so the screencast captures smooth motion.
- * Playwright's video recorder has no fps setting and caps ~25 fps. A raw click teleports the cursor,
- * which reads as choppy. Each `steps` move is a mouse event the compositor renders, so a higher
- * `steps` gives the recorder real intermediate frames. Prefer this over `locator.click()` for any
- * click the viewer watches. Increase `steps` for a slower, smoother glide.
+ * KEEP: glide the pointer to a target, then click it, so the recording captures smooth motion.
+ * A raw click teleports the cursor, which reads as a jump. Each `steps` move is a mouse event the
+ * compositor renders, and ffmpeg grabs the display 60 times a second, so the glide is smooth.
+ * Prefer this over `locator.click()` for any click the viewer watches.
  */
 const glideClick = async (page: Page, target: Locator, steps = 24): Promise<void> => {
 	await target.waitFor({ state: 'visible' });
@@ -72,16 +77,41 @@ const glideClick = async (page: Page, target: Locator, steps = 24): Promise<void
 	await page.mouse.up();
 };
 
-// KEEP: video.mode 'on' keeps the recording on pass or fail; storageState logs the page in with no
-// login screen; size matches viewport.
-// KEEP: channel 'chromium-headless-shell'. Playwright's new headless mode pads the recorded video
-// with a gray strip (microsoft/playwright#36032). The legacy headless-shell channel records the full
-// viewport with no strip. If it is missing, install it: `yarn playwright install chromium-headless-shell`.
+/**
+ * KEEP: the size of the page in the video. `record.sh` reads this line to size the virtual display
+ * and to calibrate the browser frame, so keep the name and the `WIDTHxHEIGHT` shape.
+ */
+const RECORD_VIEWPORT = '1280x720';
+
+// `record.sh` measures the --window-size that leaves a content area of exactly RECORD_VIEWPORT and
+// passes it back here. The fallback only applies when someone runs the spec by hand: 87px is the
+// tab strip plus the omnibox of a current Chromium.
+const [recordWidth, recordHeight] = RECORD_VIEWPORT.split('x').map(Number);
+const windowSize = process.env.RECORD_WINDOW_SIZE ?? `${recordWidth},${recordHeight + 87}`;
+
+// KEEP: this block is what makes the ffmpeg capture work.
+//  - headless false      : a real Chromium window on the virtual display, which ffmpeg can grab
+//  - viewport null       : the page takes the window's own size, so no pixel is ever rescaled
+//  - video off           : Playwright's recorder would only duplicate the capture, slowly
+//  - window-position 0,0 : the window lands where the calibrated crop expects it
+//  - autoplay-policy     : ringtones and call audio play with no user gesture, so audio records
+// `launchOptions` REPLACES the array in playwright.config.ts, so the fake-media args are repeated
+// here. Without them a call cannot get a microphone.
 test.use({
-	channel: 'chromium-headless-shell',
+	headless: false,
+	viewport: null,
 	storageState: Users.user1.state,
-	viewport: { width: 1280, height: 720 },
-	video: { mode: 'on', size: { width: 1280, height: 720 } },
+	video: 'off',
+	launchOptions: {
+		args: [
+			'--use-gl=egl',
+			'--use-fake-ui-for-media-stream',
+			'--use-fake-device-for-media-stream',
+			'--autoplay-policy=no-user-gesture-required',
+			'--window-position=0,0',
+			`--window-size=${windowSize}`,
+		],
+	},
 });
 
 test.describe('<scenario> - demo recording', () => {

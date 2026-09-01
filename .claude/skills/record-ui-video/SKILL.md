@@ -1,18 +1,27 @@
 ---
 name: record-ui-video
-description: Record a screen video of a Rocket.Chat UI flow (a demo, a repro, a walkthrough) by driving the real app with Playwright and transcoding to MP4. Use when the user asks to record, film, capture, or screen-record a scenario in apps/meteor.
+description: Record a screen video of a Rocket.Chat UI flow (a demo, a repro, a walkthrough) by driving the real app with Playwright on a virtual display and capturing it with ffmpeg, sound included. Use when the user asks to record, film, capture, or screen-record a scenario in apps/meteor.
 ---
 
 # Record a UI video
 
-Drive the real `apps/meteor` app with a throwaway Playwright spec that forces video on, then
-transcode the recording to MP4 if `ffmpeg` is available. This reuses the e2e fixtures, so you never log in through a form
-or wire up auth by hand.
+Drive the real `apps/meteor` app with a throwaway Playwright spec, run the browser headed on a
+virtual X display, and let ffmpeg record that display at a constant 60 fps with the audio the app
+plays. The spec reuses the e2e fixtures, so you never log in through a form or wire up auth by hand.
 
-## The idea in one line
+## How it records
 
-The e2e stack already records video (`retain-on-failure`); override it to `on`, drive the scenario
-on the default `page`, and the video is saved whether the run passes or fails.
+Playwright has a video recorder of its own, and this skill does not use it. That recorder captures a
+frame only when the page compositor changes, caps around 25 fps, drops frames during idle beats and
+records no audio.
+
+Instead:
+
+- `Xvfb` gives the run a display of its own, so no desktop window can cover the browser.
+- Chromium runs **headed** on that display. A real window means a real compositor.
+- `ffmpeg -f x11grab` grabs the page rectangle at a fixed rate, so motion is smooth and even.
+- The browser plays into a PulseAudio **null sink** of its own, and ffmpeg records that sink's
+  monitor. The video carries the ringtones and call audio, and the user hears nothing.
 
 ## Scripts
 
@@ -23,8 +32,10 @@ probing `ps`, `ss`, `/proc`, or the browser cache yourself. Each one accepts `--
 | --- | --- |
 | `preflight.sh` | Is everything in place to record? What is missing, and who fixes it? |
 | `find-server.sh` | Which server serves THIS worktree, on which port, against which database? |
-| `record.sh` | Run the spec, transcode to MP4, extract frames to verify. |
+| `record.sh` | Run the spec, capture it, trim it, encode an MP4, extract frames to verify. |
 | `rc-api.sh` | One-line authenticated admin REST call, for setup and cleanup checks. |
+
+`record.sh` calls `calibrate.js` itself; see "The window has no manager".
 
 The scripts print absolute paths, because `cd apps/meteor` in one Bash call persists into the next
 one and breaks a relative path.
@@ -37,9 +48,9 @@ one and breaks a relative path.
 .claude/skills/record-ui-video/scripts/preflight.sh
 ```
 
-It checks the workspace, `node_modules`, stale package builds, `chromium-headless-shell`, `ffmpeg`,
-and the server, then exits 0 when ready or 1 with a list of fixes split into two groups: the ones it
-can run and the ones only the user can do.
+It checks the workspace, `node_modules`, stale package builds, the chromium browser, `Xvfb`, an
+`ffmpeg` with `x11grab`, the audio server, and the dev server. It exits 0 when ready or 1
+with a list of fixes split into two groups: the ones it can run and the ones only the user can do.
 
 If it reports missing prerequisites, ask the user which way they want to go before you touch
 anything. Use `AskUserQuestion` with the script's own two groups as the options:
@@ -48,7 +59,8 @@ anything. Use `AskUserQuestion` with the script's own two groups as the options:
   builds stale packages, and downloads the browser, then re-checks.
 - **The user installs them** — you print the commands and wait.
 
-Two fixes are slow (`yarn build`, a browser download), so never run `--install` unasked.
+Two fixes are slow (`yarn build`, a browser download), so never run `--install` unasked. `Xvfb`,
+`ffmpeg` and the audio tools need `sudo`, so they are always the user's to install.
 
 The server is always the user's call. The script cannot start one safely: a port and a database name
 are choices with consequences. Two servers on one database, on different releases, corrupt each
@@ -64,18 +76,27 @@ Copy `template.spec.ts` (next to this file) into `apps/meteor/tests/e2e/demos/<n
 and edit the scenario. It is a spec, not a suite: assertions only gate the recording. Keep these
 parts unchanged — they are what make the video work:
 
-- `test.use({ channel, storageState, viewport, video: { mode: 'on', size } })` — `mode: 'on'` keeps
-  the video on pass or fail; `size` matches `viewport`. `channel: 'chromium-headless-shell'` avoids a
-  gray strip in the recording (see "The gray strip" below).
+- `const RECORD_VIEWPORT = '1280x720'` — the size of the page in the video. `record.sh` reads this
+  line out of the spec to size the display and to calibrate the crop, so keep the name and the
+  `WIDTHxHEIGHT` shape.
+- The `test.use` block:
+  - `headless: false` — a real window for ffmpeg to grab. **`chromium-headless-shell` cannot be
+    used any more**: it has no window.
+  - `viewport: null` — the page takes the window's own size. An emulated viewport makes Chromium
+    scale the page into the window, and the capture resamples every glyph.
+  - `video: 'off'` — Playwright's recorder would only duplicate the capture, slowly.
+  - `launchOptions.args` — this array **replaces** the one in `playwright.config.ts`, so it repeats
+    the fake-media args. Without them a call cannot get a microphone. `--window-position=0,0` puts
+    the window where the calibrated crop expects it, and `--autoplay-policy=no-user-gesture-required`
+    lets ringtones play, which is what puts sound on the tape.
+  - `--window-size=${windowSize}` — `record.sh` passes the measured value in `RECORD_WINDOW_SIZE`.
 - `storageState: Users.user1.state` — logs the page in as `user1` with no login screen. Login
   tokens are deterministic: `base64(sha256(username))`, pre-seeded in the DB. Pick any of
   `Users.user1`, `Users.user2`, … from `tests/e2e/fixtures/userStates.ts`.
 - The `api` fixture (from `tests/e2e/utils/test.ts`) is the **admin** REST context. Use it for
   setup: `api.post('/users.setStatus', { status: 'online', username })`, settings, app modes.
-- `showPointer(page)` and `beat(page)` — a visible cursor dot and deliberate pauses, so the video
-  reads. Keep them.
-- `glideClick(page, locator)` — moves the cursor to a target in steps, then clicks. Use it for a
-  click the viewer watches. See "Smoother motion" below.
+- `showPointer(page)`, `beat(page)` and `glideClick(page, locator)` — a visible cursor dot,
+  deliberate pauses and smooth pointer motion. See "The pointer" below.
 
 ### 3. Record one screen, not two
 
@@ -88,20 +109,28 @@ Most flows need one actor's screen. Put the other side online by API
 .claude/skills/record-ui-video/scripts/record.sh tests/e2e/demos/<name>-demo.spec.ts
 ```
 
-It reads the port and `MONGO_URL` from the server of this worktree, sets `IS_EE=true`, clears the
-spec's earlier output, runs the spec, copies the `webm`, transcodes an `mp4`, and extracts check
-frames. It prints the path of every output plus the full log.
+It finds the server of this worktree, starts the display, calibrates the window (once per Chromium
+build), captures the run, trims the black head and tail, encodes the MP4 and extracts check frames.
+It prints the path of every output plus the log.
 
-Useful options: `--name` for the output basename, `--out-dir` for the destination, `--frame-every N`
-for the check-frame interval, `--port` / `--mongo-url` to override discovery.
+Useful options: `--name` for the output basename, `--out-dir` for the destination, `--fps N` (60 by
+default), `--no-audio`, `--no-trim`, `--keep-raw` for the lossless capture, `--frame-every N` for
+the check-frame interval, `--recalibrate`, and `--port` / `--mongo-url` to override discovery.
 
-The run takes ~30 s. `record.sh` exits with the spec's own exit code and warns you when the video
+The run takes ~40 s. `record.sh` exits with the spec's own exit code and warns you when the video
 records a failed run.
+
+Read the summary it prints:
+
+- `avg_frame_rate` should equal `--fps`. A `capture:` line naming dropped frames means the machine
+  could not keep up; re-run with `--fps 30`.
+- `audio: peak <n> dB` says sound was captured. `audio: silent` means the scenario played nothing —
+  fine for a silent flow, a bug if you expected a ringtone.
 
 ### 5. Verify the frames before you hand the video over
 
-`record.sh` prints a frames directory. `Read` a few of those PNGs. Confirm the flow, and confirm
-there is no gray strip.
+`record.sh` prints a frames directory. `Read` a few of those PNGs. Confirm the flow, and confirm the
+frame holds the page alone, with no browser chrome and no black band.
 
 ### 6. Clean up
 
@@ -112,52 +141,58 @@ you installed is left behind:
 .claude/skills/record-ui-video/scripts/rc-api.sh GET /api/apps/installed
 ```
 
-The `.playwright` output dir is git-ignored; leave it.
+`record.sh` kills its own display, sink and capture on the way out, even when the spec fails.
 
-## Leftover state shows up on screen
+## Audio
 
-The database keeps what earlier runs wrote. A DM shows every prevented-call card from every take,
-and a call history shows every old row. The video still reads, but a clean screen reads better.
-Clear the state before the take with `rc-api.sh`, for example:
+The browser gets a PulseAudio null sink of its own (`PULSE_SINK` in its environment) and `parec`
+reads that sink's monitor into ffmpeg. So the recording holds what the app played and nothing else
+the machine was playing, and the sound never reaches the speakers.
 
-```bash
-scripts/rc-api.sh POST /api/v1/rooms.cleanHistory \
-  '{"roomId":"<id>","oldest":"2000-01-01T00:00:00.000Z","latest":"2100-01-01T00:00:00.000Z"}'
-```
+Two things make or break it:
 
-Tell the user what the screen will show if you do not clear it.
+- `--autoplay-policy=no-user-gesture-required` in the spec's launch args. Without it Chromium blocks
+  the first sound, because a Playwright click is not a user gesture in the sense the policy means.
+- `parec --latency-msec=50` in `record.sh`. `parec` defaults to a buffer of about two seconds; the
+  audio then reaches ffmpeg in late bursts, ffmpeg waits for the lagging stream, and x11grab drops
+  three video frames out of four. This is the one setting that decides whether the capture runs at
+  60 fps or at 14. Do not remove it.
 
-## Smoother motion
+Pass `--no-audio` for a flow with no sound; the video is the same, only smaller.
 
-Playwright's video recorder has **no fps setting** and caps around 25 fps (it captures a frame only
-when the page compositor changes, and drops frames during idle beats). `video.size` sets resolution,
-not frame rate. So you cannot ask the recorder for 60 fps.
+## The pointer
 
-Most perceived choppiness is the pointer. A raw `locator.click()` teleports the cursor, so the
-screencast captures a jump, not a glide. The template's `glideClick(page, locator, steps)` helper
-interpolates the move — each `steps` move is a mouse event the compositor renders, so the recorder
-has real intermediate frames. Raise `steps` for a slower, smoother glide. This does not change the
-file's fps; it removes the teleports that read as choppy.
+`page.mouse` moves a synthetic cursor **inside** the browser. The X pointer never moves, so the
+capture runs with `-draw_mouse 0` and the only cursor in the video is the dot that `showPointer`
+draws. Keep that helper.
 
-## The gray strip
+A raw `locator.click()` teleports the synthetic cursor, and the dot jumps with it.
+`glideClick(page, locator, steps)` interpolates the move, so the dot travels. At 60 fps the glide is
+what makes the video look driven by a person. Raise `steps` for a slower one.
 
-Playwright's **new headless mode** pads the recorded video with a solid gray strip: it captures only
-the top of the viewport and fills the rest with gray (microsoft/playwright#36032, open against
-Playwright 1.52). The strip does not scale with `video.size`, so matching `size` to `viewport` does
-not remove it and shrinking `size` only shifts it.
+## The window has no manager
 
-The fix is to record with the **legacy headless-shell** browser, which has no such artifact:
+Nothing on the virtual display resizes or decorates the browser: Chromium draws its own tab strip
+and omnibox and keeps the size it was asked for. Two numbers follow from that, and both belong to
+the Chromium build rather than to the scenario:
 
-```ts
-test.use({ channel: 'chromium-headless-shell', /* … */ });
-```
+1. the `--window-size` that leaves a content area of exactly `RECORD_VIEWPORT`
+2. where that content area sits on the screen, which is the crop rectangle for ffmpeg
 
-It records the full viewport, so `video.size` matches `viewport` and nothing is cropped. This is a
-separate download; `preflight.sh` checks for it and `preflight.sh --install` fetches it.
+`calibrate.js` measures both: it launches, reads `innerWidth`/`innerHeight`, corrects the request,
+launches again, then paints one solid magenta page. It grabs a frame of that page with ffmpeg and
+reads the rectangle out of the raw pixels — measured, not guessed. The result is cached in
+`~/.cache/record-ui-video/geometry-<playwright version>-<size>.env`. Pass `--recalibrate` after a
+Playwright upgrade if the framing ever looks wrong.
 
-The repo's `playwright.config.ts` sets `channel: 'chromium'` for the whole suite; the `test.use` in
-the spec overrides it for the recording only. The headless-shell still drives fake media streams, so
-voice and video calls record fine.
+This is also why the spec must keep `--window-position=0,0`.
+
+## Trimming
+
+The capture starts before Chromium maps its window and runs on after it closes; both ends are the
+bare X root window, which is pure black. `record.sh` finds those two black stretches with
+`blackdetect` and cuts them. Nothing the app draws is pure black, not even the dark theme, so the
+cut is safe. Pass `--no-trim` to keep them.
 
 ## Locator hygiene (this is what fails runs)
 
@@ -176,9 +211,23 @@ The scenario usually works on the first try; a locator matching too much is what
 ## Page objects worth knowing (`tests/e2e/page-objects/`)
 
 `HomeChannel` exposes `navbar.openChat(name)`, `composer.inputMessage`, `content.btnVoiceCall`,
-`content.messageById(id)`, `content.lastUserMessage`, and `voiceCalls.widget` /
-`voiceCalls.roomSection` (see `fragments/voice-calls.ts`: `controls.call/accept/reject/hangup/cancel`,
-`initiateCall()`, `acceptCall()`). Reuse them instead of raw locators.
+`content.messageById(id)`, `content.lastUserMessage`, `btnContextualbarClose`, and
+`voiceCalls.widget` / `voiceCalls.roomSection` (see `fragments/voice-calls.ts`:
+`controls.call/accept/reject/hangup/cancel`, `initiateCall()`, `acceptCall()`). Reuse them instead
+of raw locators.
+
+## Leftover state shows up on screen
+
+The database keeps what earlier runs wrote. A DM shows every prevented-call card from every take,
+and a call history shows every old row. The video still reads, but a clean screen reads better.
+Clear the state before the take with `rc-api.sh`, for example:
+
+```bash
+scripts/rc-api.sh POST /api/v1/rooms.cleanHistory \
+  '{"roomId":"<id>","oldest":"2000-01-01T00:00:00.000Z","latest":"2100-01-01T00:00:00.000Z"}'
+```
+
+Tell the user what the screen will show if you do not clear it.
 
 ## Customize a fixture app
 
@@ -204,9 +253,10 @@ in `afterAll`.
 
 ## Facts that save a re-research
 
-- Playwright config: `apps/meteor/playwright.config.ts` — `video: 'retain-on-failure'` off-CI,
-  output `tests/e2e/.playwright`, launch args already pass `--use-fake-*-for-media-stream` and grant
-  the microphone (so voice calls work headless).
+- Playwright config: `apps/meteor/playwright.config.ts` — `channel: 'chromium'`, `headless: true`,
+  output `tests/e2e/.playwright`, launch args pass `--use-gl=egl --use-fake-*-for-media-stream` and
+  grant the microphone. The recording spec overrides the first two and repeats the args.
+- A headed Chromium renders fine on `Xvfb` with `--use-gl=egl`; it falls back to software rendering.
 - Admin creds and `DEFAULT_USER_CREDENTIALS` (`password: 'password'`): `tests/e2e/config/constants.ts`.
   `TEST_MODE=api` on the server seeds that admin; `rc-api.sh` uses it.
 - App install/uninstall helpers: `tests/e2e/utils/apps.ts`.
@@ -218,3 +268,6 @@ in `afterAll`.
 - Meteor loads each workspace package through its `main`, which points at `dist`. An edit to
   `packages/*/src` is invisible to the app until that package is built. `preflight.sh` flags a
   changed source that is newer than its `dist`.
+- An ffmpeg from Homebrew has `x11grab` but no `pulse` input device, and its bundled `alsa-lib`
+  cannot load the system ALSA-to-PulseAudio plugin. That is why the audio arrives through `parec`
+  and a fifo instead of `-f pulse`.
