@@ -673,8 +673,8 @@ if exists devcontainer; then
 fi
 
 if exists eza; then
-	alias lt='eza -lhT'
-	alias l='eza -lah'
+	alias l='eza --all --long --header --icons --git --color=always'
+	alias lt='l --tree'
 fi
 
 if exists herdr; then
