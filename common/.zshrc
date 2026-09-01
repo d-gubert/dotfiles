@@ -660,12 +660,15 @@ if exists mkcert; then
 	export NODE_EXTRA_CA_CERTS="$(mkcert -CAROOT)/rootCA.pem"
 fi
 
-if exists devcontainer; then
-	alias dv='devcontainer'
-	alias dvup='devcontainer up'
-	alias dvex='devcontainer exec'
-	alias dvclaude='HERDR_AGENT=claude devcontainer exec claude --dangerously-skip-permissions'
-	alias dvshell='devcontainer exec zsh'
+# The dev sandbox — see containers/sandbox/README.md. The aliases wrap `devbox`
+# rather than `sbx` itself: `devbox` is what knows which sandbox this pwd belongs
+# to, and every one of these is meaningless without that.
+if exists devbox; then
+	alias dv='devbox'
+	alias dvup='devbox up'
+	alias dvex='devbox exec'
+	alias dvclaude='devbox claude'
+	alias dvshell='devbox shell'
 fi
 
 if exists eza; then

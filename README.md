@@ -169,20 +169,20 @@ These have a `make install-<tool>` target but aren't pulled in by any aggregate 
 
 ---
 
-## Dev containers — `devbox`
+## Dev sandboxes — `devbox`
 
-`containers/devcontainer/` holds one devcontainer definition for *every* checkout on the machine, and `scripts/devbox` runs it over whatever directory you're in:
+`containers/sandbox/` holds one sandbox definition for *every* checkout on the machine, and `scripts/devbox` runs it over whatever directory you're in:
 
 ```sh
 cd ~/dev/RocketChat/worktrees/main
-devbox up          # build/start a container with this checkout mounted
-devbox claude      # Claude Code, --dangerously-skip-permissions, behind an egress firewall
+devbox up          # create/start a sandbox with this checkout mounted
+devbox claude      # Claude Code, behind an egress allowlist
 devbox shell       # zsh in there
 ```
 
-Nothing is added to the repo being worked on — no `.devcontainer/`, no committed compose file. The container is generic (Node/Yarn/pnpm through Volta); a repo's own setup lives in a **profile** under `containers/devcontainer/projects/<name>/`, picked by matching your path. Caches and logins (yarn, Claude Code, `gh`, Playwright browsers) are shared volumes, so you download and log in once for all checkouts.
+The backend is [Docker Sandboxes](https://docs.docker.com/ai/sandboxes/) (`sbx`): each workspace gets its own microVM, with its own kernel, its own Docker daemon and its own network namespace. Nothing is added to the repo being worked on — no `.devcontainer/`, no committed compose file. The image is generic (Node/Yarn/pnpm through Volta); a repo's own setup lives in a **profile** under `containers/sandbox/projects/<name>/`, picked by matching your path. Caches are shared host directories and logins live in the host secret store, so you download and log in once for all checkouts.
 
-Egress is default-deny, re-applied on every start, which is what makes `--dangerously-skip-permissions` a bounded risk. See [`containers/devcontainer/README.md`](containers/devcontainer/README.md).
+Egress is default-deny plus an allowlist, enforced outside the VM, which is what makes running Claude Code without permission prompts a bounded risk. It needs `sbx policy init deny-all` once per machine. See [`containers/sandbox/README.md`](containers/sandbox/README.md).
 
 ---
 

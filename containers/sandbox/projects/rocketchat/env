@@ -1,0 +1,91 @@
+# Environment for the Rocket.Chat monorepo. KEY=VALUE, one per line; see
+# ../README.md.
+
+# Meteor's warehouse — the ~1GB distribution setup.sh downloads — in the profile's
+# durable scratch, so a sandbox rebuild does not fetch it again. %TOOLS% is the
+# host directory every workspace on this profile shares; see ../README.md for the
+# three placeholders. The launcher
+# resolves METEOR_WAREHOUSE_DIR="${METEOR_WAREHOUSE_DIR:-$HOME/.meteor}", so this
+# variable is the whole hookup.
+METEOR_WAREHOUSE_DIR=%TOOLS%/meteor
+
+# Same idea for Deno, pinned from .tool-versions by setup.sh.
+DENO_INSTALL=%TOOLS%/deno
+
+# Playwright's CLI is pinned by apps/meteor, not by the workspace root, so the
+# playwright feature's browser download has to be told where to find it.
+DEVBOX_PLAYWRIGHT_CMD=yarn workspace @rocket.chat/meteor playwright
+DEVBOX_PLAYWRIGHT_BROWSERS=chromium
+
+# --- The database -------------------------------------------------------------
+#
+# The shared MongoDB from containers/local-mongo, not Meteor's bundled mongod:
+# one database for every worktree of this repo, still there after a rebuild, and
+# reachable from the host (127.0.0.1:27017) for Compass or mongosh at the same
+# time. ../initialize.sh starts it on the host.
+#
+# Setting MONGO_URL is what makes Meteor SKIP its own mongod — so nothing listens
+# on 3001 any more, see `ports`. Unset both lines to get the bundled one back.
+#
+# `host.docker.internal:27017`, where the devcontainer said `mongo:27017`. A
+# sandbox is a microVM with its own network namespace and its own Docker daemon,
+# so the bridge network that compose file creates is not reachable from in here
+# and the container name resolves to nothing. What is reachable is the port
+# ../../../local-mongo/docker-compose.yml publishes on the host.
+#
+# `directConnection=true` is the price of that route. The replica set advertises
+# its single member as `mongo:27017` (MONGODB_INITIAL_PRIMARY_HOST in that
+# compose file), and a driver connecting to a replica set discards the seed
+# address in favour of the advertised one — which is the name that does not
+# resolve in here. directConnection stops the discovery and keeps the seed.
+#
+# It also stops the oplog tail, which needs a replica-set connection. Rocket.Chat
+# falls back to polling, so the server boots and works; live updates get slower.
+# Running local-mongo inside the sandbox's own Docker daemon is the way back to a
+# real replica-set connection.
+MONGO_URL=mongodb://host.docker.internal:27017/devbox?directConnection=true
+
+# --- Metrics ------------------------------------------------------------------
+#
+# Rocket.Chat's own Prometheus endpoint. It is turned on here; NOTHING SCRAPES IT
+# any more.
+#
+# The observability stack discovered devbox containers through the host Docker
+# daemon (../../../observability/prometheus/prometheus.yml, job `devbox`), and a
+# sandbox's containers do not live there — they live in the VM's own daemon,
+# which Prometheus cannot enumerate and cannot route to. Publishing the port with
+# a `ports` entry and adding a static_configs target on the host side is the way
+# back to a scrape.
+#
+# Claude Code's telemetry is NOT here and still works: it *pushes*, and
+# ../../scripts/build-kit.sh points it at host.docker.internal:4317.
+#
+# Prometheus_Enabled is a *setting*, so OVERWRITE_SETTING_ forces it on every
+# boot and no one has to remember the admin page — and it is off by default, so
+# without this line the port below answers nothing. PROMETHEUS_PORT outranks the
+# Prometheus_Port setting and pins the port.
+OVERWRITE_SETTING_Prometheus_Enabled=true
+PROMETHEUS_PORT=9458
+# Node's own heap, event loop lag and CPU, from prom-client's default collectors.
+# Cheap, and it is what tells a slow dev server apart from a slow query.
+OVERWRITE_SETTING_Prometheus_Garbage_Collector=true
+
+# --- Server settings ---------------------------------------------------------
+#
+# These came out of the old .devcontainer/.env, where they were inert: compose
+# reads that file for *interpolation*, not as container environment, and nothing
+# referenced them. Uncommenting them here does what they always looked like they
+# did — Rocket.Chat reads OVERWRITE_SETTING_* on boot and forces each setting.
+#
+# Convenient for a throwaway container (no setup wizard, no password policy),
+# so they are one edit away rather than deleted. The license key that went with
+# them is in env.local, which is gitignored.
+#
+TEST_MODE=api
+OVERWRITE_SETTING_Show_Setup_Wizard=completed
+OVERWRITE_SETTING_Accounts_Password_Policy_Enabled=false
+OVERWRITE_SETTING_Accounts_TwoFactorAuthentication_Enabled=false
+OVERWRITE_SETTING_Log_Level=2
+OVERWRITE_SETTING_Cloud_Url=https://my.staging.cloud.rocket.chat
+OVERWRITE_SETTING_Cloud_Billing_Url=https://billing.staging.cloud.rocket.chat
+OVERWRITE_INTERNAL_MARKETPLACE_URL=https://marketplace.staging.cloud.rocket.chat
