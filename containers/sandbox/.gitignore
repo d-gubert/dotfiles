@@ -1,0 +1,7 @@
+# Per-profile secrets: license keys, tokens. See projects/README.md.
+projects/*/env.local
+
+# The generated kit and the template tar do NOT appear here — they
+# are written to the per-workspace state directory
+# (~/.local/state/devbox/<sandbox>/), not into this tree, which the sandbox
+# mounts read-only.
