@@ -76,7 +76,7 @@
       {
         "name": "session",
         "label": "Session",
-        "description": "Drives the One session row. Listed as workspace + id, ordered by spend over the last 30 days, and filtered by the workspace variable. Claude Code does not export its session titles, so the id is the name.",
+        "description": "Drives the One session row. Listed as workspace + id, ordered by spend over the last 30 days, and filtered by the workspace variable. The name is the last segment of the workspace, which is a git repository on the host (host:dotfiles -> dotfiles) and a worktree in a devbox container. Claude Code does not export its session titles, so the id is the rest of the name.",
         "type": "query",
         "datasource": {
           "type": "prometheus",
@@ -84,7 +84,7 @@
         },
         "query": {
           "qryType": 1,
-          "query": "query_result(sort_desc(topk(50, label_join(label_replace(label_replace(sum by (session_id, workspace) (max_over_time(claude_code_cost_usage{workspace=~\"$workspace\"}[30d])), \"ws\", \"$1\", \"workspace\", \"(.*)\"), \"ws\", \"$1\", \"workspace\", \".*/([^/]+)\"), \"label\", \" · \", \"ws\", \"session_id\"))))",
+          "query": "query_result(sort_desc(topk(50, label_join(label_replace(label_replace(sum by (session_id, workspace) (max_over_time(claude_code_cost_usage{workspace=~\"$workspace\"}[30d])), \"ws\", \"$1\", \"workspace\", \"(.*)\"), \"ws\", \"$1\", \"workspace\", \".*[:/]([^:/]+)\"), \"label\", \" · \", \"ws\", \"session_id\"))))",
           "refId": "session"
         },
         "regex": "/label=\"(?<text>[^\"]*· (?<value>[0-9a-f-]{36}))\"/",

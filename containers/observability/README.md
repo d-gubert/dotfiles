@@ -51,6 +51,27 @@ the stack came up has no variables. Open a new one.
 `127.0.0.1:4317` and not `otel-collector:4317`: the host reaches the collector
 through the published port, a container reaches it by name over the network.
 
+**`workspace` is set twice on the host, and the second one is the useful one.**
+The export says `workspace=host`, which is enough to tell the host apart from a
+container and nothing more — it put 133 of 153 sessions and 80% of the spend in
+a single unlabelled bucket, while the devbox worktrees, a sixth of the work, were
+the only part of the dashboard that said where a session ran.
+
+An exported variable cannot do better. It runs once, at shell start, long before
+you pick a directory. So `.zshrc` also defines a `claude` shell function that
+reads the git root at LAUNCH time and rewrites the attribute for that one
+process, giving `workspace=host:dotfiles`, `workspace=host:RocketChat` and so on.
+The git root and not `$PWD`, because `$PWD` would open a new time series for
+every subdirectory you stood in; the root bounds the cardinality to repositories.
+The exported default stays as the fallback for a `claude` that does not come
+through the function.
+
+Two consequences worth knowing. Series written before this keep the bare `host`
+value, so both appear until the old ones age out. And a repository whose
+directory name contains a comma or an equals sign would break the attribute
+list — the function replaces both with a dash rather than trusting that it never
+happens.
+
 `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=cumulative` is worth keeping.
 Claude Code defaults to delta temporality and Prometheus counters are cumulative;
 the collector converts, so delta senders do work — but the sender's own running

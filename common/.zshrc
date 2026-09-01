@@ -584,8 +584,39 @@ if exists claude; then
 		# total survives a collector restart and a reconstructed one does not.
 		export OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=cumulative
 		export OTEL_METRIC_EXPORT_INTERVAL=10000
-		# Separates the host from a devbox container in every query.
+		# Separates the host from a devbox container in every query. The wrapper
+		# below narrows it per invocation; this stays as the fallback for a claude
+		# that does not go through the wrapper.
 		export OTEL_RESOURCE_ATTRIBUTES=workspace=host
+
+		# `workspace` is the only label that says WHERE a session ran, and on the
+		# host it said nothing useful: one bucket named `host` held 133 of 153
+		# sessions and 80% of the spend, while the three devbox worktrees — the
+		# other 15% — were the only well-labelled part of the dashboard. Both
+		# `Cost by workspace` and the session picker read as one flat bar because
+		# of it.
+		#
+		# The export above cannot do better on its own. It runs once, at shell
+		# start, and a shell is opened long before you pick the directory to work
+		# in. Only something that runs at LAUNCH time knows the answer, so this
+		# wrapper reads the repository then and rewrites the attribute for that one
+		# process — the exported default is left alone for everything else.
+		#
+		# The git root and not $PWD, because $PWD makes a new time series for every
+		# subdirectory you happen to be standing in. The root bounds the cardinality
+		# to the repositories you actually work in.
+		#
+		# `host:` stays as a prefix so the host-versus-container split the export
+		# above exists for survives the change. `alias pclaude` further up expands
+		# to `claude`, so it comes through here too.
+		claude() {
+			local root=$(command git rev-parse --show-toplevel 2>/dev/null)
+			local name=${${root:-$PWD}:t}
+			# OTEL_RESOURCE_ATTRIBUTES is a comma-separated list of key=value pairs,
+			# so a directory named with either character would add a second attribute
+			# or malform this one. Neither is common; both are cheap to rule out.
+			OTEL_RESOURCE_ATTRIBUTES="workspace=host:${name//[,=]/-}" command claude "$@"
+		}
 	fi
 fi
 
