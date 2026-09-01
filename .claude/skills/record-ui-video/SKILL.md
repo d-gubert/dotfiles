@@ -1,39 +1,63 @@
 ---
 name: record-ui-video
-description: Record a screen video of a Rocket.Chat UI flow (a demo, a repro, a walkthrough) by driving the real app with Playwright on a virtual display and capturing it with ffmpeg, sound included. Use when the user asks to record, film, capture, or screen-record a scenario in apps/meteor.
+description: Record a screen video of a Rocket.Chat UI flow (a demo, a repro, a walkthrough) by driving the real app with Playwright. Where the host allows it, ffmpeg captures a virtual display at a constant frame rate with sound; elsewhere Playwright's own recorder stands in. Use when the user asks to record, film, capture, or screen-record a scenario in apps/meteor.
 ---
 
 # Record a UI video
 
-Drive the real `apps/meteor` app with a throwaway Playwright spec, run the browser headed on a
-virtual X display, and let ffmpeg record that display at a constant 60 fps with the audio the app
-plays. The spec reuses the e2e fixtures, so you never log in through a form or wire up auth by hand.
+Drive the real `apps/meteor` app with a throwaway Playwright spec and keep the screen. The spec
+reuses the e2e fixtures, so you never log in through a form or wire up auth by hand.
 
 ## What you need first
-
-**A supported platform.** Today that is `linux-x11` only: an `Xvfb` display, ffmpeg's `x11grab`, a
-PulseAudio null sink, and `/proc` for the server lookup. A Wayland desktop is fine, because the
-recording never touches it — it brings its own X display. `preflight.sh` checks this first and stops
-there when no platform fits. Say so and stop; do not look for a workaround. See
-"[Adding a platform](#adding-a-platform)" for what a second one would take.
 
 A Rocket.Chat dev server must already run. This skill records against a server; it never starts,
 stops or configures one. `preflight.sh` reports the server it found, or reports that there is none.
 When there is none, say so and stop.
 
-## How it records
+Nothing else is a hard requirement. Every host can record; the host only decides how well. See
+"[The two strategies](#the-two-strategies)".
 
-Playwright has a video recorder of its own, and this skill does not use it. That recorder captures a
-frame only when the page compositor changes, caps around 25 fps, drops frames during idle beats and
-records no audio.
+## The two strategies
 
-Instead:
+`record.sh` picks one and prints which. `preflight.sh` says the same thing before you write a line
+of scenario.
+
+| | `native` | `playwright` |
+| --- | --- | --- |
+| How | ffmpeg grabs a headed browser on a virtual display | Playwright's own recorder |
+| Frame rate | constant, 60 fps by default | about 25 fps, a frame only when the page changes |
+| Idle beats | recorded as they play | dropped, so a pause reads as a jump |
+| Audio | the ringtones and call audio the app plays | none; the recorder writes no audio track |
+| Needs | a platform file with a display and a grab | nothing beyond the browser |
+
+**Prefer `native`.** It is what makes a demo look driven by a person rather than assembled from
+screenshots. The fallback exists so a host without a virtual display still gets a usable video, not
+because the two are equal. When the preflight reports the fallback, say so and say what it costs
+before you record — the user may rather install the missing tools, or record elsewhere.
+
+Force one with `record.sh --strategy native|playwright`; `auto` is the default and picks native
+whenever the host can run it.
+
+### How `native` records
 
 - `Xvfb` gives the run a display of its own, so no desktop window can cover the browser.
 - Chromium runs **headed** on that display. A real window means a real compositor.
 - `ffmpeg -f x11grab` grabs the page rectangle at a fixed rate, so motion is smooth and even.
 - The browser plays into a PulseAudio **null sink** of its own, and ffmpeg records that sink's
   monitor. The video carries the ringtones and call audio, and the user hears nothing.
+
+Today one platform file implements this: `linux-x11`. A Wayland desktop is fine, because the
+recording never touches it — it brings its own X display. See
+"[Adding a platform](#adding-a-platform)".
+
+### How `playwright` records
+
+Chromium runs headless and records itself, so there is no display to start, no window to place and
+no crop to calibrate. `record.sh` collects the `.webm` Playwright wrote and encodes the same MP4
+from it. Without ffmpeg on the host it hands over that `.webm` and cuts no check frames.
+
+The scenario code never changes between the two. Only the `test.use` block does, and the template
+already switches it on `RECORD_STRATEGY`.
 
 ## Scripts
 
@@ -46,7 +70,7 @@ themselves.
 | --- | --- |
 | `preflight.sh` | Is everything in place to record? What is missing, and who fixes it? |
 | `find-server.sh` | Which dev server is running, on which port, against which database? |
-| `record.sh` | Run the spec, capture it, trim it, encode an MP4, extract frames to verify. |
+| `record.sh` | Run the spec, capture it (either strategy), encode an MP4, extract frames to verify. |
 | `rc-api.sh` | One-line authenticated admin REST call, for setup and cleanup checks. |
 
 `record.sh` calls `calibrate.js` itself; see "The window has no manager".
@@ -66,11 +90,16 @@ one and breaks a relative path.
 ```
 
 It checks the platform, the workspace, `node_modules`, stale package builds, the chromium browser,
-`Xvfb`, an `ffmpeg` with `x11grab`, the audio server, and the dev server. It exits 0 when ready or 1
-with a list of fixes split into two groups: the ones it can run and the ones only the user can do.
+the capture strategy and what it needs, the audio, and the dev server. It exits 0 when ready or 1
+with a list of fixes split into three groups: the ones it can run, the ones only the user can do,
+and the optional ones.
+
+An **optional** fix never blocks a recording. It is what the `native` strategy would need on a host
+that is about to fall back to `playwright`. Report it, with what the fallback costs, and let the
+user decide.
 
 If it reports missing prerequisites, ask the user which way they want to go before you touch
-anything. Use `AskUserQuestion` with the script's own two groups as the options:
+anything. Use `AskUserQuestion` with the script's own two blocking groups as the options:
 
 - **Let the skill install them** — you run `preflight.sh --install`. It installs dependencies,
   builds stale packages, and downloads the browser, then re-checks.
@@ -99,17 +128,28 @@ parts unchanged — they are what make the video work:
 - `const RECORD_VIEWPORT = '1280x720'` — the size of the page in the video. `record.sh` reads this
   line out of the spec to size the display and to calibrate the crop, so keep the name and the
   `WIDTHxHEIGHT` shape.
-- The `test.use` block:
-  - `headless: false` — a real window for ffmpeg to grab. **`chromium-headless-shell` cannot be
-    used any more**: it has no window.
-  - `viewport: null` — the page takes the window's own size. An emulated viewport makes Chromium
-    scale the page into the window, and the capture resamples every glyph.
-  - `video: 'off'` — Playwright's recorder would only duplicate the capture, slowly.
-  - `launchOptions.args` — this array **replaces** the one in `playwright.config.ts`, so it repeats
-    the fake-media args. Without them a call cannot get a microphone. `--window-position=0,0` puts
-    the window where the calibrated crop expects it, and `--autoplay-policy=no-user-gesture-required`
-    lets ringtones play, which is what puts sound on the tape.
-  - `--window-size=${windowSize}` — `record.sh` passes the measured value in `RECORD_WINDOW_SIZE`.
+- The `test.use` block, and **both** of its branches. `record.sh` sets `RECORD_STRATEGY`, and the
+  spec picks the settings that fit. Edit the scenario, not this block.
+  - Native branch:
+    - `headless: false` — a real window for ffmpeg to grab. `chromium-headless-shell` cannot stand
+      in here: it has no window.
+    - `viewport: null` — the page takes the window's own size. An emulated viewport makes Chromium
+      scale the page into the window, and the capture resamples every glyph.
+    - `video: 'off'` — Playwright's recorder would only duplicate the capture, slowly.
+    - `--window-position=0,0` puts the window where the calibrated crop expects it, and
+      `--window-size=${windowSize}` is the value `record.sh` measured and passed in
+      `RECORD_WINDOW_SIZE`.
+  - Playwright branch:
+    - `headless: true` — the fallback host may have no display at all.
+    - `channel: 'chromium-headless-shell'` — the shell draws no browser chrome, so its surface is
+      the viewport. The full chromium of `playwright.config.ts` draws chrome even headless, its
+      surface comes out 85px short, and Playwright pads the video with a grey band that eats the
+      composer. This is the one line that decides whether the fallback video is usable.
+    - `viewport` and `video.size` both set to `RECORD_VIEWPORT`. Set `size`, always: Playwright
+      otherwise scales the video down to fit into 800x800.
+  - `launchOptions.args` — this array **replaces** the one in `playwright.config.ts`, so both
+    branches repeat the fake-media args. Without them a call cannot get a microphone, and
+    `--autoplay-policy=no-user-gesture-required` is what lets a ringtone play at all.
 - `storageState: Users.user1.state` — logs the page in as `user1` with no login screen. Login
   tokens are deterministic: `base64(sha256(username))`, pre-seeded in the DB. Pick any of
   `Users.user1`, `Users.user2`, … from `tests/e2e/fixtures/userStates.ts`.
@@ -133,19 +173,25 @@ It finds the running dev server, starts the display, calibrates the window (once
 build), captures the run, trims the black head and tail, encodes the MP4 and extracts check frames.
 It prints the path of every output plus the log.
 
-Useful options: `--name` for the output basename, `--out-dir` for the destination, `--fps N` (60 by
-default), `--no-audio`, `--no-trim`, `--keep-raw` for the lossless capture, `--frame-every N` for
-the check-frame interval, `--recalibrate`, and `--port` / `--mongo-url` to override discovery.
+On a host with no virtual display it runs the spec headless instead and keeps Playwright's own
+recording; steps 2 to 5 above do not happen.
+
+Useful options: `--strategy native|playwright` to force one, `--name` for the output basename,
+`--out-dir` for the destination, `--fps N` (60 by default, native only), `--no-audio`, `--no-trim`,
+`--keep-raw` for the lossless capture, `--frame-every N` for the check-frame interval,
+`--recalibrate`, and `--port` / `--mongo-url` to override discovery.
 
 The run takes ~40 s. `record.sh` exits with the spec's own exit code and warns you when the video
 records a failed run.
 
 Read the summary it prints:
 
-- `avg_frame_rate` should equal `--fps`. A `capture:` line naming dropped frames means the machine
-  could not keep up; re-run with `--fps 30`.
+- The `capture:` line names the strategy. Say which one produced the video when you hand it over.
+- `avg_frame_rate` should equal `--fps` on `native`. A `capture:` line naming dropped frames means
+  the machine could not keep up; re-run with `--fps 30`. On `playwright` the rate is whatever the
+  page changes gave, and a lower number is not a fault.
 - `audio: peak <n> dB` says sound was captured. `audio: silent` means the scenario played nothing —
-  fine for a silent flow, a bug if you expected a ringtone.
+  fine for a silent flow, a bug if you expected a ringtone. On `playwright` there is never audio.
 
 ### 5. Verify the frames before you hand the video over
 
@@ -165,7 +211,11 @@ you installed is left behind:
 
 ## Audio
 
-The browser gets a PulseAudio null sink of its own (`PULSE_SINK` in its environment) and `parec`
+Only the `native` strategy records audio. Playwright's recorder writes no audio track at all, so a
+flow whose point is a ringtone cannot be recorded on the fallback — say so rather than hand over a
+silent video of it.
+
+On `native`, the browser gets a PulseAudio null sink of its own (`PULSE_SINK` in its environment) and `parec`
 reads that sink's monitor into ffmpeg. So the recording holds what the app played and nothing else
 the machine was playing, and the sound never reaches the speakers.
 
@@ -182,15 +232,17 @@ Pass `--no-audio` for a flow with no sound; the video is the same, only smaller.
 
 ## The pointer
 
-`page.mouse` moves a synthetic cursor **inside** the browser. The X pointer never moves, so the
-capture runs with `-draw_mouse 0` and the only cursor in the video is the dot that `showPointer`
-draws. Keep that helper.
+`page.mouse` moves a synthetic cursor **inside** the browser, and neither strategy captures a real
+one: `native` grabs the display with `-draw_mouse 0`, and Playwright's recorder records the page.
+So the only cursor in either video is the dot that `showPointer` draws. Keep that helper.
 
 A raw `locator.click()` teleports the synthetic cursor, and the dot jumps with it.
 `glideClick(page, locator, steps)` interpolates the move, so the dot travels. At 60 fps the glide is
 what makes the video look driven by a person. Raise `steps` for a slower one.
 
 ## The window has no manager
+
+This is `native` only; Playwright's recorder records the page and never sees a window.
 
 Nothing on the virtual display resizes or decorates the browser: Chromium draws its own tab strip
 and omnibox and keeps the size it was asked for. Two numbers follow from that, and both belong to
@@ -214,22 +266,42 @@ Everything that differs between operating systems lives in one file under `scrip
 whose `platform_detect` says it fits the host. Nothing outside `platform/` names an operating
 system, a display server or a capture device.
 
-To add one: copy `platform/linux-x11.sh`, implement the same functions, and add its id to
-`PLATFORM_CANDIDATES`. The functions are:
+Two files exist. `linux-x11` implements everything and declares `PLATFORM_CAPTURE='native'`.
+`portable` fits every host, implements host facts only, and declares `PLATFORM_CAPTURE='none'`,
+which is what sends `record.sh` to Playwright's recorder. `portable` is last in the list, so a new
+file wins over it.
+
+To add native capture for a system: copy `platform/linux-x11.sh`, implement the same functions, and
+add its id to `PLATFORM_CANDIDATES` **before** `portable`. The contract has two halves.
+
+Host facts, which every platform file implements:
 
 | Function | What it owns |
 | --- | --- |
 | `platform_detect` | Whether this file fits the host; the reason on stderr when it does not. |
+| `platform_list_server_processes` | One `port\|mongo_url\|meteor_pwd\|pid` line per dev server process. |
+
+Native capture, which a file implements only when the host can run it:
+
+| Function | What it owns |
+| --- | --- |
 | `platform_check_capture` | Preflight rows for the display and the grab tools. |
 | `platform_check_audio` | Preflight rows for the audio tools; the feature is optional. |
-| `platform_list_server_processes` | One `port\|mongo_url\|meteor_pwd\|pid` line per dev server process. |
 | `platform_display_start` / `_stop` | A display of a given size that the browser and the grab both see. |
 | `platform_capture_input` | The ffmpeg input args for one rectangle of it, at a frame rate. |
 | `platform_screen_input` | The ffmpeg input args for one whole-screen frame, for the calibration. |
 | `platform_audio_open` / `_start` / `_close` | Route what the browser plays into a stream ffmpeg can read. |
 
+A file that cannot capture still defines all six, to report `ABSENT` and to fail with a clear reason
+when someone forces `--strategy native`. See `platform/portable.sh`.
+
 A preflight row is `STATUS|label|info|fix`. `OK` passes, `MISSING` fails the preflight, and `ABSENT`
-reports an optional feature as unavailable without failing.
+reports an optional feature as unavailable without failing. When the run has already fallen back to
+Playwright, `preflight.sh` reads a `MISSING` capture row as `ABSENT` and files its fix under
+"optional".
+
+Set `RECORD_PLATFORM=<id>` to force one candidate. Use it to exercise the fallback on a host that
+would otherwise pick a native one: `RECORD_PLATFORM=portable preflight.sh`.
 
 Two things stay outside the platform layer, because they do not vary: the encoding and trimming that
 `record.sh` does with plain ffmpeg filters, and the calibration algorithm in `calibrate.js`, which
@@ -237,10 +309,13 @@ takes the grab args from `platform_screen_input` rather than building them.
 
 ## Trimming
 
-The capture starts before Chromium maps its window and runs on after it closes; both ends are the
-bare X root window, which is pure black. `record.sh` finds those two black stretches with
-`blackdetect` and cuts them. Nothing the app draws is pure black, not even the dark theme, so the
-cut is safe. Pass `--no-trim` to keep them.
+This is `native` only. The capture starts before Chromium maps its window and runs on after it
+closes; both ends are the bare X root window, which is pure black. `record.sh` finds those two black
+stretches with `blackdetect` and cuts them. Nothing the app draws is pure black, not even the dark
+theme, so the cut is safe. Pass `--no-trim` to keep them.
+
+Playwright's recorder starts with the page and stops with it, so there is nothing to cut and
+`record.sh` does not try.
 
 ## Locator hygiene (this is what fails runs)
 
@@ -304,6 +379,11 @@ in `afterAll`.
 - Playwright config: `apps/meteor/playwright.config.ts` — `channel: 'chromium'`, `headless: true`,
   output `tests/e2e/.playwright`, launch args pass `--use-gl=egl --use-fake-*-for-media-stream` and
   grant the microphone. The recording spec overrides the first two and repeats the args.
+- `yarn playwright install chromium` fetches both `chromium-*` and `chromium_headless_shell-*`.
+  `native` drives the first, the `playwright` fallback drives the second, and `preflight.sh` checks
+  whichever one the chosen strategy needs.
+- `record.sh` passes `--output <temp dir>` to the fallback run, so its webm never lands in the
+  shared `tests/e2e/.playwright`.
 - A headed Chromium renders fine on `Xvfb` with `--use-gl=egl`; it falls back to software rendering.
 - Admin creds and `DEFAULT_USER_CREDENTIALS` (`password: 'password'`): `tests/e2e/config/constants.ts`.
   `TEST_MODE=api` on the server seeds that admin; `rc-api.sh` uses it.

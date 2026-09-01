@@ -7,6 +7,8 @@
 
 PLATFORM_ID='linux-x11'
 PLATFORM_NAME='Linux with X11'
+# This host can grab a virtual display, so the recording does not need Playwright's own recorder.
+PLATFORM_CAPTURE='native'
 
 platform_detect() {
 	if [ "$(uname -s)" != Linux ]; then

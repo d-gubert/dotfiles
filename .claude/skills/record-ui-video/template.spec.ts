@@ -5,7 +5,9 @@
  * It is a recording, not an assertion suite: the expects only gate the video so a broken run does
  * not record a broken screen. The parts that make recording work are marked KEEP.
  *
- * ffmpeg records this run off a virtual display; Playwright's own recorder stays off.
+ * `record.sh` picks how to capture it and says so in RECORD_STRATEGY. On a host with a virtual
+ * display, ffmpeg grabs a headed window and Playwright's own recorder stays off. On any other host,
+ * Playwright's recorder takes over. The scenario below never changes; only the `test.use` block does.
  */
 import type { Locator, Page } from '@playwright/test';
 
@@ -19,8 +21,8 @@ import { expect, test } from '../utils/test';
 
 /**
  * KEEP: draws the pointer as a visible dot, so the recording shows where each click lands.
- * `page.mouse` moves a synthetic cursor inside the browser and never moves the X pointer, so the
- * capture runs with `-draw_mouse 0` and this dot is the only cursor in the video.
+ * `page.mouse` moves a synthetic cursor inside the browser and never moves the real one. Neither
+ * strategy captures a real cursor, so this dot is the only one in the video.
  */
 const showPointer = (page: Page): Promise<void> =>
 	page.addInitScript(() => {
@@ -63,8 +65,8 @@ const beat = (page: Page, ms = 1400): Promise<void> => page.waitForTimeout(ms);
 /**
  * KEEP: glide the pointer to a target, then click it, so the recording captures smooth motion.
  * A raw click teleports the cursor, which reads as a jump. Each `steps` move is a mouse event the
- * compositor renders, and ffmpeg grabs the display 60 times a second, so the glide is smooth.
- * Prefer this over `locator.click()` for any click the viewer watches.
+ * compositor renders, so the recorder catches the pointer in flight. Prefer this over
+ * `locator.click()` for any click the viewer watches.
  */
 const glideClick = async (page: Page, target: Locator, steps = 24): Promise<void> => {
 	await target.waitFor({ state: 'visible' });
@@ -89,30 +91,56 @@ const RECORD_VIEWPORT = '1280x720';
 const [recordWidth, recordHeight] = RECORD_VIEWPORT.split('x').map(Number);
 const windowSize = process.env.RECORD_WINDOW_SIZE ?? `${recordWidth},${recordHeight + 87}`;
 
-// KEEP: this block is what makes the ffmpeg capture work.
-//  - headless false      : a real Chromium window on the virtual display, which ffmpeg can grab
+// KEEP: which recorder runs. `record.sh` sets RECORD_STRATEGY; 'native' is the default because a
+// hand-run spec is easiest to read that way.
+const strategy = process.env.RECORD_STRATEGY ?? 'native';
+
+// KEEP: the fake-media args. `launchOptions` REPLACES the array in playwright.config.ts, so both
+// strategies repeat them. Without them a call cannot get a microphone, and the autoplay policy
+// blocks the first ringtone, because a Playwright click is not a user gesture in the sense the
+// policy means.
+const mediaArgs = [
+	'--use-gl=egl',
+	'--use-fake-ui-for-media-stream',
+	'--use-fake-device-for-media-stream',
+	'--autoplay-policy=no-user-gesture-required',
+];
+
+// KEEP: this block is what makes the capture work, and it differs per strategy.
+//
+// native - ffmpeg grabs a headed Chromium window off a virtual display:
+//  - headless false      : a real window, which ffmpeg can grab
 //  - viewport null       : the page takes the window's own size, so no pixel is ever rescaled
 //  - video off           : Playwright's recorder would only duplicate the capture, slowly
 //  - window-position 0,0 : the window lands where the calibrated crop expects it
-//  - autoplay-policy     : ringtones and call audio play with no user gesture, so audio records
-// `launchOptions` REPLACES the array in playwright.config.ts, so the fake-media args are repeated
-// here. Without them a call cannot get a microphone.
-test.use({
-	headless: false,
-	viewport: null,
-	storageState: Users.user1.state,
-	video: 'off',
-	launchOptions: {
-		args: [
-			'--use-gl=egl',
-			'--use-fake-ui-for-media-stream',
-			'--use-fake-device-for-media-stream',
-			'--autoplay-policy=no-user-gesture-required',
-			'--window-position=0,0',
-			`--window-size=${windowSize}`,
-		],
-	},
-});
+//
+// playwright - the fallback for a host with no virtual display. The browser records itself, so
+// there is no window to size or place, and the recorder writes no audio track.
+//  - channel headless-shell : the shell has no browser chrome, so its surface is the viewport. The
+//    full chromium of playwright.config.ts draws chrome even headless, its surface comes out 85px
+//    short of the viewport, and Playwright pads the video with a grey band that eats the composer.
+//  - size                   : set it, always. Playwright otherwise scales the video down to fit
+//    into 800x800.
+test.use(
+	strategy === 'playwright'
+		? {
+				channel: 'chromium-headless-shell',
+				headless: true,
+				viewport: { width: recordWidth, height: recordHeight },
+				storageState: Users.user1.state,
+				video: { mode: 'on', size: { width: recordWidth, height: recordHeight } },
+				launchOptions: { args: mediaArgs },
+			}
+		: {
+				headless: false,
+				viewport: null,
+				storageState: Users.user1.state,
+				video: 'off',
+				launchOptions: {
+					args: [...mediaArgs, '--window-position=0,0', `--window-size=${windowSize}`],
+				},
+			},
+);
 
 test.describe('<scenario> - demo recording', () => {
 	test.beforeAll(async ({ api }) => {

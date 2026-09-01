@@ -3,14 +3,17 @@
 # Check every prerequisite a recording needs, in one pass, and say exactly what is missing.
 #
 # Checks:
-#   1. platform        - a file under platform/ fits this host (see platform.sh)
+#   1. platform        - which file under platform/ fits this host (see platform.sh)
 #   2. workspace       - this is a git checkout that holds apps/meteor
 #   3. node_modules    - dependencies are installed
 #   4. built packages  - no changed package source is newer than its dist (meteor loads dist)
-#   5. chromium        - the playwright browser the recording drives, headed
-#   6. capture         - whatever the platform needs for the display and the grab
+#   5. chromium        - the playwright browser the chosen strategy drives
+#   6. capture         - which strategy will record, and what the better one would need
 #   7. audio           - whatever the platform needs to record what the app plays (optional)
 #   8. server          - a running Rocket.Chat dev server to record against
+#
+# A host with no virtual display still passes: `record.sh` falls back to Playwright's own recorder.
+# What that host lacks is reported as ABSENT with an optional fix, not as a failure.
 #
 # Usage:
 #   preflight.sh              # report only; exit 0 when ready, 1 when something is missing
@@ -46,6 +49,8 @@ missing=0
 auto_fixes=()
 # Fixes only the user can make.
 manual_fixes=()
+# Fixes that buy a better recording but are not needed to record at all.
+optional_fixes=()
 
 ok() { printf '  OK      %s\n' "$1"; }
 bad() {
@@ -56,17 +61,29 @@ info() { printf '          %s\n' "$1"; }
 
 # Turn the `STATUS|label|info|fix` rows of a platform check into report lines. ABSENT marks an
 # optional feature that is unavailable, and never fails the preflight.
+#
+# In `optional` mode a MISSING row reads as ABSENT and its fix goes to the optional list. That is
+# what the capture check uses once it has settled on the Playwright fallback: the missing tools no
+# longer block a recording, they only cost quality.
 render_rows() {
-	local status label note fix
+	local mode=${1:-required} status label note fix
 	while IFS='|' read -r status label note fix; do
 		case "$status" in
 		OK) ok "$label" ;;
-		MISSING) bad "$label" ;;
+		MISSING)
+			if [ "$mode" = optional ]; then
+				printf '  ABSENT  %s\n' "$label"
+			else
+				bad "$label"
+			fi
+			;;
 		ABSENT) printf '  ABSENT  %s\n' "$label" ;;
 		*) continue ;;
 		esac
 		[ -n "$note" ] && info "$note"
-		[ -n "$fix" ] && manual_fixes+=("$fix")
+		if [ -n "$fix" ]; then
+			if [ "$mode" = optional ]; then optional_fixes+=("$fix"); else manual_fixes+=("$fix"); fi
+		fi
 	done
 	return 0
 }
@@ -86,17 +103,24 @@ echo
 
 # --- 1. platform -----------------------------------------------------------------------------
 # platform.sh picks the file under platform/ that fits this host. Everything the display, the
-# capture, the audio and the server lookup do differently per system lives behind it.
+# capture, the audio and the server lookup do differently per system lives behind it. `portable`
+# fits every host and knows host facts only, so this check fails on nothing but a host without ps.
 echo '1. platform'
 if [ -n "$PLATFORM_ID" ]; then
 	ok "$PLATFORM_NAME ($PLATFORM_ID)"
+	[ "$PLATFORM_CAPTURE" = native ] || info 'host facts only; section 6 says how the recording will be captured'
 else
-	bad "no supported platform: $PLATFORM_REASON"
-	manual_fixes+=('Run this skill on a supported host, or add a file for this one under scripts/platform/. platform.sh documents what such a file must implement.')
+	bad "no platform file fits this host: $PLATFORM_REASON"
+	manual_fixes+=('Add a file for this host under scripts/platform/. platform.sh documents what such a file must implement.')
 fi
 echo
 
 [ "$missing" -eq 0 ] || stop_here 'This skill cannot run here:'
+
+# Which strategy will record. Section 6 reports it; section 5 needs it first, because the two
+# strategies drive different browser builds.
+CAPTURE_STRATEGY=playwright
+platform_capture_ready && CAPTURE_STRATEGY=native
 
 # --- 2. workspace ----------------------------------------------------------------------------
 echo '2. workspace'
@@ -163,28 +187,62 @@ fi
 echo
 
 # --- 5. chromium -------------------------------------------------------------------------------
-# The recording drives a headed Chromium on a virtual display, so the full browser is needed.
-# chromium-headless-shell cannot do it: it has no window to grab.
+# Each strategy needs a different build, and `yarn playwright install chromium` fetches both.
+#   native      the full browser. It runs headed on the virtual display, and chromium-headless-shell
+#               cannot stand in: it has no window to grab.
+#   playwright  the headless shell. It draws no browser chrome, so its surface is the viewport and
+#               the video needs no padding. The full browser draws chrome even headless, and
+#               Playwright then pads the video with a grey band.
 echo '5. chromium'
 PW_CACHE=${PLAYWRIGHT_BROWSERS_PATH:-$HOME/.cache/ms-playwright}
-if compgen -G "$PW_CACHE/chromium-[0-9]*" >/dev/null; then
-	ok "$(basename "$(compgen -G "$PW_CACHE/chromium-[0-9]*" | tail -1)")"
+if [ "$CAPTURE_STRATEGY" = native ]; then
+	pw_browser_glob="$PW_CACHE/chromium-[0-9]*"
+	pw_browser_label='chromium'
 else
-	bad "no chromium-* under $PW_CACHE"
+	pw_browser_glob="$PW_CACHE/chromium_headless_shell-[0-9]*"
+	pw_browser_label='chromium_headless_shell'
+fi
+if compgen -G "$pw_browser_glob" >/dev/null; then
+	ok "$(basename "$(compgen -G "$pw_browser_glob" | tail -1)")"
+else
+	bad "no $pw_browser_label-* under $PW_CACHE"
 	auto_fixes+=("cd '$REPO_ROOT/apps/meteor' && yarn playwright install chromium")
 fi
 echo
 
 # --- 6. capture ------------------------------------------------------------------------------
-# The display and the grab are platform work; the platform file says what it needs.
+# Two strategies, and the host decides. `native` grabs a virtual display with ffmpeg, at a constant
+# frame rate and with the audio the app plays. `playwright` is the fallback for a host that cannot:
+# the browser records itself, worse but without a single extra tool.
 echo '6. capture'
-render_rows < <(platform_check_capture)
+if [ "$CAPTURE_STRATEGY" = native ]; then
+	ok 'strategy: native - ffmpeg grabs a virtual display, full frame rate, sound included'
+	render_rows required < <(platform_check_capture)
+else
+	printf '  ABSENT  %s\n' 'strategy: playwright - the browser records itself'
+	info 'no audio, about 25 fps, and a frame only when the page changes'
+	# What native would have needed. None of it blocks a recording here, so none of it fails.
+	render_rows optional < <(platform_check_capture)
+	# ffmpeg is optional on this path: it turns the webm into an mp4 and cuts the check frames.
+	if command -v ffmpeg >/dev/null && command -v ffprobe >/dev/null; then
+		ok "$(ffmpeg -version 2>&1 | head -1 | cut -d' ' -f1-3) - the webm becomes an mp4"
+	else
+		printf '  ABSENT  %s\n' 'no ffmpeg on PATH'
+		info 'record.sh delivers the raw webm and cuts no check frames'
+		optional_fixes+=('Install ffmpeg to get an mp4 and check frames: `sudo apt install ffmpeg` or `brew install ffmpeg`.')
+	fi
+fi
 echo
 
 # --- 7. audio --------------------------------------------------------------------------------
 # Optional. Without it the video still records, silently.
 echo '7. audio (optional)'
-render_rows < <(platform_check_audio)
+if [ "$CAPTURE_STRATEGY" = native ]; then
+	render_rows required < <(platform_check_audio)
+else
+	printf '  ABSENT  %s\n' "Playwright's recorder writes no audio track"
+	info 'pass --no-audio to record.sh to silence the warning'
+fi
 echo
 
 # --- 8. server -------------------------------------------------------------------------------
@@ -205,9 +263,13 @@ fi
 echo
 
 # --- report ----------------------------------------------------------------------------------
-if [ "$missing" -eq 0 ] && [ ${#manual_fixes[@]} -eq 0 ]; then
-	echo 'Ready to record.'
+if [ "$missing" -eq 0 ] && [ ${#manual_fixes[@]} -eq 0 ] && [ ${#optional_fixes[@]} -eq 0 ]; then
+	echo "Ready to record, the $CAPTURE_STRATEGY way."
 	exit 0
+fi
+if [ "$missing" -eq 0 ] && [ ${#manual_fixes[@]} -eq 0 ]; then
+	echo "Ready to record, the $CAPTURE_STRATEGY way."
+	echo
 fi
 
 if [ ${#auto_fixes[@]} -gt 0 ]; then
@@ -218,6 +280,11 @@ fi
 if [ ${#manual_fixes[@]} -gt 0 ]; then
 	echo 'You must do these yourself:'
 	for fix in "${manual_fixes[@]}"; do printf '  - %s\n' "$fix"; done
+	echo
+fi
+if [ ${#optional_fixes[@]} -gt 0 ]; then
+	echo 'Optional - these buy a better recording, and nothing here blocks one:'
+	for fix in "${optional_fixes[@]}"; do printf '  - %s\n' "$fix"; done
 	echo
 fi
 
