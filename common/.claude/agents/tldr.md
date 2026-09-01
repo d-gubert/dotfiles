@@ -50,8 +50,7 @@ paragraph when the document makes a single argument.
 ## Style
 
 - Keep each bullet to 20 words or less.
-- Write 3 to 5 bullets. Use more only for a document over 2000 words, and never
-  more than 7.
+- Keep bullet count under 10.
 - Use the active voice and the simple present tense.
 - Use the words that the document uses. Do not invent a synonym.
 - Cut hedges and filler: "basically", "essentially", "it seems", "in order to".
