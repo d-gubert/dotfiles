@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Call the REST API of the server that serves this worktree, as the e2e admin.
+# Call the REST API of the running dev server, as the e2e admin.
 #
 # It discovers the port, logs in, and caches the token, so a setup or a cleanup call is one line.
 # Use it for the checks around a recording: which apps are installed, what the room holds, what a
@@ -60,11 +60,11 @@ if [ -z "$METHOD" ] || [ -z "$PATH_ARG" ]; then
 fi
 
 if [ -z "$PORT" ]; then
-	if server_env=$("$SCRIPT_DIR/find-server.sh" --env 2>/dev/null); then
+	if server_env=$("$SCRIPT_DIR/find-server.sh" --env); then
 		eval "$server_env"
 		PORT=$SERVER_PORT
 	else
-		echo 'rc-api.sh: no dev server serves this worktree. Run preflight.sh for the detail.' >&2
+		echo 'rc-api.sh: no dev server to call. Run preflight.sh for the detail.' >&2
 		exit 1
 	fi
 fi

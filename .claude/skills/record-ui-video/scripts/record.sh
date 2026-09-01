@@ -8,7 +8,7 @@
 # is on the tape.
 #
 # What it does, in order:
-#   1. finds the dev server of THIS worktree (port, MONGO_URL)
+#   1. finds the running dev server (port, MONGO_URL)
 #   2. starts an Xvfb display of its own
 #   3. calibrates once per Chromium build: the --window-size that gives an exact content area, and
 #      where that content area sits on the screen (cached under ~/.cache/record-ui-video)
@@ -41,7 +41,7 @@ set -uo pipefail
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo '')
 if [ -z "$REPO_ROOT" ] || [ ! -d "$REPO_ROOT/apps/meteor" ]; then
-	echo 'record.sh: run this from inside a Rocket.Chat worktree.' >&2
+	echo 'record.sh: run this from inside a Rocket.Chat checkout.' >&2
 	exit 2
 fi
 
@@ -119,13 +119,13 @@ VIEW_H=${VIEWPORT#*x}
 
 # --- resolve the server -------------------------------------------------------------------------
 if [ -z "$PORT" ] || [ -z "$MONGO_URL" ]; then
-	if server_env=$("$SCRIPT_DIR/find-server.sh" --env 2>/dev/null); then
+	if server_env=$("$SCRIPT_DIR/find-server.sh" --env ${PORT:+--port "$PORT"}); then
 		eval "$server_env"
 		[ -n "$PORT" ] || PORT=$SERVER_PORT
 		[ -n "$MONGO_URL" ] || MONGO_URL=$SERVER_MONGO_URL
 		echo "server: port $PORT, version $SERVER_VERSION, branch $SERVER_BRANCH"
 	else
-		echo 'record.sh: no dev server serves this worktree. Run preflight.sh for the detail.' >&2
+		echo 'record.sh: no dev server to record against. Run preflight.sh for the detail.' >&2
 		exit 1
 	fi
 fi

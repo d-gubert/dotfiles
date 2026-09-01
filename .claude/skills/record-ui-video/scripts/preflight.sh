@@ -3,21 +3,21 @@
 # Check every prerequisite a recording needs, in one pass, and say exactly what is missing.
 #
 # Checks:
-#   1. workspace       - this is a git worktree that holds apps/meteor
+#   1. workspace       - this is a git checkout that holds apps/meteor
 #   2. node_modules    - dependencies are installed
 #   3. built packages  - no changed package source is newer than its dist (meteor loads dist)
 #   4. chromium        - the playwright browser the recording drives, headed
 #   5. capture         - Xvfb for the virtual display, ffmpeg with x11grab
 #   6. audio           - a PulseAudio server and parec, to record what the app plays (optional)
-#   7. server          - a Rocket.Chat dev server that serves THIS worktree
+#   7. server          - a running Rocket.Chat dev server to record against
 #
 # Usage:
 #   preflight.sh              # report only; exit 0 when ready, 1 when something is missing
 #   preflight.sh --install    # also install what this script can install, then re-check
 #
 # Ask the user before you pass --install. Two of the fixes are slow (`yarn build`, a browser
-# download) and one cannot be automated at all (starting the server, which needs a port and a
-# database the user chooses).
+# download). The dev server is never one of the fixes: this script reports it as missing and stops
+# there.
 #
 set -uo pipefail
 
@@ -58,10 +58,10 @@ echo
 echo '1. workspace'
 if [ -z "$REPO_ROOT" ]; then
 	bad 'not inside a git repository'
-	manual_fixes+=('Change into a Rocket.Chat worktree and run this again.')
+	manual_fixes+=('Change into a Rocket.Chat checkout and run this again.')
 elif [ ! -d "$REPO_ROOT/apps/meteor" ]; then
 	bad "no apps/meteor under $REPO_ROOT"
-	manual_fixes+=('Change into a Rocket.Chat worktree and run this again.')
+	manual_fixes+=('Change into a Rocket.Chat checkout and run this again.')
 else
 	ok "$REPO_ROOT ($(git -C "$REPO_ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null))"
 fi
@@ -176,13 +176,14 @@ if server_env=$("$SCRIPT_DIR/find-server.sh" --env 2>/dev/null); then
 	eval "$server_env"
 	ok "port $SERVER_PORT, version $SERVER_VERSION, branch $SERVER_BRANCH"
 	info "MONGO_URL=$SERVER_MONGO_URL"
+elif others=$("$SCRIPT_DIR/find-server.sh" 2>/dev/null); then
+	# Servers run, but more than one, and none of them is the obvious choice.
+	bad 'several dev servers run and none is clearly the one to record against'
+	printf '%s\n' "$others" | sed 's/^/          /'
+	manual_fixes+=('Say which server to use: pass `--port <port>` to record.sh and rc-api.sh.')
 else
-	bad 'no dev server serves this worktree'
-	other=$("$SCRIPT_DIR/find-server.sh" 2>/dev/null)
-	if [ -n "$other" ]; then
-		printf '%s\n' "$other" | sed 's/^/          /'
-	fi
-	manual_fixes+=('Start a server for THIS worktree. Pick a free port and its own database name, so you do not collide with another worktree: `cd apps/meteor && PORT=<free port> MONGO_DB=<own db> rc_test_mode.sh`. Wait for "SERVER RUNNING".')
+	bad 'no dev server to record against'
+	manual_fixes+=('A Rocket.Chat dev server must already run, and answer, before you record. This skill drives a server; it does not start one.')
 fi
 echo
 

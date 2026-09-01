@@ -9,6 +9,12 @@ Drive the real `apps/meteor` app with a throwaway Playwright spec, run the brows
 virtual X display, and let ffmpeg record that display at a constant 60 fps with the audio the app
 plays. The spec reuses the e2e fixtures, so you never log in through a form or wire up auth by hand.
 
+## What you need first
+
+A Rocket.Chat dev server must already run. This skill records against a server; it never starts,
+stops or configures one. `preflight.sh` reports the server it found, or reports that there is none.
+When there is none, say so and stop.
+
 ## How it records
 
 Playwright has a video recorder of its own, and this skill does not use it. That recorder captures a
@@ -31,7 +37,7 @@ probing `ps`, `ss`, `/proc`, or the browser cache yourself. Each one accepts `--
 | Script | What it answers |
 | --- | --- |
 | `preflight.sh` | Is everything in place to record? What is missing, and who fixes it? |
-| `find-server.sh` | Which server serves THIS worktree, on which port, against which database? |
+| `find-server.sh` | Which dev server is running, on which port, against which database? |
 | `record.sh` | Run the spec, capture it, trim it, encode an MP4, extract frames to verify. |
 | `rc-api.sh` | One-line authenticated admin REST call, for setup and cleanup checks. |
 
@@ -62,13 +68,16 @@ anything. Use `AskUserQuestion` with the script's own two groups as the options:
 Two fixes are slow (`yarn build`, a browser download), so never run `--install` unasked. `Xvfb`,
 `ffmpeg` and the audio tools need `sudo`, so they are always the user's to install.
 
-The server is always the user's call. The script cannot start one safely: a port and a database name
-are choices with consequences. Two servers on one database, on different releases, corrupt each
-other through migrations.
+A running dev server is a prerequisite of this skill, not a step in it. Never start one. If none is
+running, report that and stop; the user decides how their server runs.
 
-> Warning: a server from another worktree serves *other code*. `preflight.sh` and `find-server.sh`
-> both report the worktree and branch behind each port. Check that the branch is yours before you
-> record.
+One running server is used as it is. When several run, the scripts prefer the one that runs from
+the current checkout; if that is still ambiguous they list the servers and stop, and you pass
+`--port <port>` to choose.
+
+> Warning: a server serves the code of *its own* directory, not the code you are looking at.
+> `preflight.sh` and `find-server.sh` both report the directory, branch and version behind each
+> port. Check them before you record.
 
 ### 2. Write a throwaway spec
 
@@ -109,7 +118,7 @@ Most flows need one actor's screen. Put the other side online by API
 .claude/skills/record-ui-video/scripts/record.sh tests/e2e/demos/<name>-demo.spec.ts
 ```
 
-It finds the server of this worktree, starts the display, calibrates the window (once per Chromium
+It finds the running dev server, starts the display, calibrates the window (once per Chromium
 build), captures the run, trims the black head and tail, encodes the MP4 and extracts check frames.
 It prints the path of every output plus the log.
 
