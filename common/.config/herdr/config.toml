@@ -9,19 +9,28 @@ onboarding = false
 # Reload a running server with: herdr server reload-config
 
 [theme]
-# tmux: set -g @catppuccin_flavor "macchiato"
 name = "catppuccin"
 
+[session]
+resume_agents_on_restore = false
+
+[experimental]
+kitty_graphics = true
+
 [ui]
-sidebar_max_width = 100
 # sidebar_start_collapsed = true
+sidebar_max_width = 100
 prompt_new_tab_name = false
 hide_tab_bar_when_single_tab = true
 pane_gaps = false
-
 agent_panel_sort = "spaces"
+status_indicators = "symbols"
+show_agent_labels_on_pane_borders = true
+
+[ui.toast]
+delivery = "system"
+
 [keys]
-# tmux: set -g prefix M-Space  (M-Space send-prefix has no herdr equivalent)
 prefix = "alt+space"
 
 # ── pane focus ───────────────────────────────────────────────────────────────
@@ -38,7 +47,7 @@ swap_pane_down  = "alt+shift+k"
 swap_pane_up    = "alt+shift+l"
 swap_pane_right = "alt+shift+;"
 
-# ── pane focus ───────────────────────────────────────────────────────────────
+# ── nav mode ───────────────────────────────────────────────────────────────
 # Homerow shifted one to the right, same as tmux.
 navigate_pane_left  = "j"
 navigate_pane_down  = "k"
@@ -49,14 +58,12 @@ navigate_workspace_up   = "K"
 navigate_workspace_down = "L"
 
 # ── tabs (tmux windows) ──────────────────────────────────────────────────────
+# rename_tab   = "prefix+r"          # tmux: bind r command-prompt rename-window
 new_tab      = "alt+t"             # tmux: bind -n M-w new-window
-rename_tab   = "prefix+r"          # tmux: bind r command-prompt rename-window
 previous_tab = "alt+["
 next_tab     = "alt+]"
 
 # ── splits ───────────────────────────────────────────────────────────────────
-# Naming differs from tmux: tmux -h (side by side) is herdr "vertical",
-# tmux -v (stacked) is herdr "horizontal".
 split_vertical   = "alt+n"       # tmux: bind -n M-n split-window -h
 split_horizontal = "alt+shift+n" # tmux: bind -n M-N split-window -v
 
@@ -64,67 +71,26 @@ split_horizontal = "alt+shift+n" # tmux: bind -n M-N split-window -v
 close_pane      = "prefix+x"     # tmux: bind x kill-pane (herdr default too)
 zoom            = "prefix+f"     # tmux: bind f resize-pane -Z
 detach          = "prefix+q"     # tmux: bind q detach-client (herdr default too)
-edit_scrollback = "alt+e"        # tmux: bind -n M-e (dump scrollback into $EDITOR)
+edit_scrollback = "prefix+e"     # tmux: bind -n M-e (dump scrollback into $EDITOR)
 
 # It defaulted to prefix+r, which rename_tab now owns.
-resize_mode = "alt+r"
-copy_mode = "alt+c"
+resize_mode = "prefix+r"
+copy_mode = "prefix+c"
 
+# ── switches ───────────────────────────────────────────────────────────────────
 switch_workspace = "alt+1..9"
-workspace_picker = "alt+w"
-new_workspace = "alt+shift+w"
-
+switch_tab = "prefix+1..9"
 focus_agent = "alt+shift+1..9"
 
-open_worktree = "alt+g"
+# ── workspaces ───────────────────────────────────────────────────────────────────
+# open_worktree = "alt+g"
+workspace_picker = "alt+w"
+new_workspace = "alt+shift+w"
+goto = "alt+g"
 
-# ── rename tab after the repo ────────────────────────────────────────────────
+# ── rename workspace after the repo ────────────────────────────────────────────────
 # tmux: bind w run-shell -E '... tmux rename-window ...'
 [[keys.command]]
 key = "prefix+w"
 type = "shell"
 command = "$HOME/.config/herdr/scripts/rename-workspace-repo.sh"
-
-# ── pane resize ──────────────────────────────────────────────────────────────
-# herdr has no directional resize action, only a resize *mode*. These shell
-# commands drive the socket API directly to keep the tmux bindings 1:1.
-# Each targets the focused pane.
-#
-# NOTE: --amount is a split-ratio delta (fraction of the containing area), not
-# a cell count, so tmux's fixed `5` cells has no exact equivalent. 0.05 is a
-# round, usable step (~10 columns on a 200-column terminal). Tune to taste.
-# [[keys.command]]
-# key = "alt+shift+j"              # tmux: bind -n M-J resize-pane -L 5
-# type = "shell"
-# command = "herdr pane resize --direction left --amount 0.05"
-#
-# [[keys.command]]
-# key = "alt+shift+k"              # tmux: bind -n M-K resize-pane -D 5
-# type = "shell"
-# command = "herdr pane resize --direction down --amount 0.05"
-#
-# [[keys.command]]
-# key = "alt+shift+l"              # tmux: bind -n M-L resize-pane -U 5
-# type = "shell"
-# command = "herdr pane resize --direction up --amount 0.05"
-#
-# [[keys.command]]
-# key = "alt+shift+;"              # tmux: bind -n M-':' resize-pane -R 5
-# type = "shell"
-# command = "herdr pane resize --direction right --amount 0.05"
-
-# ── pane swap ────────────────────────────────────────────────────────────────
-# tmux swapped by pane *order* (-U/-D); herdr swaps by direction. Closest fit.
-# The tmux binds re-entered prefix mode to repeat; herdr has no repeat mode.
-# [[keys.command]]
-# key = "prefix+j"                 # tmux: bind j swap-pane -U
-# type = "shell"
-# command = "herdr pane swap --direction up"
-#
-# [[keys.command]]
-# key = "prefix+k"                 # tmux: bind k swap-pane -D
-# type = "shell"
-# command = "herdr pane swap --direction down"
-
-[ui.toast]
-delivery = "herdr"
