@@ -13,7 +13,10 @@
  * solves (2) by painting one solid magenta page, grabbing a frame of the screen with ffmpeg and
  * reading the rectangle out of the raw pixels - a measured crop, not a guess.
  *
- * Usage: node calibrate.js <pageWidth>x<pageHeight> <screenWidth>x<screenHeight>
+ * How to grab that frame is platform work, so this script does not build the ffmpeg input args. The
+ * caller passes them after `--`, straight from `platform_screen_input`.
+ *
+ * Usage: node calibrate.js <pageWidth>x<pageHeight> <screenWidth>x<screenHeight> -- <ffmpeg input args...>
  *   prints the geometry as shell assignments on stdout, ready to be cached:
  *     WINDOW_SIZE, CROP_X, CROP_Y, CROP_W, CROP_H, FIT_INNER
  *   exits 1 and explains on stderr when the screen holds no magenta page.
@@ -26,6 +29,13 @@ const { chromium } = require('playwright');
 
 const [targetWidth, targetHeight] = (process.argv[2] || '1280x720').split('x').map(Number);
 const [screenWidth, screenHeight] = (process.argv[3] || '1360x960').split('x').map(Number);
+
+const separator = process.argv.indexOf('--');
+const screenInput = separator < 0 ? [] : process.argv.slice(separator + 1);
+if (screenInput.length === 0) {
+	console.error('calibrate.js: pass the ffmpeg input args for one screen frame after `--`.');
+	process.exit(2);
+}
 
 const launch = async (requestWidth, requestHeight) => {
 	const browser = await chromium.launch({
@@ -45,7 +55,7 @@ const measure = async (requestWidth, requestHeight) => {
 	return inner;
 };
 
-/* Grab one frame of the whole screen as raw rgb24 bytes. */
+/* Grab one frame of the whole screen as raw rgb24 bytes, however this platform grabs it. */
 const grabFrame = () => {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'record-ui-video-cal-'));
 	const file = path.join(dir, 'screen.rgb');
@@ -54,8 +64,7 @@ const grabFrame = () => {
 		// prettier-ignore
 		[
 			'-y', '-hide_banner', '-loglevel', 'error',
-			'-f', 'x11grab', '-draw_mouse', '0',
-			'-video_size', `${screenWidth}x${screenHeight}`, '-i', process.env.DISPLAY,
+			...screenInput,
 			'-frames:v', '1', '-f', 'rawvideo', '-pix_fmt', 'rgb24', file,
 		],
 		{ stdio: ['ignore', 'ignore', 'inherit'] },

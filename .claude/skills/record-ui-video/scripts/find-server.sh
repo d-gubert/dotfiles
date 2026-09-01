@@ -4,7 +4,7 @@
 # the port, the Mongo connection string, the directory the server runs from, and the version.
 #
 # Why this exists: `ss -ltnp` says that a port is busy, but not which code, database or version is
-# behind it. This reads each candidate process's own environment instead of guessing.
+# behind it. The platform layer reads each candidate process's own environment instead of guessing.
 #
 # Usage:
 #   find-server.sh                 # human table of every server found
@@ -42,44 +42,18 @@ while [ $# -gt 0 ]; do
 	esac
 done
 
-# The lookup reads each process's own environment out of /proc, which is Linux only.
-if [ ! -r /proc/self/environ ]; then
-	echo 'find-server.sh: this needs /proc, so it runs on Linux only.' >&2
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+# How to read a process's own environment is platform work; the platform layer does it.
+# shellcheck disable=SC1091
+. "$SCRIPT_DIR/platform.sh"
+if [ -z "$PLATFORM_ID" ]; then
+	echo "find-server.sh: $(platform_unsupported_message)" >&2
 	exit 2
 fi
 
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo '')
 
-# Collect candidates as "port|mongo_url|meteor_pwd|pid", deduplicated. Meteor runs several
-# processes that share one environment, so the same server appears many times.
-#
-# Take the port from ROOT_URL, not from PORT. In dev, meteor puts a proxy on the port you asked
-# for and runs the inner app server on a port of its own choosing, and the inner process carries
-# that private port in PORT. ROOT_URL holds the port a browser must use, in every process.
-candidates=$(
-	for proc in /proc/[0-9]*; do
-		pid=${proc#/proc/}
-		env_data=$( (tr '\0' '\n' <"$proc/environ") 2>/dev/null ) || continue
-		[ -n "$env_data" ] || continue
-		case "$env_data" in
-		*ROOT_URL=*) ;;
-		*) continue ;;
-		esac
-		app_pwd=$(printf '%s\n' "$env_data" | sed -n 's/^PWD=//p' | head -1)
-		case "$app_pwd" in
-		*/apps/meteor) ;;
-		*) continue ;;
-		esac
-		root_url=$(printf '%s\n' "$env_data" | sed -n 's/^ROOT_URL=//p' | head -1)
-		port=$(printf '%s\n' "$root_url" | sed -n 's|^https\{0,1\}://[^:/]*:\([0-9]\{1,\}\).*|\1|p')
-		# ROOT_URL without an explicit port: fall back to PORT.
-		[ -n "$port" ] || port=$(printf '%s\n' "$env_data" | sed -n 's/^PORT=//p' | head -1)
-		mongo=$(printf '%s\n' "$env_data" | sed -n 's/^MONGO_URL=//p' | head -1)
-		[ -n "$port" ] || continue
-		printf '%s|%s|%s|%s\n' "$port" "$mongo" "$app_pwd" "$pid"
-	done | sort -t'|' -k1,3 -u | awk -F'|' '!seen[$1"|"$3]++'
-)
-
+candidates=$(platform_list_server_processes)
 if [ -n "$WANT_PORT" ] && [ -n "$candidates" ]; then
 	candidates=$(printf '%s\n' "$candidates" | awk -F'|' -v p="$WANT_PORT" '$1 == p')
 fi

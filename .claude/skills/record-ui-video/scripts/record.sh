@@ -9,7 +9,7 @@
 #
 # What it does, in order:
 #   1. finds the running dev server (port, MONGO_URL)
-#   2. starts an Xvfb display of its own
+#   2. starts a display of its own, through the platform layer
 #   3. calibrates once per Chromium build: the --window-size that gives an exact content area, and
 #      where that content area sits on the screen (cached under ~/.cache/record-ui-video)
 #   4. gives the browser a private PulseAudio sink, so it records the app and nothing else
@@ -38,14 +38,15 @@
 #
 set -uo pipefail
 
-# Linux and X11 only: the display is Xvfb, the capture is ffmpeg's x11grab, and find-server.sh
-# reads /proc. A Wayland desktop is fine, because the recording brings its own X display.
-if [ "$(uname -s)" != Linux ]; then
-	echo "record.sh: this skill records on Linux with X11 only, and this is $(uname -s)." >&2
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+# The display, the grab and the audio routing all differ per system; platform.sh loads the file
+# under platform/ that fits this host, and this script only calls its functions.
+# shellcheck disable=SC1091
+. "$SCRIPT_DIR/platform.sh"
+if [ -z "$PLATFORM_ID" ]; then
+	echo "record.sh: $(platform_unsupported_message)" >&2
 	exit 1
 fi
-
-SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo '')
 if [ -z "$REPO_ROOT" ] || [ ! -d "$REPO_ROOT/apps/meteor" ]; then
 	echo 'record.sh: run this from inside a Rocket.Chat checkout.' >&2
@@ -112,7 +113,6 @@ need() {
 	}
 }
 need ffmpeg
-need Xvfb
 need node
 
 # --- the size to record ------------------------------------------------------------------------
@@ -142,48 +142,22 @@ LOG="$TMP_DIR/record.log"
 RAW="$TMP_DIR/capture.mkv"
 FIFO="$TMP_DIR/audio.pcm"
 
-XVFB_PID=''
 FFMPEG_PID=''
-PAREC_PID=''
-SINK_MODULE=''
-DISPLAY_NUM=''
 
 cleanup() {
 	[ -n "$FFMPEG_PID" ] && kill -INT "$FFMPEG_PID" 2>/dev/null
-	[ -n "$PAREC_PID" ] && kill "$PAREC_PID" 2>/dev/null
-	[ -n "$SINK_MODULE" ] && pactl unload-module "$SINK_MODULE" 2>/dev/null
-	[ -n "$XVFB_PID" ] && kill "$XVFB_PID" 2>/dev/null
-	rm -f "$FIFO"
+	platform_audio_close
+	platform_display_stop
 }
 trap cleanup EXIT INT TERM
 
 # --- the virtual display ------------------------------------------------------------------------
-# Its own display, so the recording cannot catch the user's desktop and a stray window cannot
+# A display of its own, so the recording cannot catch the user's desktop and a stray window cannot
 # cover the browser. Room around the window for the browser frame; the capture crops back to the
 # page.
 SCREEN_W=$((VIEW_W + 80))
 SCREEN_H=$((VIEW_H + 240))
-for n in $(seq 90 120); do
-	[ -e "/tmp/.X11-unix/X$n" ] && continue
-	DISPLAY_NUM=$n
-	break
-done
-if [ -z "$DISPLAY_NUM" ]; then
-	echo 'record.sh: no free X display between :90 and :120.' >&2
-	exit 1
-fi
-Xvfb ":$DISPLAY_NUM" -screen 0 "${SCREEN_W}x${SCREEN_H}x24" -nolisten tcp >"$TMP_DIR/xvfb.log" 2>&1 &
-XVFB_PID=$!
-for _ in $(seq 1 40); do
-	[ -e "/tmp/.X11-unix/X$DISPLAY_NUM" ] && break
-	sleep 0.25
-done
-if ! kill -0 "$XVFB_PID" 2>/dev/null; then
-	echo 'record.sh: Xvfb did not start.' >&2
-	cat "$TMP_DIR/xvfb.log" >&2
-	exit 1
-fi
-export DISPLAY=":$DISPLAY_NUM"
+platform_display_start "$SCREEN_W" "$SCREEN_H" "$TMP_DIR/display.log" || exit 1
 
 # --- window geometry ----------------------------------------------------------------------------
 # No window manager runs on that display, so nobody resizes the browser: the spec must ask for a
@@ -198,8 +172,10 @@ if [ "$RECALIBRATE" -eq 1 ] || [ ! -f "$CACHE_FILE" ]; then
 	echo "calibrate: measuring the browser frame for playwright $PW_VERSION at $VIEWPORT"
 	# calibrate.js launches the browser, paints a magenta page, grabs a frame of it and prints the
 	# geometry as shell assignments. Write the cache only after it succeeds.
+	mapfile -t SCREEN_INPUT < <(platform_screen_input "$SCREEN_W" "$SCREEN_H")
 	if ! NODE_PATH="$REPO_ROOT/apps/meteor/node_modules" \
-		node "$SCRIPT_DIR/calibrate.js" "$VIEWPORT" "${SCREEN_W}x${SCREEN_H}" >"$TMP_DIR/geometry.env"; then
+		node "$SCRIPT_DIR/calibrate.js" "$VIEWPORT" "${SCREEN_W}x${SCREEN_H}" \
+		-- "${SCREEN_INPUT[@]}" >"$TMP_DIR/geometry.env"; then
 		echo 'record.sh: the calibration failed, so the window geometry is unknown.' >&2
 		exit 1
 	fi
@@ -214,32 +190,22 @@ fi
 # libx264 with yuv420p rejects an odd width or height.
 CROP_W=$((CROP_W - CROP_W % 2))
 CROP_H=$((CROP_H - CROP_H % 2))
-echo "display: $DISPLAY ${SCREEN_W}x${SCREEN_H}, window $WINDOW_SIZE, page ${CROP_W}x${CROP_H}+${CROP_X}+${CROP_Y}"
+echo "display: $PLATFORM_ID ${SCREEN_W}x${SCREEN_H}, window $WINDOW_SIZE, page ${CROP_W}x${CROP_H}+${CROP_X}+${CROP_Y}"
 
-# --- a private audio sink -------------------------------------------------------------------------
-# The browser plays into a null sink of its own. Recording that sink's monitor catches the app and
-# nothing else the machine is playing, and the user hears nothing.
+# --- the app's own audio --------------------------------------------------------------------------
+# The platform routes what the browser plays into a stream of its own, so the recording catches the
+# app and nothing else the machine is playing, and the user hears nothing.
 AUDIO_ARGS=()
 AUDIO_CODEC=(-an)
 AUDIO_OUT=(-an)
 if [ "$WITH_AUDIO" -eq 1 ]; then
-	if command -v pactl >/dev/null && command -v parec >/dev/null && pactl info >/dev/null 2>&1; then
-		SINK_NAME="rcrec_$$"
-		SINK_MODULE=$(pactl load-module module-null-sink sink_name="$SINK_NAME" \
-			sink_properties="device.description=record-ui-video" 2>/dev/null)
-		if [ -n "$SINK_MODULE" ]; then
-			export PULSE_SINK="$SINK_NAME"
-			mkfifo "$FIFO"
-			AUDIO_ARGS=(-thread_queue_size 1024 -f s16le -ar 48000 -ac 2 -i "$FIFO")
-			AUDIO_CODEC=(-c:a pcm_s16le)
-			AUDIO_OUT=(-c:a aac -b:a 128k)
-			echo "audio:   $SINK_NAME.monitor"
-		else
-			echo 'audio:   off (the null sink would not load)'
-			WITH_AUDIO=0
-		fi
+	if platform_audio_open "$FIFO" "$$"; then
+		AUDIO_ARGS=("${PLATFORM_AUDIO_INPUT[@]}")
+		AUDIO_CODEC=(-c:a pcm_s16le)
+		AUDIO_OUT=(-c:a aac -b:a 128k)
+		echo "audio:   $PLATFORM_AUDIO_LABEL"
 	else
-		echo 'audio:   off (no PulseAudio server; pactl and parec must both work)'
+		echo "audio:   off ($PLATFORM_AUDIO_UNAVAILABLE)"
 		WITH_AUDIO=0
 	fi
 else
@@ -252,25 +218,19 @@ fi
 echo "spec:    $SPEC_REL"
 echo "log:     $LOG"
 echo
+mapfile -t CAPTURE_INPUT < <(platform_capture_input "$FPS" "$CROP_W" "$CROP_H" "$CROP_X" "$CROP_Y")
 ffmpeg -y -hide_banner -nostdin -loglevel warning -stats \
 	"${AUDIO_ARGS[@]}" \
-	-thread_queue_size 1024 -f x11grab -draw_mouse 0 -framerate "$FPS" \
-	-video_size "${CROP_W}x${CROP_H}" -i "$DISPLAY+$CROP_X,$CROP_Y" \
+	"${CAPTURE_INPUT[@]}" \
 	-c:v libx264 -preset ultrafast -qp 18 -pix_fmt yuv420p \
 	"${AUDIO_CODEC[@]}" \
 	"$RAW" >>"$LOG" 2>&1 &
 FFMPEG_PID=$!
 
-# ffmpeg blocks on the fifo until a writer appears, so starting parec now starts both streams
-# together and keeps them in step.
-#
-# --latency-msec matters more than it looks. parec defaults to a buffer of about two seconds; the
-# audio then reaches ffmpeg in late bursts, ffmpeg waits for the lagging stream, and x11grab drops
-# three video frames out of four. A 50 ms buffer keeps the audio real-time and the capture at the
-# full frame rate.
+# ffmpeg may block on the audio stream until a writer appears, so start the writer now: both
+# streams then begin together and stay in step.
 if [ "$WITH_AUDIO" -eq 1 ]; then
-	parec --latency-msec=50 --format=s16le --rate=48000 --channels=2 -d "$SINK_NAME.monitor" >"$FIFO" 2>>"$LOG" &
-	PAREC_PID=$!
+	platform_audio_start "$LOG"
 fi
 sleep 1
 
@@ -290,11 +250,10 @@ fi
 RUN_EXIT=$?
 
 # Let the last frames land, then close the file cleanly. Stop the audio first: killing ffmpeg while
-# parec still writes leaves parec shouting about a broken pipe.
+# the writer still runs leaves it shouting about a broken pipe.
 sleep 1
-if [ -n "$PAREC_PID" ]; then
-	kill "$PAREC_PID" 2>/dev/null
-	PAREC_PID=''
+if [ "$WITH_AUDIO" -eq 1 ]; then
+	platform_audio_close
 	sleep 0.3
 fi
 kill -INT "$FFMPEG_PID" 2>/dev/null

@@ -11,11 +11,11 @@ plays. The spec reuses the e2e fixtures, so you never log in through a form or w
 
 ## What you need first
 
-**Linux with X11.** There is no macOS or Windows path. The recording puts the browser on an `Xvfb`
-display and captures that display with ffmpeg's `x11grab`, and `find-server.sh` reads `/proc`. A
-Wayland desktop is fine: the recording never touches it, it brings its own X display. `preflight.sh`
-checks this first and stops there when the platform is wrong. Say so and stop; do not look for a
-workaround.
+**A supported platform.** Today that is `linux-x11` only: an `Xvfb` display, ffmpeg's `x11grab`, a
+PulseAudio null sink, and `/proc` for the server lookup. A Wayland desktop is fine, because the
+recording never touches it — it brings its own X display. `preflight.sh` checks this first and stops
+there when no platform fits. Say so and stop; do not look for a workaround. See
+"[Adding a platform](#adding-a-platform)" for what a second one would take.
 
 A Rocket.Chat dev server must already run. This skill records against a server; it never starts,
 stops or configures one. `preflight.sh` reports the server it found, or reports that there is none.
@@ -38,7 +38,9 @@ Instead:
 ## Scripts
 
 Four scripts in `scripts/` next to this file replace the environment reads. Run them instead of
-probing `ps`, `ss`, `/proc`, or the browser cache yourself. Each one accepts `--help`.
+probing `ps`, `ss`, `/proc`, or the browser cache yourself. Each one accepts `--help`. They call the
+platform layer for everything that differs between operating systems, and name none of it
+themselves.
 
 | Script | What it answers |
 | --- | --- |
@@ -48,6 +50,9 @@ probing `ps`, `ss`, `/proc`, or the browser cache yourself. Each one accepts `--
 | `rc-api.sh` | One-line authenticated admin REST call, for setup and cleanup checks. |
 
 `record.sh` calls `calibrate.js` itself; see "The window has no manager".
+
+`platform.sh` and `platform/` are not scripts you run. `platform.sh` picks the file under
+`platform/` that fits the host and sources it; the four scripts then call its functions.
 
 The scripts print absolute paths, because `cd apps/meteor` in one Bash call persists into the next
 one and breaks a relative path.
@@ -201,6 +206,34 @@ reads the rectangle out of the raw pixels — measured, not guessed. The result 
 Playwright upgrade if the framing ever looks wrong.
 
 This is also why the spec must keep `--window-position=0,0`.
+
+## Adding a platform
+
+Everything that differs between operating systems lives in one file under `scripts/platform/`.
+`platform.sh` holds the contract, tries each id in `PLATFORM_CANDIDATES`, and sources the first file
+whose `platform_detect` says it fits the host. Nothing outside `platform/` names an operating
+system, a display server or a capture device.
+
+To add one: copy `platform/linux-x11.sh`, implement the same functions, and add its id to
+`PLATFORM_CANDIDATES`. The functions are:
+
+| Function | What it owns |
+| --- | --- |
+| `platform_detect` | Whether this file fits the host; the reason on stderr when it does not. |
+| `platform_check_capture` | Preflight rows for the display and the grab tools. |
+| `platform_check_audio` | Preflight rows for the audio tools; the feature is optional. |
+| `platform_list_server_processes` | One `port\|mongo_url\|meteor_pwd\|pid` line per dev server process. |
+| `platform_display_start` / `_stop` | A display of a given size that the browser and the grab both see. |
+| `platform_capture_input` | The ffmpeg input args for one rectangle of it, at a frame rate. |
+| `platform_screen_input` | The ffmpeg input args for one whole-screen frame, for the calibration. |
+| `platform_audio_open` / `_start` / `_close` | Route what the browser plays into a stream ffmpeg can read. |
+
+A preflight row is `STATUS|label|info|fix`. `OK` passes, `MISSING` fails the preflight, and `ABSENT`
+reports an optional feature as unavailable without failing.
+
+Two things stay outside the platform layer, because they do not vary: the encoding and trimming that
+`record.sh` does with plain ffmpeg filters, and the calibration algorithm in `calibrate.js`, which
+takes the grab args from `platform_screen_input` rather than building them.
 
 ## Trimming
 

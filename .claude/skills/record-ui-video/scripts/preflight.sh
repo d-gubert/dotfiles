@@ -3,13 +3,13 @@
 # Check every prerequisite a recording needs, in one pass, and say exactly what is missing.
 #
 # Checks:
-#   1. platform        - Linux with X11, the only combination this skill supports
+#   1. platform        - a file under platform/ fits this host (see platform.sh)
 #   2. workspace       - this is a git checkout that holds apps/meteor
 #   3. node_modules    - dependencies are installed
 #   4. built packages  - no changed package source is newer than its dist (meteor loads dist)
 #   5. chromium        - the playwright browser the recording drives, headed
-#   6. capture         - Xvfb for the virtual display, ffmpeg with x11grab
-#   7. audio           - a PulseAudio server and parec, to record what the app plays (optional)
+#   6. capture         - whatever the platform needs for the display and the grab
+#   7. audio           - whatever the platform needs to record what the app plays (optional)
 #   8. server          - a running Rocket.Chat dev server to record against
 #
 # Usage:
@@ -37,6 +37,8 @@ case "${1:-}" in
 esac
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+# shellcheck disable=SC1091
+. "$SCRIPT_DIR/platform.sh"
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo '')
 
 missing=0
@@ -52,6 +54,23 @@ bad() {
 }
 info() { printf '          %s\n' "$1"; }
 
+# Turn the `STATUS|label|info|fix` rows of a platform check into report lines. ABSENT marks an
+# optional feature that is unavailable, and never fails the preflight.
+render_rows() {
+	local status label note fix
+	while IFS='|' read -r status label note fix; do
+		case "$status" in
+		OK) ok "$label" ;;
+		MISSING) bad "$label" ;;
+		ABSENT) printf '  ABSENT  %s\n' "$label" ;;
+		*) continue ;;
+		esac
+		[ -n "$note" ] && info "$note"
+		[ -n "$fix" ] && manual_fixes+=("$fix")
+	done
+	return 0
+}
+
 # Later checks assume the platform and the workspace, so a failure there stops the run. Print what
 # the user has to do before leaving; the report at the end never runs.
 stop_here() {
@@ -66,18 +85,14 @@ echo 'Recording preflight'
 echo
 
 # --- 1. platform -----------------------------------------------------------------------------
-# The skill is Linux-and-X11 only, and every layer says so: it reads /proc to find the dev server,
-# it puts the browser on an Xvfb display, and it captures that display with ffmpeg's x11grab.
-# A Wayland desktop is fine - the recording never touches it, it brings its own X display.
+# platform.sh picks the file under platform/ that fits this host. Everything the display, the
+# capture, the audio and the server lookup do differently per system lives behind it.
 echo '1. platform'
-if [ "$(uname -s)" != Linux ]; then
-	bad "$(uname -s) is not supported; this skill records on Linux only"
-	manual_fixes+=('Run this skill on Linux. It reads /proc, puts the browser on an Xvfb X display, and captures that display with ffmpeg x11grab. There is no macOS or Windows path.')
-elif [ ! -r /proc/self/environ ]; then
-	bad 'cannot read /proc, and the server lookup needs it'
-	manual_fixes+=('Mount /proc, or run outside a sandbox that hides it. find-server.sh reads each process environment from /proc.')
+if [ -n "$PLATFORM_ID" ]; then
+	ok "$PLATFORM_NAME ($PLATFORM_ID)"
 else
-	ok "Linux $(uname -r), X11 capture (Xvfb + x11grab)"
+	bad "no supported platform: $PLATFORM_REASON"
+	manual_fixes+=('Run this skill on a supported host, or add a file for this one under scripts/platform/. platform.sh documents what such a file must implement.')
 fi
 echo
 
@@ -161,39 +176,15 @@ fi
 echo
 
 # --- 6. capture ------------------------------------------------------------------------------
-# ffmpeg grabs the X display, so it must have the x11grab device compiled in. The calibration
-# grabs one frame with it too, to find where the page sits on that display.
+# The display and the grab are platform work; the platform file says what it needs.
 echo '6. capture'
-if command -v Xvfb >/dev/null; then
-	ok "Xvfb ($(command -v Xvfb))"
-else
-	bad 'Xvfb is not on PATH'
-	manual_fixes+=('Install Xvfb: `sudo apt install xvfb`. The recording runs the browser on a display of its own.')
-fi
-if command -v ffmpeg >/dev/null && command -v ffprobe >/dev/null; then
-	if ffmpeg -hide_banner -devices 2>/dev/null | grep -q x11grab; then
-		ok "$(ffmpeg -version 2>&1 | head -1 | cut -d' ' -f1-3) with x11grab"
-	else
-		bad 'this ffmpeg has no x11grab device'
-		manual_fixes+=('Install an ffmpeg built with x11grab: `sudo apt install ffmpeg`.')
-	fi
-else
-	bad 'ffmpeg or ffprobe is not on PATH'
-	manual_fixes+=('Install ffmpeg: `sudo apt install ffmpeg` or `brew install ffmpeg`.')
-fi
+render_rows < <(platform_check_capture)
 echo
 
 # --- 7. audio --------------------------------------------------------------------------------
-# Optional. Without it the video still records, silently. The browser plays into a null sink of
-# its own and parec reads that sink's monitor, so nothing else on the machine is picked up.
+# Optional. Without it the video still records, silently.
 echo '7. audio (optional)'
-if command -v pactl >/dev/null && command -v parec >/dev/null && pactl info >/dev/null 2>&1; then
-	ok "$(pactl info | sed -n 's/^Server Name: //p')"
-else
-	printf '  ABSENT  no PulseAudio server, or pactl/parec are missing\n'
-	info 'the video records without sound; pass --no-audio to silence the warning'
-	manual_fixes+=('For sound, install pulseaudio-utils (`sudo apt install pulseaudio-utils`) and make sure a PulseAudio or PipeWire server is running for your session.')
-fi
+render_rows < <(platform_check_audio)
 echo
 
 # --- 8. server -------------------------------------------------------------------------------
