@@ -42,6 +42,12 @@ while [ $# -gt 0 ]; do
 	esac
 done
 
+# The lookup reads each process's own environment out of /proc, which is Linux only.
+if [ ! -r /proc/self/environ ]; then
+	echo 'find-server.sh: this needs /proc, so it runs on Linux only.' >&2
+	exit 2
+fi
+
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo '')
 
 # Collect candidates as "port|mongo_url|meteor_pwd|pid", deduplicated. Meteor runs several

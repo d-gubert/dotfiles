@@ -3,13 +3,14 @@
 # Check every prerequisite a recording needs, in one pass, and say exactly what is missing.
 #
 # Checks:
-#   1. workspace       - this is a git checkout that holds apps/meteor
-#   2. node_modules    - dependencies are installed
-#   3. built packages  - no changed package source is newer than its dist (meteor loads dist)
-#   4. chromium        - the playwright browser the recording drives, headed
-#   5. capture         - Xvfb for the virtual display, ffmpeg with x11grab
-#   6. audio           - a PulseAudio server and parec, to record what the app plays (optional)
-#   7. server          - a running Rocket.Chat dev server to record against
+#   1. platform        - Linux with X11, the only combination this skill supports
+#   2. workspace       - this is a git checkout that holds apps/meteor
+#   3. node_modules    - dependencies are installed
+#   4. built packages  - no changed package source is newer than its dist (meteor loads dist)
+#   5. chromium        - the playwright browser the recording drives, headed
+#   6. capture         - Xvfb for the virtual display, ffmpeg with x11grab
+#   7. audio           - a PulseAudio server and parec, to record what the app plays (optional)
+#   8. server          - a running Rocket.Chat dev server to record against
 #
 # Usage:
 #   preflight.sh              # report only; exit 0 when ready, 1 when something is missing
@@ -51,11 +52,39 @@ bad() {
 }
 info() { printf '          %s\n' "$1"; }
 
+# Later checks assume the platform and the workspace, so a failure there stops the run. Print what
+# the user has to do before leaving; the report at the end never runs.
+stop_here() {
+	printf '\n%s\n' "$1"
+	if [ ${#manual_fixes[@]} -gt 0 ]; then
+		for fix in "${manual_fixes[@]}"; do printf '  - %s\n' "$fix"; done
+	fi
+	exit 1
+}
+
 echo 'Recording preflight'
 echo
 
-# --- 1. workspace ----------------------------------------------------------------------------
-echo '1. workspace'
+# --- 1. platform -----------------------------------------------------------------------------
+# The skill is Linux-and-X11 only, and every layer says so: it reads /proc to find the dev server,
+# it puts the browser on an Xvfb display, and it captures that display with ffmpeg's x11grab.
+# A Wayland desktop is fine - the recording never touches it, it brings its own X display.
+echo '1. platform'
+if [ "$(uname -s)" != Linux ]; then
+	bad "$(uname -s) is not supported; this skill records on Linux only"
+	manual_fixes+=('Run this skill on Linux. It reads /proc, puts the browser on an Xvfb X display, and captures that display with ffmpeg x11grab. There is no macOS or Windows path.')
+elif [ ! -r /proc/self/environ ]; then
+	bad 'cannot read /proc, and the server lookup needs it'
+	manual_fixes+=('Mount /proc, or run outside a sandbox that hides it. find-server.sh reads each process environment from /proc.')
+else
+	ok "Linux $(uname -r), X11 capture (Xvfb + x11grab)"
+fi
+echo
+
+[ "$missing" -eq 0 ] || stop_here 'This skill cannot run here:'
+
+# --- 2. workspace ----------------------------------------------------------------------------
+echo '2. workspace'
 if [ -z "$REPO_ROOT" ]; then
 	bad 'not inside a git repository'
 	manual_fixes+=('Change into a Rocket.Chat checkout and run this again.')
@@ -68,13 +97,10 @@ fi
 echo
 
 # Everything below needs a valid workspace.
-if [ "$missing" -eq 1 ]; then
-	printf 'Fix the workspace first.\n'
-	exit 1
-fi
+[ "$missing" -eq 0 ] || stop_here 'Fix the workspace first:'
 
-# --- 2. node_modules -------------------------------------------------------------------------
-echo '2. dependencies'
+# --- 3. node_modules -------------------------------------------------------------------------
+echo '3. dependencies'
 if [ -d "$REPO_ROOT/node_modules" ]; then
 	ok 'node_modules is present'
 else
@@ -83,11 +109,11 @@ else
 fi
 echo
 
-# --- 3. built packages -----------------------------------------------------------------------
+# --- 4. built packages -----------------------------------------------------------------------
 # Meteor imports each workspace package through its `main`, which points at dist. An edit to a
 # package source is invisible to the app until that package is built. Only changed packages can
 # be stale, so ask git which ones changed instead of walking every package.
-echo '3. built packages'
+echo '4. built packages'
 stale_pkgs=''
 while read -r changed; do
 	[ -n "$changed" ] || continue
@@ -121,10 +147,10 @@ else
 fi
 echo
 
-# --- 4. chromium -------------------------------------------------------------------------------
+# --- 5. chromium -------------------------------------------------------------------------------
 # The recording drives a headed Chromium on a virtual display, so the full browser is needed.
 # chromium-headless-shell cannot do it: it has no window to grab.
-echo '4. chromium'
+echo '5. chromium'
 PW_CACHE=${PLAYWRIGHT_BROWSERS_PATH:-$HOME/.cache/ms-playwright}
 if compgen -G "$PW_CACHE/chromium-[0-9]*" >/dev/null; then
 	ok "$(basename "$(compgen -G "$PW_CACHE/chromium-[0-9]*" | tail -1)")"
@@ -134,10 +160,10 @@ else
 fi
 echo
 
-# --- 5. capture ------------------------------------------------------------------------------
+# --- 6. capture ------------------------------------------------------------------------------
 # ffmpeg grabs the X display, so it must have the x11grab device compiled in. The calibration
 # grabs one frame with it too, to find where the page sits on that display.
-echo '5. capture'
+echo '6. capture'
 if command -v Xvfb >/dev/null; then
 	ok "Xvfb ($(command -v Xvfb))"
 else
@@ -157,10 +183,10 @@ else
 fi
 echo
 
-# --- 6. audio --------------------------------------------------------------------------------
+# --- 7. audio --------------------------------------------------------------------------------
 # Optional. Without it the video still records, silently. The browser plays into a null sink of
 # its own and parec reads that sink's monitor, so nothing else on the machine is picked up.
-echo '6. audio (optional)'
+echo '7. audio (optional)'
 if command -v pactl >/dev/null && command -v parec >/dev/null && pactl info >/dev/null 2>&1; then
 	ok "$(pactl info | sed -n 's/^Server Name: //p')"
 else
@@ -170,8 +196,8 @@ else
 fi
 echo
 
-# --- 7. server -------------------------------------------------------------------------------
-echo '7. server'
+# --- 8. server -------------------------------------------------------------------------------
+echo '8. server'
 if server_env=$("$SCRIPT_DIR/find-server.sh" --env 2>/dev/null); then
 	eval "$server_env"
 	ok "port $SERVER_PORT, version $SERVER_VERSION, branch $SERVER_BRANCH"

@@ -11,6 +11,12 @@ plays. The spec reuses the e2e fixtures, so you never log in through a form or w
 
 ## What you need first
 
+**Linux with X11.** There is no macOS or Windows path. The recording puts the browser on an `Xvfb`
+display and captures that display with ffmpeg's `x11grab`, and `find-server.sh` reads `/proc`. A
+Wayland desktop is fine: the recording never touches it, it brings its own X display. `preflight.sh`
+checks this first and stops there when the platform is wrong. Say so and stop; do not look for a
+workaround.
+
 A Rocket.Chat dev server must already run. This skill records against a server; it never starts,
 stops or configures one. `preflight.sh` reports the server it found, or reports that there is none.
 When there is none, say so and stop.
@@ -54,8 +60,8 @@ one and breaks a relative path.
 .claude/skills/record-ui-video/scripts/preflight.sh
 ```
 
-It checks the workspace, `node_modules`, stale package builds, the chromium browser, `Xvfb`, an
-`ffmpeg` with `x11grab`, the audio server, and the dev server. It exits 0 when ready or 1
+It checks the platform, the workspace, `node_modules`, stale package builds, the chromium browser,
+`Xvfb`, an `ffmpeg` with `x11grab`, the audio server, and the dev server. It exits 0 when ready or 1
 with a list of fixes split into two groups: the ones it can run and the ones only the user can do.
 
 If it reports missing prerequisites, ask the user which way they want to go before you touch

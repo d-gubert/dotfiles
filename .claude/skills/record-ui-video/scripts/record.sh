@@ -38,6 +38,13 @@
 #
 set -uo pipefail
 
+# Linux and X11 only: the display is Xvfb, the capture is ffmpeg's x11grab, and find-server.sh
+# reads /proc. A Wayland desktop is fine, because the recording brings its own X display.
+if [ "$(uname -s)" != Linux ]; then
+	echo "record.sh: this skill records on Linux with X11 only, and this is $(uname -s)." >&2
+	exit 1
+fi
+
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo '')
 if [ -z "$REPO_ROOT" ] || [ ! -d "$REPO_ROOT/apps/meteor" ]; then
