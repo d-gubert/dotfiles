@@ -31,3 +31,7 @@ vocabulary of the domain we work in.
 ## Warnings
 
 - Put a warning before the step it applies to, not after.
+
+## Tone
+
+- Avoid using qualitative adjectives in text unless asked - examples to avoid: "your instinct is correct", "this logic is sound"
