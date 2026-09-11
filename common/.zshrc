@@ -663,7 +663,7 @@ fi
 
 if exists eza; then
 	alias l='eza --all --long --header --icons --git --color=always'
-	alias lt='l --tree'
+	alias lt='l --tree --git-ignore'
 fi
 
 if exists herdr; then
