@@ -473,9 +473,7 @@ fi
 
 if exists lazygit; then
 	source <(lazygit completion zsh)
-	alias lg='lazygit'
-	alias lgs='lazygit stash'
-	alias lgl='lazygit log'
+	alias lg='lazygit -sm half'
 fi
 
 if exists lazyjira; then
