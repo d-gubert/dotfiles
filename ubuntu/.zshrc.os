@@ -21,3 +21,10 @@ if [[ -r /etc/os-release ]]; then
 		export PLAYWRIGHT_HOST_PLATFORM_OVERRIDE="ubuntu24.04-x64"
 	fi
 fi
+
+# Homebrew. Puts brew, its binaries and its completions on the search paths.
+BREW_BIN="/home/linuxbrew/.linuxbrew/bin/brew"
+
+if [[ -x "$BREW_BIN" ]]; then
+	eval "$($BREW_BIN shellenv)"
+fi

@@ -9,3 +9,10 @@ export CLIP_CMD="pbcopy"
 # silently ignore the configs common/ stows into ~/.config (lazygit and zellij
 # in particular). Setting this explicitly makes both platforms behave the same.
 export XDG_CONFIG_HOME="$HOME/.config"
+
+# Homebrew. Puts brew, its binaries and its completions on the search paths.
+BREW_BIN="/opt/homebrew/bin/brew"
+
+if [[ -x "$BREW_BIN" ]]; then
+	eval "$($BREW_BIN shellenv)"
+fi

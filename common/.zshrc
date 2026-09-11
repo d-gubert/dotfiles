@@ -134,20 +134,10 @@ export EDITOR='nvim'
 export SUDO_EDITOR="$(which $EDITOR)"
 export ZVM_VI_EDITOR=$EDITOR
 
-if [[ "$(uname)" == "Darwin" ]]; then
-	BREW_PREFIX="/opt/homebrew"
-else
-	BREW_PREFIX="/home/linuxbrew/.linuxbrew"
-fi
-
-BREW_BIN="$BREW_PREFIX/bin/brew"
-
-if [[ -x "$BREW_BIN" ]]; then
-	eval "$($BREW_BIN shellenv)"
-fi
 
 # OS-specific overrides — shipped by the ubuntu/ or mac/ stow package.
-# Defines OPEN_CMD and CLIP_CMD, plus any per-OS PATH entries.
+# Defines OPEN_CMD and CLIP_CMD, the Homebrew environment, plus any per-OS
+# PATH entries.
 [[ -r ~/.zshrc.os ]] && source ~/.zshrc.os
 
 # Compilation flags
