@@ -134,6 +134,7 @@ export EDITOR='nvim'
 export SUDO_EDITOR="$(which $EDITOR)"
 export ZVM_VI_EDITOR=$EDITOR
 
+export PAGER='less -FRX'
 
 # OS-specific overrides — shipped by the ubuntu/ or mac/ stow package.
 # Defines OPEN_CMD and CLIP_CMD, the Homebrew environment, plus any per-OS
