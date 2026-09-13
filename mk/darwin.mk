@@ -6,6 +6,7 @@
 # three families in sync when you add one.
 
 include mk/brew.mk
+include mk/scripts.mk
 
 BREW_PREFIX := /opt/homebrew
 STOW_OS_PKG := mac
@@ -69,3 +70,8 @@ install-kanata: homebrew
 	@echo "[kanata] NOTE: approve the driver under System Settings > Privacy &"
 	@echo "[kanata]       Security, and grant kanata Input Monitoring access,"
 	@echo "[kanata]       before it will capture keys."
+
+# macOS ships curl, so there is nothing to install.
+.PHONY: install-curl
+install-curl:
+	@echo "[curl] already installed"
