@@ -141,6 +141,12 @@ Hyprland.
 | [zsh-vi-mode](https://github.com/jeffreytse/zsh-vi-mode) | Better vi mode for zsh |
 | [zsh-autopair](https://github.com/jeffreytse/zsh-autopair) | Auto closes pairs of symbols |
 
+`common/.zshrc` also loads the built-in `copybuffer`, `copyfile`, `copypath`,
+`gh` and `git` plugins, and one of `z` or [zoxide](https://github.com/ajeetdsouza/zoxide).
+Both define a `z` command, so the file loads the plugin only when zoxide is
+absent. Omarchy ships zoxide in `omarchy-base.packages`, so Arch gets zoxide
+and the other platforms keep the plugin. Install zoxide anywhere to switch.
+
 ### Development
 
 | Tool | Description | Installed via |
