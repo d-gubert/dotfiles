@@ -1,0 +1,29 @@
+;; Home-row mod aliases for Arch and Omarchy. common/.config/kanata/kanata.kbd
+;; includes this file and defines everything else.
+;;
+;; The Debian and macOS copies wrap each alias in `(multi f24 ...)`. That
+;; wrapper presses a spare key together with the modifier, so a desktop never
+;; sees a lone modifier tap and does not open the GNOME overview or focus a GTK
+;; menu bar. Arch cannot use it.
+;;
+;; A current xkeyboard-config gives keycode 202 the F24 keysym. A terminal then
+;; writes \E[24;2~ for that key. kanata sends f24 on a tap as well as on a
+;; hold, zsh-vi-mode reads the leading ESC, and the prompt drops to NORMAL mode
+;; on every home row letter. An older xkeyboard-config leaves keycode 202
+;; without a keysym, which is why the wrapper is harmless on Ubuntu.
+;;
+;; To test a machine before you copy the other variant here:
+;;   xkbcli compile-keymap --layout us | grep -A3 '<FK24>'
+;; A keysym in the output means the wrapper will reach the terminal.
+;;
+;; Hyprland runs no action on a lone Super tap, so the wrapper buys nothing.
+(defalias
+  a (tap-hold $tap-time $hold-time a lmet)
+  s (tap-hold $tap-time $hold-time s lalt)
+  d (tap-hold $tap-time $hold-time d lctl)
+  f (tap-hold $tap-time $hold-time f lsft)
+  j (tap-hold $tap-time $hold-time j rsft)
+  k (tap-hold $tap-time $hold-time k rctl)
+  l (tap-hold $tap-time $hold-time l lalt)
+  ; (tap-hold $tap-time $hold-time ; rmet)
+)

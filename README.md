@@ -149,6 +149,23 @@ On macOS kanata needs Karabiner's VirtualHIDDevice driver instead. The target
 installs Karabiner-Elements and prints what you still have to approve under
 System Settings > Privacy & Security.
 
+#### kanata home-row mods
+
+`common/.config/kanata/kanata.kbd` holds the layer, and each OS package holds
+its own `mods.kbd` with the aliases. kanata resolves an `include` against the
+directory of the config file it opened, which is `~/.config/kanata` and not
+this repository, so stow decides which variant kanata reads.
+
+Only one thing differs. The Debian and macOS copies wrap each alias in
+`(multi f24 ...)`, which presses a spare key with the modifier so the desktop
+never sees a lone modifier tap and does not open the GNOME overview. That
+wrapper depends on keycode 202 having no keysym. A current xkeyboard-config
+gives it `F24`, the terminal writes `\E[24;2~` for it, zsh-vi-mode reads the
+leading `ESC`, and the prompt drops to NORMAL mode on every home row letter.
+So the Arch copy has no wrapper. Test a machine with
+`xkbcli compile-keymap --layout us | grep -A3 '<FK24>'` before you copy one
+variant over another.
+
 #### Fonts (Nerd Fonts)
 
 | Name | Installed via |

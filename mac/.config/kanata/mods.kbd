@@ -1,0 +1,22 @@
+;; Home-row mod aliases for macOS. common/.config/kanata/kanata.kbd includes
+;; this file and defines everything else.
+;;
+;; `(multi f24 ...)` presses a spare key together with the modifier, so an
+;; application never sees a lone modifier tap. This copy keeps the wrapper
+;; because macOS has shown no problem with it.
+;;
+;; Watch for one symptom. kanata sends f24 on a tap as well as on a hold. If a
+;; terminal maps F24 to an escape sequence, zsh-vi-mode reads the leading ESC
+;; and the prompt drops to NORMAL mode on every home row letter. Arch hit
+;; exactly that. Drop the wrapper here too if it happens; see
+;; arch/.config/kanata/mods.kbd.
+(defalias
+  a (multi f24 (tap-hold $tap-time $hold-time a lmet))
+  s (multi f24 (tap-hold $tap-time $hold-time s lalt))
+  d (multi f24 (tap-hold $tap-time $hold-time d lctl))
+  f (multi f24 (tap-hold $tap-time $hold-time f lsft))
+  j (multi f24 (tap-hold $tap-time $hold-time j rsft))
+  k (multi f24 (tap-hold $tap-time $hold-time k rctl))
+  l (multi f24 (tap-hold $tap-time $hold-time l lalt))
+  ; (multi f24 (tap-hold $tap-time $hold-time ; rmet))
+)

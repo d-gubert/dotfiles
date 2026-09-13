@@ -5,6 +5,13 @@
 ;; macOS additionally needs Karabiner's VirtualHIDDevice driver and Input
 ;; Monitoring permission; `make install-kanata` installs it and prints what
 ;; still has to be approved by hand.
+;;
+;; The aliases live in mods.kbd, because one of them does differ by OS. Each
+;; stow package carries its own copy, so stow selects the variant. kanata
+;; resolves an include against the directory of the config file it opened, and
+;; that directory is ~/.config/kanata, not this repository. The symlink that
+;; stow puts there does not change the lookup. arch/.config/kanata/mods.kbd
+;; explains what differs and why.
 
 ;; defsrc is still necessary
 (defcfg
@@ -19,16 +26,8 @@
   hold-time 200
 )
 
-(defalias
-  a (multi f24 (tap-hold $tap-time $hold-time a lmet))
-  s (multi f24 (tap-hold $tap-time $hold-time s lalt))
-  d (multi f24 (tap-hold $tap-time $hold-time d lctl))
-  f (multi f24 (tap-hold $tap-time $hold-time f lsft))
-  j (multi f24 (tap-hold $tap-time $hold-time j rsft))
-  k (multi f24 (tap-hold $tap-time $hold-time k rctl))
-  l (multi f24 (tap-hold $tap-time $hold-time l lalt))
-  ; (multi f24 (tap-hold $tap-time $hold-time ; rmet))
-)
+;; defvar must come first — the included aliases read $tap-time and $hold-time.
+(include "mods.kbd")
 
 (deflayer base
   @a @s @d @f @j @k @l @;
