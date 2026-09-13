@@ -1,0 +1,4 @@
+# kanata injects keystrokes through /dev/uinput, which the kernel creates as
+# root-only. Give the uinput group access instead. static_node applies the
+# same mode and group to the node that devtmpfs creates when the module loads.
+KERNEL=="uinput", MODE="0660", GROUP="uinput", OPTIONS+="static_node=uinput"

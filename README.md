@@ -103,7 +103,7 @@ Hyprland.
 | [glow](https://github.com/charmbracelet/glow) | Markdown renderer for the terminal | brew |
 | [jq](https://jqlang.org) | JSON processor | brew |
 | [fd](https://github.com/sharkdp/fd) | Fast `find` replacement | brew |
-| [kanata](https://github.com/jtroo/kanata) | Software keyboard remapper | brew (macOS also pulls in Karabiner-Elements for its VirtualHIDDevice driver, which needs manual approval) |
+| [kanata](https://github.com/jtroo/kanata) | Software keyboard remapper | package on Arch, brew elsewhere (see [kanata permissions](#kanata-permissions) below) |
 | [neovim](https://neovim.io) | Text editor | brew |
 | [ripgrep](https://github.com/BurntSushi/ripgrep) | Fast grep replacement (`rg`) | brew |
 | [wezterm](https://wezterm.org) | GPU-accelerated terminal emulator | apt (Fury repo, Linux) / brew cask (macOS) |
@@ -125,6 +125,29 @@ Hyprland.
 | [xclip](https://github.com/astrand/xclip) | Clipboard CLI tool |
 | [slop](https://github.com/naelstrof/slop) | Screen area selector |
 | [rofi](https://github.com/davatorium/rofi) | General purpose menu selector |
+
+#### kanata permissions
+
+kanata reads the keyboard through `/dev/input` and writes the remapped keys back
+through `/dev/uinput`. Both belong to root, so without setup kanata exits with:
+
+```
+[ERROR] Failed to open the output uinput device. Make sure you added the user
+executing kanata to the 'uinput' group [...]
+[ERROR] Permission denied (os error 13)
+```
+
+On Linux `make install-kanata` runs `uinput-config` first, which creates the
+`uinput` system group, adds you to `input` and `uinput`, installs
+`system/etc/udev/rules.d/99-uinput.rules` so the node is `root:uinput` mode
+0660, and installs `system/etc/modules-load.d/uinput.conf` so the module loads
+at boot. Log out and back in for the group change to take effect, or run
+`newgrp uinput -c kanata` once in the current shell. See the [kanata Linux
+setup docs](https://github.com/jtroo/kanata/blob/main/docs/setup-linux.md).
+
+On macOS kanata needs Karabiner's VirtualHIDDevice driver instead. The target
+installs Karabiner-Elements and prints what you still have to approve under
+System Settings > Privacy & Security.
 
 #### Fonts (Nerd Fonts)
 

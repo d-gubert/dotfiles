@@ -51,7 +51,8 @@ all: essential development utilities
 # brave-browser — official install script
 # docker        — official script (docker-ce, not the apt docker.io snap)
 # enpass        — vendor apt repo on Linux, cask on macOS
-# kanata        — macOS also needs the Karabiner VirtualHIDDevice driver
+# kanata        — Linux also needs the uinput group and a udev rule; macOS
+#                 needs the Karabiner VirtualHIDDevice driver
 # node          — installed by volta, and neovim wants it on PATH
 # stow          — needed before any config is linked
 # wezterm       — vendor apt repo on Linux, cask on macOS
