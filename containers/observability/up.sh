@@ -3,16 +3,15 @@
 # Starts the local observability stack (./docker-compose.yml) if it is not
 # already running.
 #
-# Runs on the HOST. A devbox profile calls it from its own initialize.sh — see
-# ../devcontainer/projects/rocketchat/initialize.sh — because the profile
-# attaches the container to the `observability` network as *external*, and
-# compose refuses to create a container whose external network is missing. There
-# is no "start it later, from inside".
+# Runs on the HOST, and nothing in a devbox sandbox calls it any more: a sandbox
+# is a microVM and cannot join this stack's network, so it pushes OTLP to
+# host.docker.internal:4317 instead and needs the stack up in its own right.
 #
-# Safe to run by hand too: `containers/observability/up.sh`.
+# Start it by hand — `containers/observability/up.sh` — or leave it to whatever
+# else calls it. A profile that depends on it can still call it from its own
+# initialize.sh, which runs on the host before the sandbox is created.
 #
-# Idempotent by design — it runs on every container create and every start of
-# every workspace that opts in, and all but the first find the stack already up.
+# Idempotent by design, and all but the first call find the stack already up.
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -22,17 +21,16 @@ log() { printf '\033[1;34m[observability]\033[0m %s\n' "$1"; }
 warn() { printf '\033[1;33m[observability] WARNING:\033[0m %s\n' "$1" >&2; }
 
 if ! docker info >/dev/null 2>&1; then
-	# Nothing to add: without docker there is no container to create either, and
-	# the caller is about to say so in its own words.
+	# Nothing to add: without docker there is no stack to start, and the caller
+	# is about to say so in its own words.
 	warn "docker is not available — skipping"
 	exit 0
 fi
 
-# -p is not redundant: `devbox` exports COMPOSE_PROJECT_NAME for the workspace's
-# own container, and the env var outranks the `name:` in the compose file.
-# Without it this stack is adopted into that workspace's project, where `devbox
-# down` — which matches by project label — would take the whole metrics history
-# down with the workspace.
+# -p pins the project name against a COMPOSE_PROJECT_NAME inherited from the
+# caller's environment, which outranks the `name:` in the compose file. Without
+# it this stack can be adopted into somebody else's project and torn down with
+# it, taking the whole metrics history along.
 compose() { docker compose -p observability -f "$compose_file" "$@"; }
 
 # `up -d` alone would work, but it re-pulls and recreates on any config drift and

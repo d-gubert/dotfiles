@@ -1,9 +1,0 @@
-# Extra egress allowlist for the playwright-deps feature — merged into the
-# firewall's list only while that feature is declared in devcontainer.json.
-# See ../claude-code/init-firewall.sh.
-
-# Where `playwright install` fetches browser builds from. The CDN moved hosts
-# between versions, so all three are listed.
-cdn.playwright.dev
-playwright.azureedge.net
-playwright.download.prss.microsoft.com

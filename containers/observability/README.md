@@ -16,9 +16,10 @@ http://127.0.0.1:3200                   # Tempo
 `../proxy` serves the same four under names — `http://grafana.localhost` and so
 on — if it is up. It is optional and the ports above never stop working.
 
-`up.sh` is idempotent and cheap when the stack is already up, which is why
-devbox calls it from `../devcontainer/scripts/ensure-observability.sh` on every
-container create and start.
+`up.sh` is idempotent and cheap when the stack is already up. Nothing in a
+devbox sandbox calls it any more — a sandbox is a microVM and cannot join this
+stack's network — so start it by hand, or from a profile's `initialize.sh`,
+which runs on the host before the sandbox is created.
 
 ## The two ways in
 
@@ -33,10 +34,13 @@ pushes, and Rocket.Chat only exposes an endpoint.
 ## Adding a source that pushes
 
 Point it at the collector and let it send. For Claude Code that is nine
-variables. A devbox container gets them from the `claude-code` feature, not from
-its profile — see `../devcontainer/scripts/claude-code/initialize.sh` for the
-annotated set. Every workspace that runs Claude Code therefore reports, whatever
-repository it is.
+variables. A devbox sandbox gets them from the generated kit, not from its
+profile — see `../sandbox/scripts/build-kit.sh` for the annotated set. Every
+workspace that runs Claude Code therefore reports, whatever repository it is.
+
+A sandbox sends to `http://host.docker.internal:4317` rather than to
+`otel-collector:4317`: it has its own network namespace, so the only route to
+this stack is the port the collector publishes on the host.
 
 The host's own Claude Code gets the same nine from `../../common/.zshrc`, which
 exports them only when `claude` is installed and the collector answers on
@@ -79,10 +83,12 @@ total survives a collector restart and a reconstructed one does not.
 
 ## Adding a source that is scraped
 
-Attach the container to the `observability` network and give it these labels. A
-devbox container is attached already, by
-`../devcontainer/scripts/ensure-observability.sh`, so there the labels are the
-whole job:
+Attach the container to the `observability` network and give it these labels.
+
+> This does **not** reach a devbox sandbox. Discovery runs against the host
+> Docker daemon and a sandbox's containers live in the VM's own daemon; see the
+> note on the `devbox` job in `prometheus/prometheus.yml`. What follows applies
+> to containers started on the host daemon.
 
 | Label | |
 | --- | --- |
@@ -91,7 +97,6 @@ whole job:
 | `devbox.metrics.path` | the metrics path. Defaults to `/metrics`. |
 | `devbox.workspace` | for a devbox container, which checkout it is. Becomes a `workspace` label. |
 
-`../devcontainer/projects/rocketchat/compose/service.yml` is the worked example.
 Nothing has to be published to the host and nothing has to be added here:
 discovery picks the container up within `refresh_interval` of it starting, and
 drops it when it stops.

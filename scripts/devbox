@@ -1,45 +1,43 @@
 #!/usr/bin/env bash
 #
-# devbox — run the dotfiles' dev container over whatever checkout you are in.
+# devbox — run the dotfiles' dev sandbox over whatever checkout you are in.
 #
-# The devcontainer config lives in the dotfiles (containers/devcontainer), not in
-# the repo being worked on: one definition, one image, one set of shared caches
-# and logins, and no `.devcontainer/` to add to somebody else's project. This
-# script is what joins the two — it points the devcontainer CLI at that config
-# with `--workspace-folder` set to your pwd, and derives everything the config
-# needs from that path:
+# The sandbox definition lives in the dotfiles (containers/sandbox), not in the
+# repo being worked on: one definition, one template image, one set of shared
+# caches and logins, and nothing to add to somebody else's project. This script
+# is what joins the two — it drives Docker Sandboxes (`sbx`), which runs each
+# workspace in its own microVM with its own kernel, its own Docker daemon and its
+# own network namespace, and derives everything that VM needs from your pwd:
 #
-#   DEVBOX_WORKSPACE       the checkout, on the host
-#   DEVBOX_WORKSPACE_SLUG  the same path minus $HOME — the workspace path in the
-#                          container is /workspaces/<slug>, so every checkout has
-#                          a distinct one (see devcontainer.json)
-#   DEVBOX_PROFILE         the projects/<name> profile matching this path
-#   DEVBOX_STATE           per-workspace state: the generated compose override,
-#                          the staged Claude Code skills
-#   COMPOSE_PROJECT_NAME   read by the devcontainer CLI, so two checkouts never
-#                          share a container
+#   DEVBOX_WORKSPACE   the checkout, on the host — and the same path inside the
+#                      sandbox, which is how sbx mounts every workspace
+#   DEVBOX_PROFILE     the projects/<name> profile matching this path
+#   DEVBOX_STATE       per-workspace state: the generated kit, the template tar
+#   DEVBOX_CACHES      the cache directories every workspace shares
+#   DEVBOX_TOOLS       durable scratch for this profile's toolchains
+#   DEVBOX_SANDBOX     the sbx sandbox name, so two checkouts never share one
 #
 # All of them are derived, never stored, so any subcommand run from the same
-# directory resolves to the same container.
+# directory resolves to the same sandbox.
 #
 # Usage: devbox [--profile <name>] [--workspace <path>] <command> [args...]
 #
-#   up            create/start the container for this workspace
+#   up            create/start the sandbox for this workspace
 #   shell         a shell inside it (default: zsh)
 #   exec CMD...   run a command inside it
-#   claude ARGS   run Claude Code with --dangerously-skip-permissions
-#   stop          stop the container, keep it
-#   down          stop and remove it (shared caches and logins survive)
+#   claude ARGS   attach Claude Code to it
+#   stop          stop the sandbox, keep it
+#   down          delete it, and its Claude sessions and GitNexus index with it
 #   rebuild       recreate it from scratch (--no-cache to rebuild the image too)
-#   status        what is running for this workspace
+#   template      build the template image and load it into the sbx runtime
+#   status        what is running for this workspace, and what egress it has
 #   env           print everything resolved for this workspace
 #
-# `shell`, `exec` and `claude` start the container first if it is not running.
+# `shell`, `exec` and `claude` start the sandbox first if it is not running.
 set -euo pipefail
 
 self="$(readlink -f "${BASH_SOURCE[0]}")"
-DEVBOX_HOME="$(cd "$(dirname "$self")/../containers/devcontainer" && pwd)"
-config="$DEVBOX_HOME/devcontainer.json"
+DEVBOX_HOME="$(cd "$(dirname "$self")/../containers/sandbox" && pwd)"
 
 exists() { command -v "$1" >/dev/null 2>&1; }
 
@@ -74,29 +72,21 @@ cmd="${1:-}"
 [ $# -gt 0 ] && shift || true
 [ -n "$cmd" ] || usage 1
 
-command -v docker >/dev/null || die "docker is not installed"
-command -v devcontainer >/dev/null ||
-	die "the devcontainer CLI is not installed — \`volta install @devcontainers/cli\`"
+exists sbx ||
+	die "Docker Sandboxes is not installed — \`sudo apt-get install docker-sbx\`, then \`sbx login\`"
 
 # --- Everything derived from the workspace path -------------------------------
 
 workspace="$(cd "$workspace" 2>/dev/null && pwd -P)" || die "no such directory: $workspace"
 
-# The container's workspace path is /workspaces/<slug>. Relative to $HOME when it
-# is under it, which keeps the path both readable and unique — the checkout's own
-# name stays the leaf, so it is what shows up in the shell prompt.
-case "$workspace" in
-"$HOME"/*) slug="${workspace#"$HOME"/}" ;;
-*) slug="${workspace#/}" ;;
-esac
-
-# Compose project name: the checkout's directory name for readability, plus a
-# hash of the full path for uniqueness — two repos with a `main` worktree each
-# must not land in the same project. Must match [a-z0-9][a-z0-9_-]*.
+# The sandbox name: the checkout's directory name for readability, plus a hash of
+# the full path for uniqueness — two repos with a `main` worktree each must not
+# land in the same sandbox. sbx wants at least two characters, a letter or digit
+# first, then letters, digits, hyphens and periods.
 hash="$(printf '%s' "$workspace" | sha256sum | cut -c1-8)"
-leaf="$(basename "$workspace" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9_-' '-')"
+leaf="$(basename "$workspace" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9-' '-')"
 leaf="${leaf%-}"
-project="devbox-${leaf:-workspace}-$hash"
+sandbox="devbox-${leaf:-workspace}-$hash"
 
 if [ -z "$profile" ]; then
 	source "$DEVBOX_HOME/scripts/lib/profile.sh"
@@ -104,128 +94,265 @@ if [ -z "$profile" ]; then
 fi
 [ -d "$DEVBOX_HOME/projects/$profile" ] || warn "no profile directory projects/$profile"
 
-state="${XDG_STATE_HOME:-$HOME/.local/state}/devbox/$project"
+state="${XDG_STATE_HOME:-$HOME/.local/state}/devbox/$sandbox"
+caches="${XDG_CACHE_HOME:-$HOME/.cache}/devbox"
+tools="${XDG_DATA_HOME:-$HOME/.local/share}/devbox/tools/$profile"
+
+# One template for every workspace, whatever its profile: the image is the
+# generic toolchain, and a profile's own toolchain goes to $DEVBOX_TOOLS.
+template="devbox:latest"
 
 export DEVBOX_HOME
 export DEVBOX_WORKSPACE="$workspace"
-export DEVBOX_WORKSPACE_SLUG="$slug"
 export DEVBOX_PROFILE="$profile"
 export DEVBOX_STATE="$state"
-export COMPOSE_PROJECT_NAME="$project"
+export DEVBOX_CACHES="$caches"
+export DEVBOX_TOOLS="$tools"
+export DEVBOX_SANDBOX="$sandbox"
+export DEVBOX_TEMPLATE="$template"
 
-# devcontainer.json includes $DEVBOX_STATE/docker-compose.overrides.yml, which
-# initializeCommand is what actually writes — but the CLI reads the compose files
-# to work out what to build, and on a first run that file does not exist yet.
-# A valid empty stub costs nothing and keeps the first `up` from failing on it.
-#
-# Called only by the subcommands that invoke the CLI, so `status` and `env` stay
-# free of side effects on a workspace that has never been up.
-prepare_state() {
-	mkdir -p "$state"
-	[ -f "$state/docker-compose.overrides.yml" ] && return 0
-	printf 'services:\n  app: {}\n' >"$state/docker-compose.overrides.yml"
-}
-
-# --- Talking to the container -------------------------------------------------
-
-# The flags go immediately after the subcommand, never at the end: `exec` takes
-# the command to run as a positional, and anything after it is passed through as
-# that command's own arguments — a trailing --config is simply ignored, and the
-# CLI then looks for a .devcontainer/ in the workspace that isn't there.
-dc() {
-	local sub="$1"
-	shift
-	devcontainer "$sub" --workspace-folder "$workspace" --config "$config" "$@"
-}
+# --- Talking to the sandbox ---------------------------------------------------
 
 running() {
-	[ -n "$(docker ps -q --filter "label=com.docker.compose.project=$project" 2>/dev/null)" ]
+	# `sbx ls -q` lists every sandbox, running or stopped, one name per line.
+	sbx ls -q 2>/dev/null | grep -qx "$sandbox"
+}
+
+# Both are interactive by default and must not be when the caller is a pipe —
+# `devbox exec cat file > out` has to stay a file, not a terminal capture.
+tty_flags() {
+	if [ -t 0 ] && [ -t 1 ]; then printf -- '-it'; else printf -- '-i'; fi
+}
+
+# The extra host paths this sandbox gets, beyond the workspace itself. Each is
+# mounted at the same absolute path it has on the host, which is what lets
+# build-kit.sh point YARN_GLOBAL_FOLDER and the rest straight at them.
+#
+# A path inside the workspace is skipped: the workspace mount already carries it,
+# and sbx would be asked to mount the same subtree twice. That is not
+# hypothetical — running `devbox` inside these dotfiles makes $DEVBOX_HOME
+# exactly that case.
+mounts() {
+	local path
+	{
+		# This directory: the scripts a profile's setup.sh runs from, the profile
+		# files themselves. Read-only, so nothing in the sandbox can edit the
+		# dotfiles — which is also why editing a script here only costs a
+		# `devbox rebuild`, never an image rebuild.
+		printf '%s:ro\n' "$DEVBOX_HOME"
+		bash "$DEVBOX_HOME/scripts/init-worktree.sh"
+		bash "$DEVBOX_HOME/scripts/ensure-caches.sh"
+	} | while IFS= read -r path; do
+		case "${path%:ro}" in
+		"$workspace" | "$workspace"/*) continue ;;
+		esac
+		printf '%s\n' "$path"
+	done
+}
+
+# The allowlist in the generated kit only bites if the machine's global policy
+# denies by default. A kit's rules are added *on top* of that policy, so under
+# `allow-all` — or `balanced`, which grants the usual AI services and package
+# registries — the sandbox reaches more than the kit's list, and `claude` in here
+# is running on a weaker assumption than the README describes.
+#
+# Warns rather than blocks, and warns whenever it cannot see `deny-all`, which
+# includes the case where the policy could not be read at all. Being wrong in
+# that direction costs a line of output; being wrong the other way is silent.
+check_policy() {
+	local policies
+	policies="$(sbx policy ls 2>&1)" || {
+		warn "could not read the sandbox policy: $policies"
+		return 0
+	}
+	case "$policies" in
+	*deny-all*) return 0 ;;
+	esac
+	warn "the machine's global sandbox policy is not deny-all, so this sandbox can reach"
+	warn "more than the kit's allowlist. Tighten it with: sbx policy init deny-all"
+}
+
+# Everything that has to exist on the host before `sbx create` runs: the cache
+# directories, the generated kit, and the template image the first time.
+prepare() {
+	mkdir -p "$state"
+	if ! sbx template ls 2>/dev/null | grep -q "$template"; then
+		log "template $template is not loaded yet — building it"
+		exists docker || die "docker is not installed — it is what builds the template image"
+		bash "$DEVBOX_HOME/scripts/build-template.sh"
+	fi
+	bash "$DEVBOX_HOME/scripts/build-kit.sh"
+}
+
+# A profile's `ports` file, as --publish flags. DEVBOX_PORTS (comma or space
+# separated) overrides the file, which is how you pin the host port a second
+# workspace of the same profile gets.
+#
+# Pinning is not required: ports_resolve moves any host port something else
+# already holds to the next free one and warns. Without it the create fails over
+# a port clash and you get no sandbox at all.
+publish_flags() {
+	local dir="$DEVBOX_HOME/projects/$profile" list line
+	if [ -n "${DEVBOX_PORTS:-}" ]; then
+		list="$(printf '%s' "$DEVBOX_PORTS" | tr ', ' '\n\n' | grep -v '^$' || true)"
+	elif [ -f "$dir/ports" ]; then
+		list="$(sed 's/#.*//; s/[[:space:]]//g' "$dir/ports" | grep -v '^$' || true)"
+	else
+		return 0
+	fi
+	[ -n "$list" ] || return 0
+
+	source "$DEVBOX_HOME/scripts/lib/ports.sh"
+	while IFS= read -r line; do
+		[ -n "$line" ] || continue
+		printf -- '--publish\n%s\n' "$line"
+	done < <(printf '%s\n' "$list" | ports_resolve)
+}
+
+create() {
+	local args=(create claude "$workspace")
+	local path
+
+	while IFS= read -r path; do
+		[ -n "$path" ] && args+=("$path")
+	done < <(mounts)
+
+	args+=(--name "$sandbox" --template "$template" --kit "$state/kit")
+
+	while IFS= read -r path; do
+		[ -n "$path" ] && args+=("$path")
+	done < <(publish_flags)
+
+	log "creating $sandbox"
+	sbx "${args[@]}"
 }
 
 ensure_up() {
-	running && return 0
-	log "container is not running — starting it"
-	prepare_state
-	dc up
+	if ! running; then
+		log "sandbox does not exist yet — creating it"
+		prepare
+		check_policy
+		create
+		return
+	fi
+	# `sbx exec` starts a stopped sandbox on its own, so there is no `start`
+	# to call and nothing to test first.
+	sbx exec "$sandbox" -- true >/dev/null
 }
-
-# `docker compose` finds a project by label, so no -f is needed for anything that
-# operates on what is already there.
-compose() { docker compose -p "$project" "$@"; }
 
 case "$cmd" in
 up)
 	log "workspace $workspace"
 	log "profile   $profile"
-	log "project   $project"
-	prepare_state
-	dc up "$@"
+	log "sandbox   $sandbox"
+	ensure_up
 	;;
 
 rebuild)
-	extra=()
+	prepare_args=()
 	for arg in "$@"; do
-		[ "$arg" = "--no-cache" ] && extra+=(--build-no-cache)
+		[ "$arg" = "--no-cache" ] && prepare_args+=(--no-cache)
 	done
-	log "recreating $project"
-	prepare_state
-	# --remove-existing-container is what makes this a rebuild rather than a
-	# restart: create-time hooks (on-create, the profile's setup.sh) run again.
-	dc up --remove-existing-container "${extra[@]}"
+	if [ ${#prepare_args[@]} -gt 0 ]; then
+		exists docker || die "docker is not installed — it is what builds the template image"
+		bash "$DEVBOX_HOME/scripts/build-template.sh" "${prepare_args[@]}"
+	fi
+	log "recreating $sandbox"
+	# The sandbox is deleted rather than restarted, which is what makes this a
+	# rebuild: the kit's setup.install — the git identity, the profile's setup.sh
+	# — runs once per create and only a fresh sandbox runs it again.
+	#
+	# It also deletes the kit's volumes, so the Claude Code session history and
+	# the GitNexus index for this workspace go with it. The shared caches and the
+	# logins do not: they are host directories and a host secret store.
+	running && sbx rm --force "$sandbox"
+	prepare
+	check_policy
+	create
 	;;
 
 shell)
 	ensure_up
 	if [ $# -gt 0 ]; then
-		dc exec zsh -lc "$*"
+		sbx exec "$(tty_flags)" --workdir "$workspace" "$sandbox" -- zsh -lc "$*"
 	else
-		dc exec zsh
+		sbx exec "$(tty_flags)" --workdir "$workspace" "$sandbox" -- zsh -l
 	fi
 	;;
 
 exec)
 	[ $# -gt 0 ] || die "exec needs a command"
 	ensure_up
-	dc exec "$@"
+	# `--` before the command: everything after it is the command's own, so
+	# `devbox exec yarn --version` cannot have its --version read as an sbx flag.
+	sbx exec "$(tty_flags)" --workdir "$workspace" "$sandbox" -- "$@"
 	;;
 
 claude)
 	ensure_up
-	# The whole point of the egress firewall: no permission prompt reviews a tool
-	# call, but the call runs in a container that can only reach the allowlist,
-	# as a non-root user (the CLI refuses this flag as root). See the README.
+	# No --dangerously-skip-permissions here any more: it is the built-in `claude`
+	# kit's own entrypoint. What made it defensible has not changed shape — no
+	# permission prompt reviews a tool call, but the call runs as a non-root user
+	# inside a microVM that can only reach the kit's allowlist. What did change is
+	# that the boundary is now the VM and the runtime's egress proxy, not iptables
+	# rules the container applied to itself. See the README.
 	exists herdr && export HERDR_AGENT=claude
-	dc exec claude --dangerously-skip-permissions "$@"
+	if [ $# -gt 0 ]; then
+		sbx run --name "$sandbox" -- "$@"
+	else
+		sbx run --name "$sandbox"
+	fi
 	;;
 
 stop)
-	log "stopping $project"
-	compose stop
+	log "stopping $sandbox"
+	sbx stop "$sandbox"
 	;;
 
 down)
-	log "removing $project"
-	# No -v: the shared caches and logins are external volumes and out of reach
-	# either way, but a profile's per-workspace volumes (node_modules and the
-	# like) are not, and they are expensive to rebuild.
-	compose down
+	log "deleting $sandbox"
+	# --force because there is no question to ask: `devbox down` is the answer.
+	#
+	# Unlike the compose `down` this replaces, this DOES take the sandbox's
+	# volumes — Claude Code's session history for this workspace, the GitNexus
+	# index — because sbx has no way to keep them without the sandbox. The shared
+	# caches and the logins survive: they are host directories and a host secret
+	# store, both outside the VM. Use `stop` to keep the sandbox.
+	sbx rm --force "$sandbox"
+	;;
+
+template)
+	exists docker || die "docker is not installed — it is what builds the template image"
+	mkdir -p "$state"
+	bash "$DEVBOX_HOME/scripts/build-template.sh" "$@"
 	;;
 
 status)
 	log "workspace $workspace"
 	log "profile   $profile"
-	log "project   $project"
-	compose ps
+	log "sandbox   $sandbox"
+	if running; then
+		sbx ls | awk -v n="$sandbox" 'NR == 1 || $0 ~ n'
+		# What this sandbox may actually reach, which is the kit's allowlist
+		# merged with whatever the machine's global policy says.
+		sbx policy ls "$sandbox"
+	else
+		log "not created — \`devbox up\`"
+	fi
 	;;
 
 env)
 	printf 'DEVBOX_HOME=%s\n' "$DEVBOX_HOME"
 	printf 'DEVBOX_WORKSPACE=%s\n' "$DEVBOX_WORKSPACE"
-	printf 'DEVBOX_WORKSPACE_SLUG=%s\n' "$DEVBOX_WORKSPACE_SLUG"
 	printf 'DEVBOX_PROFILE=%s\n' "$DEVBOX_PROFILE"
 	printf 'DEVBOX_STATE=%s\n' "$DEVBOX_STATE"
-	printf 'COMPOSE_PROJECT_NAME=%s\n' "$COMPOSE_PROJECT_NAME"
-	printf 'container workspace=/workspaces/%s\n' "$DEVBOX_WORKSPACE_SLUG"
+	printf 'DEVBOX_CACHES=%s\n' "$DEVBOX_CACHES"
+	printf 'DEVBOX_TOOLS=%s\n' "$DEVBOX_TOOLS"
+	printf 'DEVBOX_SANDBOX=%s\n' "$DEVBOX_SANDBOX"
+	printf 'DEVBOX_TEMPLATE=%s\n' "$DEVBOX_TEMPLATE"
+	# The one line that used to differ from its host counterpart. It no longer
+	# does: sbx mounts a workspace at the path it has on the host.
+	printf 'sandbox workspace=%s\n' "$DEVBOX_WORKSPACE"
 	;;
 
 *)

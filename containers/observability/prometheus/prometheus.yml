@@ -30,15 +30,24 @@ scrape_configs:
 
   # --- Everything that exposes /metrics in a container ------------------------
   #
+  # DORMANT since devbox moved to Docker Sandboxes. This job discovers targets
+  # through the HOST Docker daemon, and a devbox workspace no longer runs a
+  # container there — it runs a microVM with a Docker daemon of its own, which
+  # this proxy cannot enumerate and Prometheus has no route into. The job stays
+  # because it still works for any container started on the host daemon by hand.
+  #
+  # Getting a sandbox scraped again means publishing its metrics port to the host
+  # (a `ports` entry in the profile) and adding a static_configs target for
+  # host.docker.internal here. Claude Code's telemetry is unaffected either way:
+  # it pushes to the collector rather than being pulled.
+  #
   # Discovered from Docker labels rather than listed here, because the targets
-  # are devbox containers: one per workspace, created and destroyed as you switch
+  # were one container per workspace, created and destroyed as you switch
   # branches, each on an IP Docker picks. A static target list would name a
   # container that is usually not running, and would monitor exactly one
   # workspace out of however many are up.
   #
-  # A container opts in with three labels — see
-  # ../../devcontainer/projects/rocketchat/compose/service.yml for a worked
-  # example:
+  # A container opts in with three labels:
   #
   #   devbox.metrics.port   required, the port /metrics listens on IN the
   #                         container. Its presence is what makes the container
@@ -63,7 +72,7 @@ scrape_configs:
         refresh_interval: 15s
         # REQUIRED here, and its default is the opposite. Left true, a container
         # on several networks is reported on ONE of them — the first by name —
-        # and a devbox container is on its own bridge, the shared MongoDB's
+        # and such a container is on its own bridge, the shared MongoDB's
         # network and this one, of which `observability` sorts last. Every target
         # then arrives with an address Prometheus has no route to, the `keep`
         # below drops all of them, and the job discovers nothing at all.
