@@ -775,6 +775,8 @@ function zvm_after_init() {
 #
 # IS_SANDBOX is set by sbx. The script tests it again, so the guard here only
 # saves a source on the host.
-[[ -n $IS_SANDBOX ]] && source $DOTFILES_SCRIPTS/lib/sandbox.sh
+if [[ -n $IS_SANDBOX ]]; then
+	source $DOTFILES_SCRIPTS/lib/sandbox.sh
+fi
 
 # [ -f "$DOTFILES_SCRIPTS/watch_rocket.sh" ] && zsh -c "$DOTFILES_SCRIPTS/watch_rocket.sh start" &|
