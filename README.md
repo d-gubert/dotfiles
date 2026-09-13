@@ -244,8 +244,9 @@ Omarchy ships its own defaults for Hyprland, the shell and the terminal. Only th
 | `.config/hypr/monitors.lua` | monitor scale `0.8`, so the 13.3" 1080p panel gets a logical size of 2400x1350 and the interface shrinks by a fifth. `GDK_SCALE` stays `1` because it takes integers only |
 | `.config/hypr/input.lua` | touchpad natural scrolling |
 | `.config/hypr/bindings.lua` | `SUPER + {j,k,l,;}` move the focus left, down, up and right, and `SUPER + B` opens the browser — the same keys as my i3 config |
-| `.config/hypr/looknfeel.lua` | `gaps_in` and `gaps_out` both `0`. The border still marks the focused window |
+| `.config/hypr/looknfeel.lua` | `gaps_in` and `gaps_out` both `0`. The border still marks the focused window. Opacity `1 1` for the terminal, so the wallpaper does not show through the text |
 | `.config/alacritty/alacritty.toml` | font size `8` |
+| `.config/omarchy/shell.json` | adds the `omarchy.active-window` widget to the left of the bar, after the workspaces. It prints the title of the focused window |
 | `.config/omarchy/shell.toml` | bar font base size `11` |
 | `.config/xdg-terminals.list` | wezterm as the default terminal for `xdg-terminal-exec`, which is what `$TERMINAL` points at |
 | `.local/share/applications/org.wezfurlong.wezterm.desktop` | adds the `X-TerminalArg*` keys the wezterm package leaves out, so `xdg-terminal-exec --dir` and `--app-id` reach wezterm |
