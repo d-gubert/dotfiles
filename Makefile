@@ -47,45 +47,29 @@ all: essential development utilities
 # ─────────────────────────────────────────────────────────────────────────────
 # Essential
 # ─────────────────────────────────────────────────────────────────────────────
-# alacritty  — not in brew (deprecated/Linux); use apt
-# arandr     — apt
-# bat        — brew
-# btop       — brew
-# docker     — official script (docker-ce, not the apt docker.io snap)
-# ffmpeg     — brew
-# fzf        — brew
-# gh         — brew
-# glow       — brew
-# i3         — apt (X11 session manager, not in brew for Linux)
-# jq         — brew
-# kanata     — brew
-# neovim     — brew
-# ripgrep    — brew
-# stow       — brew
-# tmux       - brew
-# xclip      — apt
-# zellij     — brew
-# zsh        — brew
+# ESSENTIAL_TOOLS below covers everything that is only a package name. These
+# are the ones that are not:
+#
+# brave-browser — official install script
+# docker        — official script (docker-ce, not the apt docker.io snap)
+# enpass        — vendor apt repo on Linux, cask on macOS
+# kanata        — macOS also needs the Karabiner VirtualHIDDevice driver
+# node          — installed by volta, and neovim wants it on PATH
+# stow          — needed before any config is linked
+# wezterm       — vendor apt repo on Linux, cask on macOS
+# zsh           — also clones oh-my-zsh and four plugins
 
 .PHONY: base-essential
-base-essential: homebrew \
+base-essential: $(PKG_PREREQ) \
 	stow \
 	install-brave-browser \
 	install-enpass \
 	install-wezterm \
 	install-zsh \
-	install-bat \
-	install-btop \
 	install-docker \
-	install-ffmpeg \
-	install-fzf \
-	install-glow \
-	install-jq \
-	install-fd \
 	install-kanata \
-	install-neovim \
-	install-ripgrep \
-	install-herdr
+	install-node
+	@$(call pkg_add,$(ESSENTIAL_TOOLS))
 
 .PHONY: essential
 essential: base-essential $(EXTRA_ESSENTIAL)
@@ -93,44 +77,36 @@ essential: base-essential $(EXTRA_ESSENTIAL)
 # ─────────────────────────────────────────────────────────────────────────────
 # Development
 # ─────────────────────────────────────────────────────────────────────────────
-# ast-grep — brew
+# DEVELOPMENT_TOOLS below covers the plain packages. These are the rest:
+#
 # dvm      — official install script (https://dvm.deno.dev) — Deno Version Manager
-# lazygit  — brew
 # meteor   — official install script (https://www.meteor.com/developers/install)
-# vi-mongo — brew
-# tealdeer — brew
+# node     — installed by volta
+# vi-mongo — brew, but its tap must be trusted first
 # volta    — official install script (https://volta.sh)
 
 .PHONY: development
-development: homebrew \
+development: $(PKG_PREREQ) \
 	stow \
-	install-ast-grep \
 	install-dvm \
-	install-gh \
-	install-lazygit \
 	install-meteor \
 	install-node \
-	install-tealdeer \
 	install-vi-mongo \
 	install-volta
+	@$(call pkg_add,$(DEVELOPMENT_TOOLS))
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Utilities (Optional)
 # ─────────────────────────────────────────────────────────────────────────────
-# carapace    — brew
-# jwt-ui      — brew
-# lazyjira    — brew
-# tree-sitter — brew
-# spotatui    - prebuilt .deb from GitHub releases (not on the Linux brew tap)
+# UTILITY_TOOLS below covers the plain packages. This is the rest:
+#
+# spotatui — prebuilt .deb from GitHub releases (not on the Linux brew tap)
 
 .PHONY: utilities
-utilities: homebrew \
+utilities: $(PKG_PREREQ) \
 	stow \
-	install-carapace \
-	install-jwt-ui \
-	install-lazyjira \
-	install-spotatui \
-	install-tree-sitter
+	install-spotatui
+	@$(call pkg_add,$(UTILITY_TOOLS))
 
 # ─────────────────────────────────────────────────────────────────────────────
 # System pre-requisites
@@ -139,14 +115,14 @@ utilities: homebrew \
 # Prerequisite for the `curl | sh` script installers (homebrew, docker, volta, dvm, meteor)
 .PHONY: install-curl
 install-curl:
-	@if command -v curl >/q; then echo "[curl] already installed"; else \
+	@if command -v curl >/dev/null 2>&1; then echo "[curl] already installed"; else \
 		echo "[curl] installing via apt..."; \
 		sudo apt-get install -y curl; \
 	fi
 
 .PHONY: homebrew
 homebrew: install-curl
-	@if command -v brew >/q; then echo "[homebrew] already installed"; else \
+	@if command -v brew >/dev/null 2>&1; then echo "[homebrew] already installed"; else \
 		echo "[homebrew] installing..."; \
 		/bin/bash -c "$$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"; \
 		eval "$$($(BREW) shellenv)"; \
@@ -154,7 +130,7 @@ homebrew: install-curl
 
 .PHONY: install-stow
 install-stow: homebrew
-	@if command -v stow >/q; then echo "[stow] already installed"; else \
+	@if command -v stow >/dev/null 2>&1; then echo "[stow] already installed"; else \
 		echo "[stow] installing via brew..."; \
 		$(BREW_INSTALL) stow; \
 	fi
@@ -188,7 +164,7 @@ fonts: homebrew
 
 .PHONY: install-docker
 install-docker: install-curl
-	@if command -v docker >/q; then echo "[docker] already installed"; else \
+	@if command -v docker >/dev/null 2>&1; then echo "[docker] already installed"; else \
 		echo "[docker] installing via official script (docker-ce)..."; \
 		curl -fsSL https://get.docker.com | sudo sh; \
 		sudo usermod -aG docker $$USER; \
@@ -197,35 +173,35 @@ install-docker: install-curl
 
 .PHONY: install-brave-browser
 install-brave-browser: install-curl
-	@if command -v brave-browser >/q; then echo "[brave-browser] already installed"; else \
+	@if command -v brave-browser >/dev/null 2>&1; then echo "[brave-browser] already installed"; else \
 		echo "[brave-browser] installing via official script..."; \
 		curl -fsS https://dl.brave.com/install.sh | sh; \
 	fi
 
 .PHONY: install-volta
 install-volta: install-curl
-	@if command -v volta >/q; then echo "[volta] already installed"; else \
+	@if command -v volta >/dev/null 2>&1; then echo "[volta] already installed"; else \
 		echo "[volta] installing via official script..."; \
 		curl -fsSL https://get.volta.sh | bash; \
 	fi
 
 .PHONY: install-node
 install-node: install-volta
-	@if command -v node >/q; then echo "[node] already installed"; else \
+	@if command -v node >/dev/null 2>&1; then echo "[node] already installed"; else \
 		echo "[node] installing with volta..."; \
 		volta install node; \
 	fi
 
 .PHONY: install-dvm
 install-dvm: install-curl
-	@if command -v dvm >/q; then echo "[dvm] already installed"; else \
+	@if command -v dvm >/dev/null 2>&1; then echo "[dvm] already installed"; else \
 		echo "[dvm] installing via official script..."; \
 		curl -fsSL https://dvm.deno.dev | sh; \
 	fi
 
 .PHONY: install-meteor
 install-meteor: install-curl
-	@if command -v meteor >/q; then echo "[meteor] already installed"; else \
+	@if command -v meteor >/dev/null 2>&1; then echo "[meteor] already installed"; else \
 		echo "[meteor] installing via official script..."; \
 		curl -fsSL https://install.meteor.com | sh; \
 	fi
@@ -233,7 +209,7 @@ install-meteor: install-curl
 
 .PHONY: install-zsh
 install-zsh: homebrew install-curl
-	@if command -v zsh >/q; then echo "[zsh] already installed"; else \
+	@if command -v zsh >/dev/null 2>&1; then echo "[zsh] already installed"; else \
 		echo "[zsh] installing via brew..."; \
 		$(BREW_INSTALL) zsh; \
 	fi
@@ -299,161 +275,35 @@ install-tmux: pre-tmux
 # ─────────────────────────────────────────────────────────────────────────────
 # Package manager installation
 # ─────────────────────────────────────────────────────────────────────────────
+#
+# Each tool below is only a name in a package manager. A list holds them, not a
+# target each. mk/<family>.mk maps a tool to the package name that its own
+# package manager uses, through PKG_<tool>, and supplies PKG_INSTALL_CMD.
+#
+# Nothing guards these installs. brew, apt and pacman all skip a package that
+# is already present, so a guard only repeats work the package manager does.
 
+ESSENTIAL_TOOLS   := bat btop ffmpeg fd fzf glow herdr jq neovim ripgrep
+DEVELOPMENT_TOOLS := ast-grep gh lazygit tealdeer
+UTILITY_TOOLS     := carapace jwt-ui lazyjira tree-sitter
 
-.PHONY: install-bat
-install-bat: homebrew
-	@if command -v bat >/q; then echo "[bat] already installed"; else \
-		echo "[bat] installing via brew..."; \
-		$(BREW_INSTALL) bat; \
-	fi
+# No aggregate target installs these. Ask for them by name.
+STANDALONE_TOOLS  := rgx sttr zellij
 
-.PHONY: install-btop
-install-btop: homebrew
-	@if command -v btop >/q; then echo "[btop] already installed"; else \
-		echo "[btop] installing via brew..."; \
-		$(BREW_INSTALL) btop; \
-	fi
+PKG_TOOLS := $(ESSENTIAL_TOOLS) $(DEVELOPMENT_TOOLS) $(UTILITY_TOOLS) \
+             $(STANDALONE_TOOLS)
 
-.PHONY: install-jq
-install-jq: homebrew
-	@if command -v jq >/q; then echo "[jq] already installed"; else \
-		echo "[jq] installing via brew..."; \
-		$(BREW_INSTALL) jq; \
-	fi
+# The package name of a tool. It defaults to the name of the tool.
+pkg_of = $(or $(PKG_$(1)),$(1))
 
-.PHONY: install-fd
-install-fd: homebrew
-	@if command -v fd >/q; then echo "[fd] already installed"; else \
-		echo "[fd] installing via brew..."; \
-		$(BREW_INSTALL) fd; \
-	fi
+# Install a list of tools with one command. One transaction is faster than one
+# command per tool, and it asks for the password one time.
+pkg_add = $(PKG_INSTALL_CMD) $(foreach t,$(1),$(call pkg_of,$(t)))
 
-.PHONY: install-jwt-ui
-install-jwt-ui: homebrew
-	@if command -v jwt-ui >/q; then echo "[jwt-ui] already installed"; else \
-		echo "[jwt-ui] installing via brew..."; \
-		$(BREW_INSTALL) jwt-rs/jwt-ui/jwt-ui; \
-	fi
+# Every tool in PKG_TOOLS gets an install-<tool> target from this rule.
+.PHONY: $(addprefix install-,$(PKG_TOOLS))
+$(addprefix install-,$(PKG_TOOLS)): install-%: $(PKG_PREREQ)
+	@$(call pkg_add,$*)
 
-.PHONY: install-zellij
-install-zellij: homebrew
-	@if command -v zellij >/q; then echo "[zellij] already installed"; else \
-		echo "[zellij] installing via brew..."; \
-		$(BREW_INSTALL) zellij; \
-	fi
-
-.PHONY: install-herdr
-install-herdr: homebrew
-	@if command -v herdr >/q; then echo "[herdr] already installed"; else \
-		echo "[herdr] installing via brew..."; \
-		$(BREW_INSTALL) herdr; \
-	fi
-
-
-.PHONY: install-ffmpeg
-install-ffmpeg: homebrew
-	@if command -v ffmpeg >/q; then echo "[ffmpeg] already installed"; else \
-		echo "[ffmpeg] installing via apt..."; \
-		$(BREW_INSTALL) ffmpeg; \
-	fi
-
-.PHONY: install-fzf
-install-fzf: homebrew
-	@if command -v fzf >/q; then echo "[fzf] already installed"; else \
-		echo "[fzf] installing via brew..."; \
-		$(BREW_INSTALL) fzf; \
-	fi
-
-.PHONY: install-ripgrep
-install-ripgrep: homebrew
-	@if command -v rg >/q; then echo "[ripgrep] already installed"; else \
-		echo "[ripgrep] installing via brew..."; \
-		$(BREW_INSTALL) ripgrep; \
-	fi
-
-.PHONY: install-neovim
-install-neovim: homebrew install-node
-	@if command -v nvim >/q; then echo "[neovim] already installed"; else \
-		echo "[neovim] installing via brew..."; \
-		$(BREW_INSTALL) neovim; \
-	fi
-
-.PHONY: install-gh
-install-gh: homebrew
-	@if command -v gh >/q; then echo "[gh] already installed"; else \
-		echo "[gh] installing via brew..."; \
-		$(BREW_INSTALL) gh; \
-	fi
-
-.PHONY: install-glow
-install-glow: homebrew
-	@if command -v glow >/q; then echo "[glow] already installed"; else \
-		echo "[glow] installing via brew..."; \
-		$(BREW_INSTALL) glow; \
-	fi
-
-.PHONY: install-vi-mongo
-install-vi-mongo: homebrew
-	@if command -v vi-mongo >/q; then echo "[vi-mongo] already installed"; else \
-		echo "[vi-mongo] installing via brew..."; \
-		$(BREW) tap kopecmaciej/vi-mongo; \
-		$(BREW) trust kopecmaciej/vi-mongo; \
-		$(BREW_INSTALL) vi-mongo; \
-	fi
-
-.PHONY: install-lazygit
-install-lazygit: homebrew
-	@if command -v lazygit >/q; then echo "[lazygit] already installed"; else \
-		echo "[lazygit] installing via brew..."; \
-		$(BREW_INSTALL) lazygit; \
-	fi
-
-.PHONY: install-ast-grep
-install-ast-grep:
-	@if command -v ast-grep >/q || command -v sg >/q; then echo "[ast-grep] already installed"; else \
-		echo "[ast-grep] installing via brew..."; \
-		$(BREW_INSTALL) ast-grep; \
-	fi
-
-.PHONY: install-lazyjira
-install-lazyjira: homebrew
-	@if command -v lazyjira >/q; then echo "[lazyjira] already installed"; else \
-		echo "[lazyjira] installing via brew..."; \
-		$(BREW_INSTALL) textfuel/tap/lazyjira; \
-	fi
-
-.PHONY: install-rgx
-install-rgx: homebrew
-	@if command -v rgx >/q; then echo "[rgx] already installed"; else \
-		echo "[rgx] installing via brew..."; \
-		$(BREW_INSTALL) brevity1swos/tap/rgx; \
-	fi
-
-.PHONY: install-sttr
-install-sttr: homebrew
-	@if command -v sttr >/q; then echo "[sttr] already installed"; else \
-		echo "[sttr] installing via brew..."; \
-		$(BREW_INSTALL) sttr; \
-	fi
-
-.PHONY: install-tealdeer
-install-tealdeer: homebrew
-	@if command -v tldr >/q; then echo "[tealdeer] already installed"; else \
-		echo "[tealdeer] installing via brew..."; \
-		$(BREW_INSTALL) tealdeer; \
-	fi
-
-.PHONY: install-carapace
-install-carapace: homebrew
-	@if command -v carapace >/q; then echo "[carapace] already installed"; else \
-		echo "[carapace] installing via brew..."; \
-		$(BREW_INSTALL) carapace; \
-	fi
-
-.PHONY: install-tree-sitter
-install-tree-sitter:
-	@if $(BREW) info tree-sitter 2>&1 | grep -q Installed; then echo "[tree-sitter] already installed"; else \
-		echo "[tree-sitter] installing via brew..."; \
-		$(BREW_INSTALL) tree-sitter; \
-	fi
+# neovim drives some of its language servers through node.
+install-neovim: install-node
