@@ -1,30 +1,24 @@
-OS_NAME := $(shell uname)
-
-ifeq ($(OS_NAME),Darwin)
-BREW_PREFIX := /opt/homebrew
-else
-BREW_PREFIX := /home/linuxbrew/.linuxbrew
-endif
-
-# uname says Linux for both Ubuntu and Arch, so split them on /etc/os-release.
+# uname only tells Darwin from Linux, and the two Linux families need different
+# packages, so resolve one OS family name up front and let it select the file
+# that holds every OS-specific definition. Nothing below this point branches on
+# the OS.
+#
 # Omarchy reports ID=omarchy with ID_LIKE=arch and plain Arch reports ID=arch
-# with no ID_LIKE, so match either field -- and match it as a whole word, or the
-# "arch" inside "omarchy" would match on its own.
+# with no ID_LIKE, so the match reads both fields, whole-word -- the "arch"
+# inside "omarchy" would otherwise match on its own.
 #
 # Written without a `case` statement on purpose: an unbalanced `)` inside
 # $(shell ...) ends the call early and make expands the wrong thing.
-DISTRO_FAMILY := $(shell . /etc/os-release 2>/dev/null; echo " $$ID $$ID_LIKE " | grep -qw arch && echo arch || echo debian)
+OS_FAMILY := $(shell uname | grep -q Darwin && echo darwin || { . /etc/os-release 2>/dev/null; echo " $$ID $$ID_LIKE " | grep -qw arch && echo arch || echo debian; })
+
+# Defines BREW_PREFIX, STOW_OS_PKG, EXTRA_ESSENTIAL and every install target
+# whose recipe differs by OS.
+include mk/$(OS_FAMILY).mk
 
 # Dotfiles are split into stow packages: common/ holds everything that is
 # OS-agnostic, arch/, ubuntu/ and mac/ hold only what differs. Always stow
 # common plus the package for this OS.
-ifeq ($(OS_NAME),Darwin)
-STOW_PKGS := common mac
-else ifeq ($(DISTRO_FAMILY),arch)
-STOW_PKGS := common arch
-else
-STOW_PKGS := common ubuntu
-endif
+STOW_PKGS := common $(STOW_OS_PKG)
 
 BREW := $(BREW_PREFIX)/bin/brew
 BREW_INSTALL := $(BREW) install --no-ask
@@ -94,14 +88,7 @@ base-essential: homebrew \
 	install-herdr
 
 .PHONY: essential
-ifeq ($(OS_NAME),Darwin)
-essential: base-essential
-else
-essential: base-essential \
-	logind-config \
-	install-i3
-
-endif
+essential: base-essential $(EXTRA_ESSENTIAL)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Development
@@ -182,46 +169,6 @@ stow: install-stow
 	@echo
 	@stow -R --no-folding -t ~ $(STOW_PKGS)
 
-ifeq ($(OS_NAME), Linux)
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Linux exclusive targets
-# ─────────────────────────────────────────────────────────────────────────────
-
-# logind — make the laptop do nothing when the lid closes on AC power
-#          (battery still suspends). Lives under system/ mirroring /.
-
-.PHONY: logind-config
-logind-config:
-	@if sudo cmp -s system/etc/systemd/logind.conf.d/lid.conf /etc/systemd/logind.conf.d/lid.conf 2>/dev/null; then \
-		echo "[logind] already configured"; \
-	else \
-		echo "[logind] installing lid drop-in to /etc..."; \
-		sudo install -D -m 0644 system/etc/systemd/logind.conf.d/lid.conf /etc/systemd/logind.conf.d/lid.conf; \
-		sudo systemctl kill -s HUP systemd-logind; \
-	fi
-
-# i3 installation and dependencies
-#
-# maim                        - screenshot tool
-# pulseaudio                  - audio control tool
-# playerctl                   - media player control tool
-# xserver-xorg-input-libinput - input (keyboard, mouse, etc) for x11
-# xinput                      - input (keyboard, mouse, etc) for x11
-# network-manager-applet      - i3 tray icon nm-applet
-# blueman                     - bluetooth manager
-# arandr                      - xrandr GUI display management
-# xclip                       - clipboard manager
-# slop                        - screen area selector (also used by maim)
-# rofi                        - general purpose menu selector (fzf for GUI)
-.PHONY: install-i3
-install-i3:
-	@if apt list i3 2>&1 | grep -q installed; then echo "[i3] already installed"; else \
-		echo "[i3] installing via apt with dependencies..."; \
-		sudo apt-get install -y i3 maim pulseaudio playerctl xserver-xorg-input-libinput xinput network-manager-applet blueman arandr rofi xclip slop; \
-	fi
-
-endif
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Fonts (nerd fonts, ligatures)
@@ -283,36 +230,6 @@ install-meteor: install-curl
 		curl -fsSL https://install.meteor.com | sh; \
 	fi
 
-.PHONY: install-spotatui
-ifeq ($(OS_NAME),Darwin)
-install-spotatui: homebrew
-	@if command -v spotatui >/q; then echo "[spotatui] already installed"; else \
-		echo "[spotatui] installing via homebrew..."; \
-		$(BREW) tap LargeModGames/spotatui
-		$(BREW_INSTALL) spotatui; \
-	fi
-else
-# Not published on the Linux brew tap
-install-spotatui: install-curl install-jq
-	@if command -v spotatui >/q; then echo "[spotatui] already installed"; else \
-		echo "[spotatui] resolving latest release..."; \
-		deb_url=$$(curl -fsSL https://api.github.com/repos/LargeModGames/spotatui/releases/latest \
-			| jq -r '.assets[] | select(.name | endswith("_amd64.deb")) | .browser_download_url'); \
-		if [ -z "$$deb_url" ]; then echo "[spotatui] ERROR: no amd64 .deb asset in latest release"; exit 1; fi; \
-		tmp=$$(mktemp -d); \
-		deb="$$tmp/$$(basename "$$deb_url")"; \
-		echo "[spotatui] downloading $$(basename "$$deb_url")..."; \
-		curl -fsSL "$$deb_url" -o "$$deb"; \
-		curl -fsSL "$$deb_url.sha256" -o "$$deb.sha256"; \
-		echo "[spotatui] verifying sha256..."; \
-		if ! ( cd "$$tmp" && sha256sum -c "$$(basename "$$deb").sha256" ); then \
-			echo "[spotatui] ERROR: checksum verification failed"; rm -rf "$$tmp"; exit 1; \
-		fi; \
-		echo "[spotatui] installing via apt..."; \
-		sudo apt-get install -y "$$deb"; \
-		rm -rf "$$tmp"; \
-	fi
-endif
 
 .PHONY: install-zsh
 install-zsh: homebrew install-curl
@@ -362,22 +279,6 @@ install-zsh: homebrew install-curl
 		echo "[zsh:zsh-autopair] already installed"; \
 	fi
 
-.PHONY: pre-tmux
-ifeq ($(OS_NAME),Darwin)
-# Install via homebrew in MacOS
-pre-tmux: homebrew
-	@if command -v tmux >/q; then echo "[tmux] already installed"; else \
-		echo "[tmux] installing via brew..."; \
-		$(BREW_INSTALL) tmux; \
-	fi
-else
-# Install via apt-get on Linux, homebrew version has weird bugs
-pre-tmux:
-	@if command -v tmux >/q; then echo "[tmux] already installed"; else \
-		echo "[tmux] installing via apt..."; \
-		sudo apt-get install tmux; \
-	fi
-endif
 
 .PHONY: install-tmux
 install-tmux: pre-tmux
@@ -399,55 +300,6 @@ install-tmux: pre-tmux
 # Package manager installation
 # ─────────────────────────────────────────────────────────────────────────────
 
-.PHONY: install-enpass
-ifeq ($(OS_NAME),Darwin)
-install-enpass: homebrew
-	@if $(BREW) info enpass | grep -q Installed; then echo "[enpass] already installed"; else \
-		echo "[enpass] installing via brew..."; \
-		$(BREW_INSTALL) --cask enpass; \
-	fi
-else
-install-enpass:
-	@if apt list enpass 2>/dev/null | grep -q installed; then echo "[enpass] already installed"; else \
-		echo "[enpass] installing via apt..."; \
-		echo "deb https://apt.enpass.io/  stable main" | sudo tee /etc/apt/sources.list.d/enpass.list; \
-		wget -O - https://apt.enpass.io/keys/enpass-linux.key | sudo tee /etc/apt/trusted.gpg.d/enpass.asc; \
-		sudo apt-get -y update; \
-		sudo apt-get -y install enpass; \
-	fi
-endif
-
-.PHONY: install-alacritty
-ifeq ($(OS_NAME),Darwin)
-install-alacritty: homebrew
-	@if command -v alacritty >/q; then echo "[alacritty] already installed"; else \
-		echo "[alacritty] installing via brew..."; \
-		$(BREW_INSTALL) --cask alacritty; \
-	fi
-else
-install-alacritty:
-	@if command -v alacritty >/q; then echo "[alacritty] already installed"; else \
-		echo "[alacritty] installing via apt..."; \
-		sudo apt-get install -y alacritty; \
-	fi
-endif
-
-.PHONY: install-wezterm
-ifeq ($(OS_NAME),Darwin)
-install-wezterm: homebrew
-	@if command -v wezterm >/q; then echo "[alacritty] already installed"; else \
-		echo "[wezterm] installing via brew..."; \
-		$(BREW_INSTALL) --cask wezterm; \
-	fi
-else
-install-wezterm:
-	@if command -v wezterm >/q; then echo "[alacritty] already installed"; else \
-		echo "[wezterm] installing via apt..."; \
-		curl -fsSL https://apt.fury.io/wez/gpg.key | sudo gpg --yes --dearmor -o /usr/share/keyrings/wezterm-fury.gpg; \
-		echo 'deb [signed-by=/usr/share/keyrings/wezterm-fury.gpg] https://apt.fury.io/wez/ * *' | sudo tee /etc/apt/sources.list.d/wezterm.list; \
-		sudo chmod 644 /usr/share/keyrings/wezterm-fury.gpg; \
-	fi
-endif
 
 .PHONY: install-bat
 install-bat: homebrew
@@ -498,33 +350,6 @@ install-herdr: homebrew
 		$(BREW_INSTALL) herdr; \
 	fi
 
-.PHONY: install-kanata
-ifeq ($(OS_NAME),Darwin)
-# On macOS kanata drives the keyboard through Karabiner's VirtualHIDDevice
-# driver, which ships with Karabiner-Elements. The driver is a system extension,
-# so macOS requires it to be approved by hand — brew can install it but cannot
-# activate it.
-install-kanata: homebrew
-	@if command -v kanata >/q; then echo "[kanata] already installed"; else \
-		echo "[kanata] installing via brew..."; \
-		$(BREW_INSTALL) kanata; \
-	fi
-	@if [ -d "/Applications/Karabiner-Elements.app" ]; then \
-		echo "[kanata] Karabiner-Elements already installed"; \
-	else \
-		echo "[kanata] installing Karabiner-Elements (VirtualHIDDevice driver)..."; \
-		$(BREW_INSTALL) --cask karabiner-elements; \
-	fi
-	@echo "[kanata] NOTE: approve the driver under System Settings > Privacy &"
-	@echo "[kanata]       Security, and grant kanata Input Monitoring access,"
-	@echo "[kanata]       before it will capture keys."
-else
-install-kanata: homebrew
-	@if command -v kanata >/q; then echo "[kanata] already installed"; else \
-		echo "[kanata] installing via brew..."; \
-		$(BREW_INSTALL) kanata; \
-	fi
-endif
 
 .PHONY: install-ffmpeg
 install-ffmpeg: homebrew
