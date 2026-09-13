@@ -89,7 +89,6 @@ plugins=(
 	copypath
 	gh
 	git 
-	z 
 	zsh-autopair
 	zsh-autosuggestions 
 	zsh-syntax-highlighting 
@@ -100,11 +99,23 @@ if [[ ! -n $NVIM ]]; then
 	plugins+=(zsh-vi-mode)
 fi
 
+# zoxide and the `z` plugin both define a `z` command, so load one of them.
+# Omarchy ships zoxide in omarchy-base.packages, so Arch gets zoxide and the
+# other platforms keep the plugin. Install zoxide anywhere to switch.
+if ! command -v zoxide >/dev/null 2>&1; then
+	plugins+=(z)
+fi
+
 # UNDO MISTAKE IN BUFFER LINE/PROMPT
 bindkey '^[z' undo
 bindkey '^[r' redo
 
 source $ZSH/oh-my-zsh.sh
+
+# After oh-my-zsh, because zoxide adds a completion and oh-my-zsh runs compinit.
+if command -v zoxide >/dev/null 2>&1; then
+	eval "$(zoxide init zsh)"
+fi
 
 # I don't want shared history
 setopt NO_SHARE_HISTORY
