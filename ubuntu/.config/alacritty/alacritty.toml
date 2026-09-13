@@ -3,7 +3,7 @@
 size = 8
 
 [font.normal]
-family = "FiraCode"
+family = "FiraCode Nerd Font Mono"
 
 [[keyboard.bindings]]
 chars = "^["

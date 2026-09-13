@@ -7,7 +7,7 @@ config.color_scheme = 'Catppuccin Mocha (Gogh)'
 
 local is_darwin = build_target:find('darwin') ~= nil
 
-config.font = wezterm.font "FiraCode"
+config.font = wezterm.font "FiraCode Nerd Font Mono"
 config.font_size = is_darwin and 13 or 10
 
 config.enable_tab_bar = false
