@@ -1,0 +1,21 @@
+# The wezterm package ships an entry without the X-TerminalArg* keys, so
+# xdg-terminal-exec cannot pass it a directory or a command. Omarchy runs
+# `xdg-terminal-exec --dir=<cwd>` for SUPER + RETURN, and the stock entry
+# drops that directory. This override adds the keys and removes the
+# hardcoded `--cwd .` that would fight with them.
+#
+# wezterm has no flag for the window title, so X-TerminalArgTitle is absent.
+[Desktop Entry]
+Name=WezTerm
+Comment=Wez's Terminal Emulator
+Keywords=shell;prompt;command;commandline;cmd;
+Icon=org.wezfurlong.wezterm
+StartupWMClass=org.wezfurlong.wezterm
+TryExec=wezterm
+Exec=wezterm start
+Type=Application
+Categories=System;TerminalEmulator;Utility;
+Terminal=false
+X-TerminalArgExec=-e
+X-TerminalArgAppId=--class
+X-TerminalArgDir=--cwd

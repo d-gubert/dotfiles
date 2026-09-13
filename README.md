@@ -237,15 +237,22 @@ These have a `make install-<tool>` target but aren't pulled in by any aggregate 
 
 ## Omarchy desktop preferences
 
-Omarchy ships its own defaults for Hyprland, the shell and the terminal. Only the files that differ from those defaults live here, stowed from `arch/.config/`:
+Omarchy ships its own defaults for Hyprland, the shell and the terminal. Only the files that differ from those defaults live here, stowed from `arch/`:
 
 | File | What it changes |
 | ------ | ----------------- |
-| `hypr/monitors.lua` | `GDK_SCALE` and the monitor scale, both pinned to `1` |
-| `alacritty/alacritty.toml` | font size `8` |
-| `omarchy/shell.toml` | bar font base size `11` |
+| `.config/hypr/monitors.lua` | monitor scale `0.8`, so the 13.3" 1080p panel gets a logical size of 2400x1350 and the interface shrinks by a fifth. `GDK_SCALE` stays `1` because it takes integers only |
+| `.config/hypr/input.lua` | touchpad natural scrolling |
+| `.config/hypr/bindings.lua` | `SUPER + {j,k,l,;}` move the focus left, down, up and right, and `SUPER + B` opens the browser — the same keys as my i3 config |
+| `.config/hypr/looknfeel.lua` | `gaps_in` and `gaps_out` both `0`. The border still marks the focused window |
+| `.config/alacritty/alacritty.toml` | font size `8` |
+| `.config/omarchy/shell.toml` | bar font base size `11` |
+| `.config/xdg-terminals.list` | wezterm as the default terminal for `xdg-terminal-exec`, which is what `$TERMINAL` points at |
+| `.local/share/applications/org.wezfurlong.wezterm.desktop` | adds the `X-TerminalArg*` keys the wezterm package leaves out, so `xdg-terminal-exec --dir` and `--app-id` reach wezterm |
 
-`make stow` links these three on their own — `--no-folding` keeps the rest of `~/.config/hypr/` as real files that Omarchy still owns.
+`SUPER + {j,k,l}` displaced three Omarchy bindings. `bindings.lua` unbinds each one, then puts it back: toggle split on `SUPER + ALT + J`, toggle workspace layout on `SUPER + ALT + L` and the keybindings menu on `SUPER + SHIFT + K`.
+
+`make stow` links each file on its own — `--no-folding` keeps the rest of `~/.config/hypr/` as real files that Omarchy still owns.
 
 > [!WARNING]
 > `omarchy refresh` and update migrations write through these symlinks into the repo. Run `git status` after an `omarchy update`.

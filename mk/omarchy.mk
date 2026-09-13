@@ -48,9 +48,10 @@ pkg_add = set -e; \
 # ─────────────────────────────────────────────────────────────────────────────
 # Desktop preferences
 # ─────────────────────────────────────────────────────────────────────────────
-# Three config files carry the rest of the desktop setup, and stow links them
-# from arch/.config: hypr/monitors.lua, alacritty/alacritty.toml and
-# omarchy/shell.toml. The preferences below have no config file. Omarchy keeps
+# Config files carry the rest of the desktop setup, and stow links them from
+# arch/: the four hypr/*.lua files, alacritty/alacritty.toml,
+# omarchy/shell.toml, xdg-terminals.list and the wezterm desktop entry. See the
+# table in README.md. The preferences below have no config file. Omarchy keeps
 # them in ~/.local/state/omarchy, which is runtime state, so this target sets
 # them through the commands that own that state.
 #
