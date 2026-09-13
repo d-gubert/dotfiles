@@ -26,6 +26,35 @@ install-i3:
 		sudo apt-get install -y i3 maim pulseaudio playerctl xserver-xorg-input-libinput xinput network-manager-applet blueman arandr rofi xclip slop; \
 	fi
 
+.PHONY: install-hyprland
+# A second session beside i3, not a replacement. Ubuntu 26.04 packages every
+# piece, so this is one apt call. The config lives in ubuntu/.config/hypr.
+#
+# hyprland                     the compositor
+# hyprlock                     the screen locker, on SUPER + CTRL + L
+# waybar                       the bar, in place of i3bar and i3status
+# mako-notifier                the notification daemon
+# wl-clipboard                 wl-copy and wl-paste, the Wayland xclip
+# brightnessctl                the brightness keys, which xbacklight cannot do
+# pavucontrol                  opens when the volume module is clicked
+# qt6-wayland                  the Wayland backend for the Qt apps
+# xdg-desktop-portal-hyprland  screen share and screenshot for Wayland apps
+# xdg-desktop-portal-gtk       the file picker the portal above delegates to
+# rofi playerctl               also installed by install-i3; named again so
+#                              this target stands on its own
+#
+# No tray applet: waybar reads NetworkManager and BlueZ over D-Bus. blueman is
+# here for blueman-manager, the window its applet opens. The network module
+# opens nmtui instead, which ships with network-manager.
+install-hyprland:
+	@if command -v Hyprland >/dev/null 2>&1; then echo "[hyprland] already installed"; else \
+		echo "[hyprland] installing via apt with dependencies..."; \
+		sudo apt-get install -y hyprland hyprlock waybar mako-notifier wl-clipboard \
+			brightnessctl pavucontrol qt6-wayland \
+			xdg-desktop-portal-hyprland xdg-desktop-portal-gtk \
+			rofi playerctl blueman; \
+	fi
+
 .PHONY: install-spotatui
 # Not published on the Linux brew tap
 install-spotatui: install-curl install-jq
@@ -74,12 +103,19 @@ install-alacritty:
 	fi
 
 .PHONY: install-wezterm
+# The nightly, not the tagged release. wezterm tagged 20240203 in February 2024
+# and has published nightlies only since. That build hangs on Hyprland: the
+# window never maps on Wayland, and the process then swallows every later
+# `wezterm` call. wezterm-nightly replaces the wezterm package, so apt removes
+# the old one on its own.
 install-wezterm:
-	@if command -v wezterm >/dev/null 2>&1; then echo "[alacritty] already installed"; else \
+	@if command -v wezterm >/dev/null 2>&1; then echo "[wezterm] already installed"; else \
 		echo "[wezterm] installing via apt..."; \
 		curl -fsSL https://apt.fury.io/wez/gpg.key | sudo gpg --yes --dearmor -o /usr/share/keyrings/wezterm-fury.gpg; \
 		echo 'deb [signed-by=/usr/share/keyrings/wezterm-fury.gpg] https://apt.fury.io/wez/ * *' | sudo tee /etc/apt/sources.list.d/wezterm.list; \
 		sudo chmod 644 /usr/share/keyrings/wezterm-fury.gpg; \
+		sudo apt-get update; \
+		sudo apt-get install -y wezterm-nightly; \
 	fi
 
 .PHONY: install-kanata

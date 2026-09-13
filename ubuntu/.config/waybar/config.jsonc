@@ -1,0 +1,76 @@
+// Waybar replaces i3bar and i3status in the Hyprland session. It does not
+// repeat the i3status module list: the bar shows the state that needs a
+// glance, and btop covers the rest.
+{
+    "layer": "top",
+    "position": "top",
+    "height": 26,
+    "spacing": 8,
+
+    "modules-left": ["hyprland/workspaces", "hyprland/submap"],
+    "modules-center": ["hyprland/window"],
+    "modules-right": ["network", "bluetooth", "pulseaudio", "battery", "tray", "clock"],
+
+    "hyprland/workspaces": {
+        "format": "{name}",
+        "on-click": "activate"
+    },
+
+    // The name of the active submap, which is how the resize mode and the
+    // system mode announce themselves. Hidden while no submap is active.
+    "hyprland/submap": {
+        "format": "[{}]",
+        "tooltip": false
+    },
+
+    "hyprland/window": {
+        "max-length": 80,
+        "separate-outputs": true
+    },
+
+    // No tray applet runs, so these two modules are the whole interface to
+    // NetworkManager and BlueZ. nmtui ships with network-manager and
+    // blueman-manager with blueman.
+    "network": {
+        "format-wifi": "W: {essid} {signalStrength}%",
+        "format-ethernet": "E: {ipaddr}",
+        "format-disconnected": "W: down",
+        "tooltip-format": "{ifname}: {ipaddr}/{cidr}",
+        "on-click": "wezterm start -- nmtui"
+    },
+
+    "bluetooth": {
+        "format": "BT {status}",
+        "format-connected": "BT {device_alias}",
+        "format-disabled": "BT off",
+        "on-click": "blueman-manager"
+    },
+
+    "pulseaudio": {
+        "format": "♪: {volume}%",
+        "format-muted": "♪: muted",
+        "on-click": "pavucontrol",
+        "scroll-step": 5
+    },
+
+    "battery": {
+        "states": {
+            "warning": 30,
+            "critical": 15
+        },
+        "format": "{capacity}% {time}",
+        "format-charging": "CHR {capacity}% {time}",
+        "format-full": "FULL",
+        "format-time": "{H}:{m}",
+        "tooltip-format": "{timeTo}"
+    },
+
+    "tray": {
+        "spacing": 8
+    },
+
+    "clock": {
+        "format": "{:%Y-%m-%d %H:%M}",
+        "tooltip-format": "<tt>{calendar}</tt>"
+    }
+}

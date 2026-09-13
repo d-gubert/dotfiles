@@ -1,0 +1,30 @@
+# mako is the notification daemon for the Hyprland session. The i3 session has
+# none: dunst never ran there, so this is new behavior, not a port.
+# See man 5 mako.
+#
+# Colors are Catppuccin Mocha, the same palette as waybar and rofi.
+
+font=DejaVu Sans Mono 10
+background-color=#1e1e2e
+text-color=#cdd6f4
+border-color=#89b4fa
+progress-color=over #313244
+
+width=380
+height=120
+margin=8
+padding=10
+border-size=2
+border-radius=0
+
+anchor=top-right
+layer=overlay
+default-timeout=5000
+ignore-timeout=1
+
+[urgency=low]
+border-color=#45475a
+
+[urgency=critical]
+border-color=#f38ba8
+default-timeout=0

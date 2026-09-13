@@ -51,7 +51,7 @@ Stow is usually used by having one directory for each software you want to manag
 | Package | Contents |
 | --------- | ---------- |
 | `common/` | Everything OS-agnostic — zsh, tmux, wezterm, nvim, yazi, zellij, lazygit, herdr, kanata, starship, git, `.claude/` |
-| `ubuntu/` | Debian/Ubuntu only — i3, i3status, rofi, clipmenu, nushell, `.Xresources`, `.xprofile` |
+| `ubuntu/` | Debian/Ubuntu only — i3, i3status, rofi, clipmenu, nushell, `.Xresources`, `.xprofile`, and the [Hyprland session](#hyprland-session-on-ubuntu) (hypr, waybar, mako) |
 | `arch/` | Arch/Omarchy only — Wayland clipboard, mise toolchain wiring, and the [Omarchy desktop config](#omarchy-desktop-preferences) |
 | `mac/` | macOS only |
 
@@ -106,7 +106,7 @@ Hyprland.
 | [kanata](https://github.com/jtroo/kanata) | Software keyboard remapper | package on Arch, brew elsewhere (see [kanata permissions](#kanata-permissions) below) |
 | [neovim](https://neovim.io) | Text editor | brew |
 | [ripgrep](https://github.com/BurntSushi/ripgrep) | Fast grep replacement (`rg`) | brew |
-| [wezterm](https://wezterm.org) | GPU-accelerated terminal emulator | apt (Fury repo, Linux) / brew cask (macOS) |
+| [wezterm](https://wezterm.org) | GPU-accelerated terminal emulator | apt (Fury repo, Linux — the `wezterm-nightly` package, see [below](#wezterm-on-wayland)) / brew cask (macOS) |
 | [herdr](https://herdr.dev) | Terminal workspace manager for AI coding agents | brew |
 | [i3](https://i3wm.org) (Linux only) | Tiling window manager, with dependencies below | apt |
 
@@ -222,6 +222,7 @@ These have a `make install-<tool>` target but aren't pulled in by any aggregate 
 | [zellij](https://zellij.dev) | Terminal multiplexer | brew |
 | [rgx](https://github.com/brevity1swos/rgx) | Regex TUI | brew |
 | [sttr](https://github.com/abhimanyu003/sttr) | String conversion CLI | brew |
+| [hyprland](https://hypr.land) (Ubuntu only) | Wayland compositor, with the dependencies in [Hyprland session on Ubuntu](#hyprland-session-on-ubuntu) | apt |
 
 #### Tmux plugins
 
@@ -232,6 +233,67 @@ These have a `make install-<tool>` target but aren't pulled in by any aggregate 
 | [tmux-resurrect](https://github.com/tmux-plugins/tmux-resurrect) | Save and restore sessions |
 | [tmux-yank](https://github.com/tmux-plugins/tmux-yank) | Better copy-mode |
 | [catppuccin](https://github.com/catppuccin/tmux) | Catppuccin for Tmux |
+
+---
+
+## Hyprland session on Ubuntu
+
+Ubuntu runs i3 on X11. Hyprland is a second session beside it, not a replacement: gdm lists both, and the i3 config is untouched. Install it with:
+
+```sh
+make install-hyprland
+```
+
+Ubuntu 26.04 packages every piece, so that target is one `apt-get` call. `mk/debian.mk` lists what each package is for. Log out, pick "Hyprland" on the gdm gear menu, and log back in. To go back to i3, pick "i3" there.
+
+### What the config holds
+
+The files live in `ubuntu/.config/hypr/`, one per topic, sourced by `hyprland.conf`:
+
+| File | Contents |
+| ------ | ---------- |
+| `env.conf` | Wayland hints for the toolkits, and the NVIDIA notes for this laptop |
+| `monitors.conf` | One rule: every monitor takes its preferred mode, placed left to right |
+| `input.conf` | The two keyboard layouts, the touchpad, the workspace gesture |
+| `looknfeel.conf` | Catppuccin Mocha colors, no gaps, no rounding, flat animations |
+| `bindings.conf` | Every keybinding, plus the resize mode and the system mode |
+| `autostart.conf` | waybar and mako |
+
+waybar replaces i3bar and i3status (`ubuntu/.config/waybar/`), and mako is the notification daemon (`ubuntu/.config/mako/`). rofi 2.0 links against Wayland, so the same `ubuntu/.config/rofi/` theme serves both sessions.
+
+The session starts no tray applet. waybar reads NetworkManager and BlueZ over D-Bus, so its `network` and `bluetooth` modules show the state on their own. A click opens `nmtui` in a terminal, or `blueman-manager`. The i3 session keeps `nm-applet` and `blueman-applet`.
+
+The bindings repeat the i3 ones: `SUPER + J/K/L/;` moves the focus, `SUPER + SHIFT` of those moves the window, `SUPER + R` enters the resize mode, `SUPER + SHIFT + E` enters the system mode. Hyprland calls a mode a submap, and waybar shows the name of the active one in the bar. Only the terminal, the launcher and the browser have a launch key; the Rocket.Chat one is not ported.
+
+> [!NOTE]
+> Keep this config and the Omarchy one in `arch/.config/hypr/*.lua` in sync. Omarchy reads a Lua config layer that plain Hyprland does not have, so the same preference is written twice, in two syntaxes.
+
+### wezterm on Wayland
+
+Install `wezterm-nightly`, not `wezterm`. The tagged release, `20240203`, is from February 2024, and upstream has published nightlies only since then. That build hangs under Hyprland: `wezterm-gui` starts, answers spawn requests with a window id, and never maps the window on Wayland. The process then absorbs every later `wezterm` call, so nothing opens and nothing reports an error.
+
+Two ways to see it, if it ever comes back:
+
+```sh
+# The hung process is a child of Hyprland, and holds a socket with no window.
+ps -o pid,ppid,etime,args -C wezterm-gui
+hyprctl clients | grep class
+
+# A window maps at once on XWayland, which isolates the fault to the
+# Wayland backend.
+wezterm-gui --config enable_wayland=false start --always-new-process
+```
+
+### What differs from the i3 session
+
+The bindings carry over. The rest is deliberately thinner than i3.
+
+- **No monitor profiles.** i3 matches a monitor by EDID and applies a stored profile from `~/.config/i3/monitors/`. Hyprland places every monitor at its preferred mode, left to right. `monitors.conf` shows how to pin one if that is ever wrong.
+- **No window rules.** The i3 `for_window` and `assign` lines are not ported. Windows tile where they open, and Rocket.Chat is not sent to workspace 7.
+- **A shorter bar.** waybar shows the workspaces, the submap, the window title, network, Bluetooth, volume, battery, the tray and the clock. The i3status modules for load, CPU, temperature, memory, disk and the rc-watcher file are not there.
+- **Not ported.** The clipboard history (`clipmenu`), the screenshot key (`maim` and `slop`), and the screen recorder (`ffmpeg`) are all X11 tools. Their Wayland counterparts (`cliphist`, `grim` with `slurp`, `wf-recorder`) are all in apt but not configured yet.
+
+`SUPER + CTRL + L` runs `hyprlock` with its built-in defaults. There is no idle timeout: nothing locks the screen on its own, because `hypridle` is not configured yet.
 
 ---
 
