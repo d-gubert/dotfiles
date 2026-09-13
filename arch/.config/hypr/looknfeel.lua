@@ -11,6 +11,17 @@ hl.config({
   },
 })
 
+-- https://wiki.hypr.land/Configuring/Basics/Binds/
+hl.config({
+  binds = {
+    -- Switch to the workspace I am already on and go back to the previous one.
+    -- This is i3's workspace_auto_back_and_forth. Omarchy keeps the Hyprland
+    -- default of false. Omarchy also sets binds.hide_special_on_workspace_change,
+    -- so name only the key that changes here.
+    workspace_back_and_forth = true,
+  },
+})
+
 -- https://wiki.hypr.land/Configuring/Window-Rules/
 -- An opaque terminal. Omarchy tags every window "default-opacity" and then
 -- sets 0.985 active and 0.96 inactive on that tag. The "terminal" tag covers
