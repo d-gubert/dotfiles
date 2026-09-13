@@ -6,6 +6,8 @@
 # its targets are rewritten against `omarchy pkg`. Until then both families
 # behave exactly as they did before the split.
 
+include mk/brew.mk
+
 BREW_PREFIX := /home/linuxbrew/.linuxbrew
 
 
@@ -50,7 +52,7 @@ install-i3:
 .PHONY: install-spotatui
 # Not published on the Linux brew tap
 install-spotatui: install-curl install-jq
-	@if command -v spotatui >/q; then echo "[spotatui] already installed"; else \
+	@if command -v spotatui >/dev/null 2>&1; then echo "[spotatui] already installed"; else \
 		echo "[spotatui] resolving latest release..."; \
 		deb_url=$$(curl -fsSL https://api.github.com/repos/LargeModGames/spotatui/releases/latest \
 			| jq -r '.assets[] | select(.name | endswith("_amd64.deb")) | .browser_download_url'); \
@@ -72,7 +74,7 @@ install-spotatui: install-curl install-jq
 .PHONY: pre-tmux
 # Install via apt-get on Linux, homebrew version has weird bugs
 pre-tmux:
-	@if command -v tmux >/q; then echo "[tmux] already installed"; else \
+	@if command -v tmux >/dev/null 2>&1; then echo "[tmux] already installed"; else \
 		echo "[tmux] installing via apt..."; \
 		sudo apt-get install tmux; \
 	fi
@@ -89,14 +91,14 @@ install-enpass:
 
 .PHONY: install-alacritty
 install-alacritty:
-	@if command -v alacritty >/q; then echo "[alacritty] already installed"; else \
+	@if command -v alacritty >/dev/null 2>&1; then echo "[alacritty] already installed"; else \
 		echo "[alacritty] installing via apt..."; \
 		sudo apt-get install -y alacritty; \
 	fi
 
 .PHONY: install-wezterm
 install-wezterm:
-	@if command -v wezterm >/q; then echo "[alacritty] already installed"; else \
+	@if command -v wezterm >/dev/null 2>&1; then echo "[alacritty] already installed"; else \
 		echo "[wezterm] installing via apt..."; \
 		curl -fsSL https://apt.fury.io/wez/gpg.key | sudo gpg --yes --dearmor -o /usr/share/keyrings/wezterm-fury.gpg; \
 		echo 'deb [signed-by=/usr/share/keyrings/wezterm-fury.gpg] https://apt.fury.io/wez/ * *' | sudo tee /etc/apt/sources.list.d/wezterm.list; \
@@ -105,7 +107,7 @@ install-wezterm:
 
 .PHONY: install-kanata
 install-kanata: homebrew
-	@if command -v kanata >/q; then echo "[kanata] already installed"; else \
+	@if command -v kanata >/dev/null 2>&1; then echo "[kanata] already installed"; else \
 		echo "[kanata] installing via brew..."; \
 		$(BREW_INSTALL) kanata; \
 	fi
