@@ -3,7 +3,15 @@
 
 # Used by mypr() and anything else that opens a URL or copies to the clipboard.
 export OPEN_CMD="xdg-open"
-export CLIP_CMD="xclip -selection clipboard"
+
+# This machine has both an i3 session on X11 and a Hyprland session on
+# Wayland. xclip talks to the X server, so it cannot reach the Wayland
+# clipboard. Pick the tool for the session that is actually running.
+if [[ -n "$WAYLAND_DISPLAY" ]]; then
+	export CLIP_CMD="wl-copy"
+else
+	export CLIP_CMD="xclip -selection clipboard"
+fi
 
 # Playwright ships no browser builds for Ubuntu 26.04+. Its platform detection
 # falls through to a literal "ubuntu26.04-x64" key that matches nothing in the
