@@ -53,7 +53,7 @@ install-wezterm:
 	@$(call pkg_add,wezterm)
 
 .PHONY: install-kanata
-install-kanata:
+install-kanata: uinput-config
 	@$(call pkg_add,kanata)
 
 .PHONY: install-spotatui

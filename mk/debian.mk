@@ -83,7 +83,7 @@ install-wezterm:
 	fi
 
 .PHONY: install-kanata
-install-kanata: homebrew
+install-kanata: homebrew uinput-config
 	@if command -v kanata >/dev/null 2>&1; then echo "[kanata] already installed"; else \
 		echo "[kanata] installing via brew..."; \
 		$(BREW_INSTALL) kanata; \
