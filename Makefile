@@ -11,17 +11,15 @@
 # $(shell ...) ends the call early and make expands the wrong thing.
 OS_FAMILY := $(shell uname | grep -q Darwin && echo darwin || { . /etc/os-release 2>/dev/null; echo " $$ID $$ID_LIKE " | grep -qw arch && echo arch || echo debian; })
 
-# Defines BREW_PREFIX, STOW_OS_PKG, EXTRA_ESSENTIAL and every install target
-# whose recipe differs by OS.
+# Defines the package backend (PKG_PREREQ, pkg_add and the PKG_<tool> name
+# overrides), STOW_OS_PKG, EXTRA_ESSENTIAL, EXTRA_DEVELOPMENT, and every
+# install target whose recipe differs by OS.
 include mk/$(OS_FAMILY).mk
 
 # Dotfiles are split into stow packages: common/ holds everything that is
 # OS-agnostic, arch/, ubuntu/ and mac/ hold only what differs. Always stow
 # common plus the package for this OS.
 STOW_PKGS := common $(STOW_OS_PKG)
-
-BREW := $(BREW_PREFIX)/bin/brew
-BREW_INSTALL := $(BREW) install --no-ask
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Help
@@ -82,7 +80,7 @@ essential: base-essential $(EXTRA_ESSENTIAL)
 # dvm      — official install script (https://dvm.deno.dev) — Deno Version Manager
 # meteor   — official install script (https://www.meteor.com/developers/install)
 # node     — installed by volta
-# vi-mongo — brew, but its tap must be trusted first
+# vi-mongo — a package on Arch; on brew its tap must be trusted first
 # volta    — official install script (https://volta.sh)
 
 .PHONY: development
@@ -92,7 +90,7 @@ development: $(PKG_PREREQ) \
 	install-meteor \
 	install-node \
 	install-vi-mongo \
-	install-volta
+	$(EXTRA_DEVELOPMENT)
 	@$(call pkg_add,$(DEVELOPMENT_TOOLS))
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -112,28 +110,10 @@ utilities: $(PKG_PREREQ) \
 # System pre-requisites
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Prerequisite for the `curl | sh` script installers (homebrew, docker, volta, dvm, meteor)
-.PHONY: install-curl
-install-curl:
-	@if command -v curl >/dev/null 2>&1; then echo "[curl] already installed"; else \
-		echo "[curl] installing via apt..."; \
-		sudo apt-get install -y curl; \
-	fi
-
-.PHONY: homebrew
-homebrew: install-curl
-	@if command -v brew >/dev/null 2>&1; then echo "[homebrew] already installed"; else \
-		echo "[homebrew] installing..."; \
-		/bin/bash -c "$$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"; \
-		eval "$$($(BREW) shellenv)"; \
-	fi
-
+# install-curl and the package backend both come from mk/<family>.mk.
 .PHONY: install-stow
-install-stow: homebrew
-	@if command -v stow >/dev/null 2>&1; then echo "[stow] already installed"; else \
-		echo "[stow] installing via brew..."; \
-		$(BREW_INSTALL) stow; \
-	fi
+install-stow: $(PKG_PREREQ)
+	@$(call pkg_add,stow)
 
 # https://www.gnu.org/software/stow/manual/stow.html#Tree-unfolding-1
 # -R (restow) unstows before stowing, which clears out symlinks left behind when
@@ -150,54 +130,15 @@ stow: install-stow
 # Fonts (nerd fonts, ligatures)
 # ─────────────────────────────────────────────────────────────────────────────
 
+FONT_TOOLS := fira-code-nerd
+
 .PHONY: fonts
-fonts: homebrew
-	@if $(BREW) info font-fira-code-nerd-font 2>&1 | grep -q Installed; then echo "[fira-code] already installed"; else \
-		echo "[fira-code] installing via brew..."; \
-		$(BREW_INSTALL) font-fira-code-nerd-font; \
-		echo "[fira-code] installed"; \
-	fi
+fonts: $(PKG_PREREQ)
+	@$(call pkg_add,$(FONT_TOOLS))
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Custom installation
 # ─────────────────────────────────────────────────────────────────────────────
-
-.PHONY: install-docker
-install-docker: install-curl
-	@if command -v docker >/dev/null 2>&1; then echo "[docker] already installed"; else \
-		echo "[docker] installing via official script (docker-ce)..."; \
-		curl -fsSL https://get.docker.com | sudo sh; \
-		sudo usermod -aG docker $$USER; \
-		echo "[docker] NOTE: log out and back in for group membership to take effect"; \
-	fi
-
-.PHONY: install-brave-browser
-install-brave-browser: install-curl
-	@if command -v brave-browser >/dev/null 2>&1; then echo "[brave-browser] already installed"; else \
-		echo "[brave-browser] installing via official script..."; \
-		curl -fsS https://dl.brave.com/install.sh | sh; \
-	fi
-
-.PHONY: install-volta
-install-volta: install-curl
-	@if command -v volta >/dev/null 2>&1; then echo "[volta] already installed"; else \
-		echo "[volta] installing via official script..."; \
-		curl -fsSL https://get.volta.sh | bash; \
-	fi
-
-.PHONY: install-node
-install-node: install-volta
-	@if command -v node >/dev/null 2>&1; then echo "[node] already installed"; else \
-		echo "[node] installing with volta..."; \
-		volta install node; \
-	fi
-
-.PHONY: install-dvm
-install-dvm: install-curl
-	@if command -v dvm >/dev/null 2>&1; then echo "[dvm] already installed"; else \
-		echo "[dvm] installing via official script..."; \
-		curl -fsSL https://dvm.deno.dev | sh; \
-	fi
 
 .PHONY: install-meteor
 install-meteor: install-curl
@@ -208,11 +149,8 @@ install-meteor: install-curl
 
 
 .PHONY: install-zsh
-install-zsh: homebrew install-curl
-	@if command -v zsh >/dev/null 2>&1; then echo "[zsh] already installed"; else \
-		echo "[zsh] installing via brew..."; \
-		$(BREW_INSTALL) zsh; \
-	fi
+install-zsh: $(PKG_PREREQ)
+	@$(call pkg_add,zsh)
 	@if [ ! -d "$$HOME/.oh-my-zsh" ]; then \
 		echo "[zsh:oh-my-zsh] installing..."; \
 		sh -c "$$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --keep-zshrc; \
@@ -296,9 +234,16 @@ PKG_TOOLS := $(ESSENTIAL_TOOLS) $(DEVELOPMENT_TOOLS) $(UTILITY_TOOLS) \
 # The package name of a tool. It defaults to the name of the tool.
 pkg_of = $(or $(PKG_$(1)),$(1))
 
+# A family may have no package for a tool. PKG_SKIP lists those, and pkg_add
+# reports them instead of failing the whole list.
+pkg_wanted = $(filter-out $(PKG_SKIP),$(1))
+
 # Install a list of tools with one command. One transaction is faster than one
 # command per tool, and it asks for the password one time.
-pkg_add = $(PKG_INSTALL_CMD) $(foreach t,$(1),$(call pkg_of,$(t)))
+#
+# `?=` on purpose: a backend that needs more than one command replaces this,
+# and mk/<family>.mk is included above. mk/omarchy.mk does exactly that.
+pkg_add ?= $(PKG_INSTALL_CMD) $(foreach t,$(call pkg_wanted,$(1)),$(call pkg_of,$(t)))
 
 # Every tool in PKG_TOOLS gets an install-<tool> target from this rule.
 .PHONY: $(addprefix install-,$(PKG_TOOLS))

@@ -65,6 +65,25 @@ For shell settings, each OS package ships a `.zshrc.os` fragment that `common/.z
 
 ## Software
 
+The "Installed via" column below describes Ubuntu and macOS, which both use
+Homebrew. Arch does not. `make` picks a package backend from the OS family:
+
+| Family | Backend | Bootstrap |
+| ------ | ------- | --------- |
+| `darwin`, `debian` | Homebrew, in `mk/brew.mk` | installs brew first |
+| `arch` | `omarchy pkg add` and `omarchy pkg aur add`, in `mk/omarchy.mk` | none needed |
+
+A backend defines `PKG_PREREQ`, `PKG_INSTALL_CMD` and any `PKG_<tool>` name
+overrides. The main Makefile reads those names and never mentions a package
+manager. To add a tool that is only a package name, put it in one of the
+`*_TOOLS` lists and add a `PKG_<tool>` line wherever the name differs.
+
+Three tools differ from the table on Arch. `gh` is `github-cli`, `carapace`,
+`kanata`, `enpass` and `brave-browser` come from the AUR, and `lazyjira` has no
+Arch package at all, so `make` reports it and installs the rest. Node comes
+from mise instead of volta, and i3 is not installed because Omarchy runs
+Hyprland.
+
 ### Essential
 
 | Tool | Description | Installed via |
