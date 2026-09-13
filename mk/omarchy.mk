@@ -9,7 +9,8 @@
 PKG_PREREQ :=
 
 # Tools that only the AUR carries. The repositories carry everything else.
-AUR_TOOLS := brave-browser carapace dvm enpass kanata rgx spotatui sttr vi-mongo
+AUR_TOOLS := brave-browser carapace dvm enpass kanata mise rgx spotatui sttr \
+             vi-mongo
 
 # lazyjira ships only through a Homebrew tap. Arch has no package for it, so
 # pkg_add reports it instead of failing the whole list.
@@ -22,6 +23,12 @@ PKG_enpass         := enpass-bin
 PKG_fira-code-nerd := ttf-firacode-nerd
 PKG_gh             := github-cli
 PKG_kanata         := kanata-bin
+# omarchy-base.packages installs mise-bin, and mise-bin conflicts with the
+# repository `mise`. Ask for the name that Omarchy actually uses.
+PKG_mise           := mise-bin
+# omarchy-base.packages installs tldr, and tealdeer conflicts with it. Both
+# provide the tldr command, so ask for the one that is already there.
+PKG_tealdeer       := tldr
 
 # One list can hold both repository and AUR packages, and the two need separate
 # commands, so this backend replaces pkg_add instead of setting PKG_INSTALL_CMD.
