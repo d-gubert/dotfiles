@@ -52,7 +52,7 @@ Stow is usually used by having one directory for each software you want to manag
 | --------- | ---------- |
 | `common/` | Everything OS-agnostic — zsh, tmux, wezterm, nvim, yazi, zellij, lazygit, herdr, kanata, starship, git, `.claude/` |
 | `ubuntu/` | Debian/Ubuntu only — i3, i3status, rofi, clipmenu, nushell, `.Xresources`, `.xprofile` |
-| `arch/` | Arch/Omarchy only — Wayland clipboard and mise toolchain wiring |
+| `arch/` | Arch/Omarchy only — Wayland clipboard, mise toolchain wiring, and the [Omarchy desktop config](#omarchy-desktop-preferences) |
 | `mac/` | macOS only |
 
 `make` stows `common` plus the package for this OS, so a macOS machine never gets i3 or X11 config dropped into its home directory. `uname` only separates Darwin from Linux, so the two Linux packages are split on `/etc/os-release` instead: `ID` or `ID_LIKE` naming `arch` selects `arch/`, anything else gets `ubuntu/`. Omarchy reports `ID=omarchy` with `ID_LIKE=arch`, which is why the match reads both fields. The target uses `stow -R`, which also cleans up stale symlinks when a file moves between packages.
@@ -232,6 +232,29 @@ These have a `make install-<tool>` target but aren't pulled in by any aggregate 
 | [tmux-resurrect](https://github.com/tmux-plugins/tmux-resurrect) | Save and restore sessions |
 | [tmux-yank](https://github.com/tmux-plugins/tmux-yank) | Better copy-mode |
 | [catppuccin](https://github.com/catppuccin/tmux) | Catppuccin for Tmux |
+
+---
+
+## Omarchy desktop preferences
+
+Omarchy ships its own defaults for Hyprland, the shell and the terminal. Only the files that differ from those defaults live here, stowed from `arch/.config/`:
+
+| File | What it changes |
+| ------ | ----------------- |
+| `hypr/monitors.lua` | `GDK_SCALE` and the monitor scale, both pinned to `1` |
+| `alacritty/alacritty.toml` | font size `8` |
+| `omarchy/shell.toml` | bar font base size `11` |
+
+`make stow` links these three on their own — `--no-folding` keeps the rest of `~/.config/hypr/` as real files that Omarchy still owns.
+
+> [!WARNING]
+> `omarchy refresh` and update migrations write through these symlinks into the repo. Run `git status` after an `omarchy update`.
+
+The theme, the background and the screensaver flag are not config files. Omarchy keeps them in `~/.local/state/omarchy/`, so `make omarchy-prefs` sets them through the commands that own that state:
+
+```sh
+make omarchy-prefs   # Catppuccin theme, Totoro background, screensaver off
+```
 
 ---
 
