@@ -24,3 +24,63 @@ o.bind("SUPER + SHIFT + K", "Keybindings", "omarchy-menu-keybindings")
 -- Open the browser with SUPER + B, the way my i3 config does. Omarchy keeps
 -- its own SUPER + SHIFT + B and SUPER + SHIFT + RETURN.
 o.bind("SUPER + B", "Browser", { omarchy = "browser" })
+
+-- A resize mode, the way my i3 config has one. Hyprland calls it a submap:
+-- SUPER + R enters it, the keys below resize the focused window, and Return,
+-- Escape or SUPER + R leaves it. The Omarchy bar has no submap widget, so a
+-- Hyprland notification marks the mode instead.
+local resize_step = 100
+local resize_notice = nil
+
+local function show_resize_notice()
+  if not resize_notice then
+    resize_notice = hl.notification.create({ text = "Resize mode", timeout = 3600000 })
+  end
+end
+
+local function hide_resize_notice()
+  if resize_notice then
+    resize_notice:dismiss()
+    resize_notice = nil
+  end
+end
+
+local function enter_resize_mode()
+  show_resize_notice()
+  hl.dispatch(hl.dsp.submap("resize"))
+end
+
+local function leave_resize_mode()
+  hide_resize_notice()
+  hl.dispatch(hl.dsp.submap("reset"))
+end
+
+hl.define_submap("resize", function()
+  -- Hold a key to keep the resize going.
+  local function resize_bind(key, x, y)
+    hl.bind(key, hl.dsp.window.resize({ x = x, y = y, relative = true }), { repeating = true })
+  end
+
+  -- The home row, the same directions as my i3 mode: j shrinks the width,
+  -- semicolon grows it, k shrinks the height and l grows it.
+  resize_bind("J", -resize_step, 0)
+  resize_bind("SEMICOLON", resize_step, 0)
+  resize_bind("K", 0, -resize_step)
+  resize_bind("L", 0, resize_step)
+
+  -- The arrow keys, the same directions as my i3 mode.
+  resize_bind("LEFT", -resize_step, 0)
+  resize_bind("RIGHT", resize_step, 0)
+  resize_bind("UP", 0, -resize_step)
+  resize_bind("DOWN", 0, resize_step)
+
+  hl.bind("RETURN", leave_resize_mode)
+  hl.bind("ESCAPE", leave_resize_mode)
+  hl.bind("SUPER + R", leave_resize_mode)
+
+  -- i3 swallows every other key while a mode is active. Do the same, so a
+  -- stray key cannot reach the window under the resize mode.
+  hl.bind("catchall", hl.dsp.no_op())
+end)
+
+o.bind("SUPER + R", "Resize mode", enter_resize_mode)
