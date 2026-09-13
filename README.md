@@ -258,6 +258,7 @@ The files live in `ubuntu/.config/hypr/`, one per topic, sourced by `hyprland.co
 | `looknfeel.conf` | Catppuccin Mocha colors, no gaps, no rounding, flat animations |
 | `bindings.conf` | Every keybinding, plus the resize mode and the system mode |
 | `autostart.conf` | waybar and mako |
+| `scripts/` | The screenshot and the screen recorder, on `Print` and `SUPER + S` |
 
 waybar replaces i3bar and i3status (`ubuntu/.config/waybar/`), and mako is the notification daemon (`ubuntu/.config/mako/`). rofi 2.0 links against Wayland, so the same `ubuntu/.config/rofi/` theme serves both sessions.
 
@@ -267,6 +268,21 @@ The bindings repeat the i3 ones: `SUPER + J/K/L/;` moves the focus, `SUPER + SHI
 
 > [!NOTE]
 > Keep this config and the Omarchy one in `arch/.config/hypr/*.lua` in sync. Omarchy reads a Lua config layer that plain Hyprland does not have, so the same preference is written twice, in two syntaxes.
+
+### Screenshots and recording
+
+`Print` selects an area, saves it under `~/Pictures/Screenshots/` and copies it to the clipboard. `SUPER + S` toggles a recording of a selected area into `~/Videos/Recordings/`. Both are the same keys as i3, and both scripts are ports of the i3 ones in `ubuntu/.config/i3/scripts/`:
+
+| i3, on X11 | Hyprland, on Wayland |
+| - | - |
+| `maim -s -u` | `grim -g "$(slurp)"` |
+| `slop -f '%x %y %w %h'` | `slurp`, which already prints `X,Y WxH` |
+| `ffmpeg -f x11grab` | `wf-recorder -g` |
+| `xclip -t image/png` | `wl-copy -t image/png` |
+
+The recorder keeps the toggle, the state file and the `SIGINT` stop of the i3 version — `wf-recorder` also needs `SIGINT` to close the container, or the mp4 has no moov atom and will not play. It drops the PATH fix, because `wf-recorder` is in `/usr/bin` while the i3 script needs the brew `ffmpeg`. One limit is new: a recorded region has to stay on one monitor, because `wf-recorder` records one output.
+
+`grimshot`, the packaged wrapper that would replace the screenshot script, depends on the `sway` package. That would put a second compositor on the machine to get one shell script, so the repo keeps its own script instead.
 
 ### wezterm on Wayland
 
@@ -291,7 +307,7 @@ The bindings carry over. The rest is deliberately thinner than i3.
 - **No monitor profiles.** i3 matches a monitor by EDID and applies a stored profile from `~/.config/i3/monitors/`. Hyprland places every monitor at its preferred mode, left to right. `monitors.conf` shows how to pin one if that is ever wrong.
 - **No window rules.** The i3 `for_window` and `assign` lines are not ported. Windows tile where they open, and Rocket.Chat is not sent to workspace 7.
 - **A shorter bar.** waybar shows the workspaces, the submap, the window title, network, Bluetooth, volume, battery, the tray and the clock. The i3status modules for load, CPU, temperature, memory, disk and the rc-watcher file are not there.
-- **Not ported.** The clipboard history (`clipmenu`), the screenshot key (`maim` and `slop`), and the screen recorder (`ffmpeg`) are all X11 tools. Their Wayland counterparts (`cliphist`, `grim` with `slurp`, `wf-recorder`) are all in apt but not configured yet.
+- **Not ported.** The clipboard history (`clipmenu`) is an X11 tool. Its Wayland counterpart, `cliphist`, is in apt but not configured yet.
 
 `SUPER + CTRL + L` runs `hyprlock` with its built-in defaults. There is no idle timeout: nothing locks the screen on its own, because `hypridle` is not configured yet.
 

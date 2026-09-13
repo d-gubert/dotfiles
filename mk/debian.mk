@@ -40,6 +40,9 @@ install-i3:
 # qt6-wayland                  the Wayland backend for the Qt apps
 # xdg-desktop-portal-hyprland  screen share and screenshot for Wayland apps
 # xdg-desktop-portal-gtk       the file picker the portal above delegates to
+# grim                         takes the screenshot; the maim of Wayland
+# slurp                        draws the selection box; the slop of Wayland
+# wf-recorder                  records an output; replaces ffmpeg -f x11grab
 # rofi playerctl               also installed by install-i3; named again so
 #                              this target stands on its own
 #
@@ -52,6 +55,7 @@ install-hyprland:
 		sudo apt-get install -y hyprland hyprlock waybar mako-notifier wl-clipboard \
 			brightnessctl pavucontrol qt6-wayland \
 			xdg-desktop-portal-hyprland xdg-desktop-portal-gtk \
+			grim slurp wf-recorder \
 			rofi playerctl blueman; \
 	fi
 
