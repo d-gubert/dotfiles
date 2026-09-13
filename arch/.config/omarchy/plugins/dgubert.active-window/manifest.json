@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "dgubert.active-window",
+  "name": "Active app",
+  "version": "1.0.0",
+  "author": "Omarchy",
+  "description": "App id of the focused window",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "ActiveWindow.qml"
+  },
+  "barWidget": {
+    "displayName": "Active app",
+    "description": "App id of the focused window",
+    "category": "Compositor",
+    "allowMultiple": false,
+    "defaultSection": "left"
+  },
+  "omarchy": {
+    "clonedFrom": "omarchy.active-window"
+  }
+}

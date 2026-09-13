@@ -6,18 +6,18 @@
   },
   "bar": {
     "position": "top",
-    "transparent": false,
+    "transparent": true,
     "centerAnchor": "omarchy.clock",
     "layout": {
       "left": [
         {
-          "id": "omarchy.menu"
+          "id": "dgubert.menu"
         },
         {
           "id": "omarchy.workspaces"
         },
         {
-          "id": "omarchy.active-window"
+          "id": "dgubert.active-window"
         }
       ],
       "center": [
@@ -65,5 +65,11 @@
       ]
     }
   },
-  "plugins": []
+  "plugins": [],
+  "disabledPlugins": [
+    "omarchy.menu"
+  ],
+  "cloneSourceRestores": [
+    "dgubert.menu"
+  ]
 }
