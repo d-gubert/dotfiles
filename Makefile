@@ -6,11 +6,22 @@ else
 BREW_PREFIX := /home/linuxbrew/.linuxbrew
 endif
 
-# Dotfiles are split into three stow packages: common/ holds everything that is
-# OS-agnostic, ubuntu/ and mac/ hold only what differs. Always stow common plus
-# the package for this OS.
+# uname says Linux for both Ubuntu and Arch, so split them on /etc/os-release.
+# Omarchy reports ID=omarchy with ID_LIKE=arch and plain Arch reports ID=arch
+# with no ID_LIKE, so match either field -- and match it as a whole word, or the
+# "arch" inside "omarchy" would match on its own.
+#
+# Written without a `case` statement on purpose: an unbalanced `)` inside
+# $(shell ...) ends the call early and make expands the wrong thing.
+DISTRO_FAMILY := $(shell . /etc/os-release 2>/dev/null; echo " $$ID $$ID_LIKE " | grep -qw arch && echo arch || echo debian)
+
+# Dotfiles are split into stow packages: common/ holds everything that is
+# OS-agnostic, arch/, ubuntu/ and mac/ hold only what differs. Always stow
+# common plus the package for this OS.
 ifeq ($(OS_NAME),Darwin)
 STOW_PKGS := common mac
+else ifeq ($(DISTRO_FAMILY),arch)
+STOW_PKGS := common arch
 else
 STOW_PKGS := common ubuntu
 endif

@@ -51,14 +51,15 @@ Stow is usually used by having one directory for each software you want to manag
 | Package | Contents |
 | --------- | ---------- |
 | `common/` | Everything OS-agnostic — zsh, tmux, wezterm, nvim, yazi, zellij, lazygit, herdr, kanata, starship, git, `.claude/` |
-| `ubuntu/` | Linux only — i3, i3status, rofi, clipmenu, nushell, `.Xresources`, `.xprofile` |
+| `ubuntu/` | Debian/Ubuntu only — i3, i3status, rofi, clipmenu, nushell, `.Xresources`, `.xprofile` |
+| `arch/` | Arch/Omarchy only — Wayland clipboard and mise toolchain wiring |
 | `mac/` | macOS only |
 
-`make` stows `common` plus the package matching `uname`, so a macOS machine never gets i3 or X11 config dropped into its home directory. The target uses `stow -R`, which also cleans up stale symlinks when a file moves between packages.
+`make` stows `common` plus the package for this OS, so a macOS machine never gets i3 or X11 config dropped into its home directory. `uname` only separates Darwin from Linux, so the two Linux packages are split on `/etc/os-release` instead: `ID` or `ID_LIKE` naming `arch` selects `arch/`, anything else gets `ubuntu/`. Omarchy reports `ID=omarchy` with `ID_LIKE=arch`, which is why the match reads both fields. The target uses `stow -R`, which also cleans up stale symlinks when a file moves between packages.
 
 Prefer branching inside a shared config over copying it into both OS packages — most tools already have a mechanism for it (`.zshrc` checks `uname`, `.tmux.conf` has `if-shell`, `.wezterm.lua` has `wezterm.target_triple`). Only copy the whole file when the format has no conditionals, as with `alacritty.toml`.
 
-For shell settings, each OS package ships a `.zshrc.os` fragment that `common/.zshrc` sources. That's where `$OPEN_CMD` (`xdg-open` vs `open`) and `$CLIP_CMD` (`xclip` vs `pbcopy`) are defined — use those variables rather than hardcoding either tool.
+For shell settings, each OS package ships a `.zshrc.os` fragment that `common/.zshrc` sources. That's where `$OPEN_CMD` (`xdg-open` vs `open`) and `$CLIP_CMD` (`xclip` on X11, `wl-copy` on Wayland, `pbcopy` on macOS) are defined, along with the per-OS toolchain wiring — Homebrew's `shellenv` on Ubuntu and macOS, `mise activate` on Arch — use those variables rather than hardcoding either tool.
 
 ---
 
