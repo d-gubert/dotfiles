@@ -47,8 +47,9 @@ install-i3:
 #                              this target stands on its own
 #
 # No tray applet: waybar reads NetworkManager and BlueZ over D-Bus. blueman is
-# here for blueman-manager, the window its applet opens. The network module
-# opens nmtui instead, which ships with network-manager.
+# here for blueman-manager, the window its applet opens. nm-connection-editor
+# is the same case: the network module opens it as Advanced Network
+# Configuration.
 install-hyprland:
 	@if command -v Hyprland >/dev/null 2>&1; then echo "[hyprland] already installed"; else \
 		echo "[hyprland] installing via apt with dependencies..."; \
@@ -56,7 +57,7 @@ install-hyprland:
 			brightnessctl pavucontrol qt6-wayland \
 			xdg-desktop-portal-hyprland xdg-desktop-portal-gtk \
 			grim slurp wf-recorder \
-			rofi playerctl blueman; \
+			rofi playerctl blueman nm-connection-editor; \
 	fi
 
 .PHONY: install-spotatui

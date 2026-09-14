@@ -62,13 +62,14 @@
     },
 
     // No tray applet runs, so this module is the whole interface to
-    // NetworkManager. nmtui ships with network-manager.
+    // NetworkManager. nm-connection-editor is the Advanced Network
+    // Configuration window and ships with the nm-connection-editor package.
     "network": {
         "format-wifi": "W: {essid} {signalStrength}%",
         "format-ethernet": "E: {ipaddr}",
         "format-disconnected": "W: down",
         "tooltip-format": "{ifname}: {ipaddr}/{cidr}",
-        "on-click": "wezterm start -- nmtui"
+        "on-click": "nm-connection-editor"
     },
 
     "pulseaudio": {
