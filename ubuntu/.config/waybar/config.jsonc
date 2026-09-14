@@ -1,15 +1,15 @@
-// Waybar replaces i3bar and i3status in the Hyprland session. It does not
-// repeat the i3status module list: the bar shows the state that needs a
-// glance, and btop covers the rest.
+// Waybar replaces i3bar and i3status in the Hyprland session. The module list
+// follows the i3status order: the machine load first, then the network, the
+// volume, the battery and the clock.
 {
     "layer": "top",
     "position": "top",
     "height": 26,
     "spacing": 8,
 
-    "modules-left": ["hyprland/workspaces", "hyprland/submap"],
-    "modules-center": ["hyprland/window"],
-    "modules-right": ["network", "bluetooth", "pulseaudio", "battery", "tray", "clock"],
+    // The window title sits next to the workspace numbers, not in the centre.
+    "modules-left": ["hyprland/workspaces", "hyprland/submap", "hyprland/window"],
+    "modules-right": ["cpu", "temperature", "memory", "disk", "network", "pulseaudio", "battery", "tray", "clock"],
 
     "hyprland/workspaces": {
         "format": "{name}",
@@ -28,22 +28,47 @@
         "separate-outputs": true
     },
 
-    // No tray applet runs, so these two modules are the whole interface to
-    // NetworkManager and BlueZ. nmtui ships with network-manager and
-    // blueman-manager with blueman.
+    // The four load modules refresh every 5 seconds, the i3status interval.
+    // A click on any of them opens btop, which shows the detail the bar omits.
+    "cpu": {
+        "format": "CPU {usage}% {load}",
+        "interval": 5,
+        "on-click": "wezterm start -- btop"
+    },
+
+    // The package sensor of the CPU, the sensor i3status reads as
+    // cpu_temperature 0. The hwmon number changes between boots, so the path
+    // stops at the parent directory and waybar finds the number.
+    "temperature": {
+        "hwmon-path-abs": "/sys/devices/platform/coretemp.0/hwmon",
+        "input-filename": "temp1_input",
+        "format": "{temperatureC}°C",
+        "critical-threshold": 85,
+        "interval": 5,
+        "on-click": "wezterm start -- btop"
+    },
+
+    "memory": {
+        "format": "MEM {used:0.1f}G ({percentage}%)⊂{total:0.1f}G",
+        "interval": 5,
+        "on-click": "wezterm start -- btop"
+    },
+
+    "disk": {
+        "path": "/",
+        "format": "🖴: {free} ({percentage_free}%)⊂{total}",
+        "interval": 30,
+        "on-click": "wezterm start -- btop"
+    },
+
+    // No tray applet runs, so this module is the whole interface to
+    // NetworkManager. nmtui ships with network-manager.
     "network": {
         "format-wifi": "W: {essid} {signalStrength}%",
         "format-ethernet": "E: {ipaddr}",
         "format-disconnected": "W: down",
         "tooltip-format": "{ifname}: {ipaddr}/{cidr}",
         "on-click": "wezterm start -- nmtui"
-    },
-
-    "bluetooth": {
-        "format": "BT {status}",
-        "format-connected": "BT {device_alias}",
-        "format-disabled": "BT off",
-        "on-click": "blueman-manager"
     },
 
     "pulseaudio": {
@@ -69,8 +94,11 @@
         "spacing": 8
     },
 
+    // The 5 second interval matches the load modules. The seconds field
+    // therefore steps by 5, not by 1.
     "clock": {
-        "format": "{:%Y-%m-%d %H:%M}",
+        "interval": 5,
+        "format": "{:%Y-%m-%d %H:%M:%S}",
         "tooltip-format": "<tt>{calendar}</tt>"
     }
 }
