@@ -258,13 +258,17 @@ The files live in `ubuntu/.config/hypr/`, one per topic, sourced by `hyprland.co
 | `looknfeel.conf` | Catppuccin Mocha colors, no gaps, no rounding, flat animations |
 | `bindings.conf` | Every keybinding, plus the resize mode and the system mode |
 | `autostart.conf` | waybar and mako |
-| `scripts/` | The screenshot and the screen recorder, on `Print` and `SUPER + S` |
+| `scripts/` | The screenshot, the screen recorder, the layout toggle and the keybinding list |
 
 waybar replaces i3bar and i3status (`ubuntu/.config/waybar/`), and mako is the notification daemon (`ubuntu/.config/mako/`). rofi 2.0 links against Wayland, so the same `ubuntu/.config/rofi/` theme serves both sessions.
 
 The session starts no tray applet. waybar reads NetworkManager and BlueZ over D-Bus, so its `network` and `bluetooth` modules show the state on their own. A click opens `nmtui` in a terminal, or `blueman-manager`. The i3 session keeps `nm-applet` and `blueman-applet`.
 
 The bindings repeat the i3 ones: `SUPER + J/K/L/;` moves the focus, `SUPER + SHIFT` of those moves the window, `SUPER + R` enters the resize mode, `SUPER + SHIFT + E` enters the system mode. Hyprland calls a mode a submap, and waybar shows the name of the active one in the bar. Only the terminal, the launcher and the browser have a launch key; the Rocket.Chat one is not ported.
+
+Every binding is a `bindd`, which carries a description, the way `o.bind` does on Omarchy. `SUPER + ALT + K` lists them all in rofi, read from `hyprctl binds`, so the list can never drift from the config. A binding written as a plain `bind` is left out of the list on purpose — the `catchall` that swallows stray keys inside a mode is the only one.
+
+The `SUPER + ALT` row holds the bindings Omarchy displaced, for the same reason it does on Arch: the home row took their keys. `J` toggles the window split, `L` toggles the layout, `K` opens the keybinding list. Two differ from Omarchy. Omarchy's layout toggle changes one workspace, while plain Hyprland keeps `general:layout` for the whole session, so the toggle is global here. Omarchy's keybinding menu is on `SUPER + SHIFT + K`, which moves a window down in this config, so the list moved to the `SUPER + ALT` row as well.
 
 > [!NOTE]
 > Keep this config and the Omarchy one in `arch/.config/hypr/*.lua` in sync. Omarchy reads a Lua config layer that plain Hyprland does not have, so the same preference is written twice, in two syntaxes.
