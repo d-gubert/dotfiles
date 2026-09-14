@@ -257,8 +257,8 @@ The files live in `ubuntu/.config/hypr/`, one per topic, sourced by `hyprland.co
 | `input.conf` | The two keyboard layouts, the touchpad, the workspace gesture |
 | `looknfeel.conf` | Catppuccin Mocha colors, no gaps, no rounding, flat animations |
 | `bindings.conf` | Every keybinding, plus the resize mode and the system mode |
-| `autostart.conf` | waybar and mako |
-| `scripts/` | The screenshot, the screen recorder, the layout toggle and the keybinding list |
+| `autostart.conf` | waybar, mako and the two clipboard watchers |
+| `scripts/` | The screenshot, the screen recorder, the clipboard history, the layout toggle and the keybinding list |
 
 waybar replaces i3bar and i3status (`ubuntu/.config/waybar/`), and mako is the notification daemon (`ubuntu/.config/mako/`). rofi 2.0 links against Wayland, so the same `ubuntu/.config/rofi/` theme serves both sessions.
 
@@ -304,6 +304,28 @@ hyprctl clients | grep class
 wezterm-gui --config enable_wayland=false start --always-new-process
 ```
 
+### Clipboard history
+
+`SUPER + V` opens the history in rofi, the same key and the same picker as i3. The keys are:
+
+| Key | Action |
+| - | - |
+| `CTRL + J` / `CTRL + K` | Move down and up the list |
+| `ENTER` or `CTRL + M` | Copy the entry back to the clipboard |
+| `CTRL + D` | Remove the entry from the history |
+| `ESCAPE` or `CTRL + C` | Cancel |
+
+The arrows and the rofi defaults `CTRL + N` and `CTRL + P` still move the list.
+
+The script takes each of those keys from its default rofi action first. rofi holds `CTRL + C` for `kb-secondary-copy`, `CTRL + K` for `kb-remove-to-eol`, `CTRL + D` for `kb-remove-char-forward` and `CTRL + J` for `kb-accept-entry`. A key bound twice stops rofi at startup, and the error window keeps the keyboard, which locks the session until you close it.
+
+`cliphist` has no daemon. Two `wl-paste --watch` lines in `autostart.conf` run `cliphist store` on every copy, one for text and one for images. `ubuntu/.config/hypr/scripts/clipboard.sh` reads the history back.
+
+> [!WARNING]
+> `cliphist` writes the history to `~/.cache/cliphist/db`, so it survives a reboot. `clipmenu` keeps its history in `/dev/shm`, which the boot clears. A password you copy stays on disk until you remove it. Remove one entry with `CTRL + D` in the picker, or clear the whole history with `cliphist wipe`.
+
+A password manager can mark a copy as sensitive, and `cliphist` then skips it. That covers the managers that set the hint, not every program.
+
 ### What differs from the i3 session
 
 The bindings carry over. The rest is deliberately thinner than i3.
@@ -311,7 +333,7 @@ The bindings carry over. The rest is deliberately thinner than i3.
 - **No monitor profiles.** i3 matches a monitor by EDID and applies a stored profile from `~/.config/i3/monitors/`. Hyprland places every monitor at its preferred mode, left to right. `monitors.conf` shows how to pin one if that is ever wrong.
 - **No window rules.** The i3 `for_window` and `assign` lines are not ported. Windows tile where they open, and Rocket.Chat is not sent to workspace 7.
 - **A shorter bar.** waybar shows the workspaces, the submap, the window title, network, Bluetooth, volume, battery, the tray and the clock. The i3status modules for load, CPU, temperature, memory, disk and the rc-watcher file are not there.
-- **Not ported.** The clipboard history (`clipmenu`) is an X11 tool. Its Wayland counterpart, `cliphist`, is in apt but not configured yet.
+- **A different clipboard history.** `clipmenu` reads the X11 selection, so the Wayland session runs `cliphist` instead. The key is the same, and so is the picker. See [below](#clipboard-history).
 
 `SUPER + CTRL + L` runs `hyprlock` with its built-in defaults. There is no idle timeout: nothing locks the screen on its own, because `hypridle` is not configured yet.
 

@@ -35,6 +35,8 @@ install-i3:
 # waybar                       the bar, in place of i3bar and i3status
 # mako-notifier                the notification daemon
 # wl-clipboard                 wl-copy and wl-paste, the Wayland xclip
+# cliphist                     the clipboard history, on SUPER + V; the
+#                              clipmenu of Wayland
 # brightnessctl                the brightness keys, which xbacklight cannot do
 # pavucontrol                  opens when the volume module is clicked
 # qt6-wayland                  the Wayland backend for the Qt apps
@@ -53,7 +55,7 @@ install-i3:
 install-hyprland:
 	@if command -v Hyprland >/dev/null 2>&1; then echo "[hyprland] already installed"; else \
 		echo "[hyprland] installing via apt with dependencies..."; \
-		sudo apt-get install -y hyprland hyprlock waybar mako-notifier wl-clipboard \
+		sudo apt-get install -y hyprland hyprlock waybar mako-notifier wl-clipboard cliphist \
 			brightnessctl pavucontrol qt6-wayland \
 			xdg-desktop-portal-hyprland xdg-desktop-portal-gtk \
 			grim slurp wf-recorder \
