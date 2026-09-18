@@ -32,6 +32,8 @@ install-i3:
 #
 # hyprland                     the compositor
 # hyprlock                     the screen locker, on SUPER + CTRL + L
+# hypridle                     the idle daemon; turns the screen off after
+#                              10 min and locks before a suspend
 # waybar                       the bar, in place of i3bar and i3status
 # mako-notifier                the notification daemon
 # wl-clipboard                 wl-copy and wl-paste, the Wayland xclip
@@ -55,7 +57,7 @@ install-i3:
 install-hyprland:
 	@if command -v Hyprland >/dev/null 2>&1; then echo "[hyprland] already installed"; else \
 		echo "[hyprland] installing via apt with dependencies..."; \
-		sudo apt-get install -y hyprland hyprlock waybar mako-notifier wl-clipboard cliphist \
+		sudo apt-get install -y hyprland hyprlock hypridle waybar mako-notifier wl-clipboard cliphist \
 			brightnessctl pavucontrol qt6-wayland \
 			xdg-desktop-portal-hyprland xdg-desktop-portal-gtk \
 			grim slurp wf-recorder \

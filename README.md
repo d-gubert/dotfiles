@@ -335,7 +335,17 @@ The bindings carry over. The rest is deliberately thinner than i3.
 - **A shorter bar.** waybar shows the workspaces, the submap, the window title, network, Bluetooth, volume, battery, the tray and the clock. The i3status modules for load, CPU, temperature, memory, disk and the rc-watcher file are not there.
 - **A different clipboard history.** `clipmenu` reads the X11 selection, so the Wayland session runs `cliphist` instead. The key is the same, and so is the picker. See [below](#clipboard-history).
 
-`SUPER + CTRL + L` runs `hyprlock` with its built-in defaults. There is no idle timeout: nothing locks the screen on its own, because `hypridle` is not configured yet.
+`SUPER + CTRL + L` runs `hyprlock`, which reads `ubuntu/.config/hypr/hyprlock.conf`. hyprlock has no built-in defaults from v0.9 on: without that file it refuses to start and the session stays unlocked.
+
+`hypridle` handles the idle timeouts, from `ubuntu/.config/hypr/hypridle.conf`. It locks the session after 9.5 minutes of no input, and it turns the outputs off 30 seconds later. The lock comes first on purpose: hyprlock must draw its surface before the screen sleeps. `hypridle` also locks before a suspend, so a lid close leaves no open session.
+
+> [!WARNING]
+> `dpms off` can leave `HDMI-A-1` dark, because the NVIDIA GPU drives that output. Cycle the output to recover it. Do not run `hyprctl reload`.
+>
+> ```sh
+> hyprctl keyword monitor "HDMI-A-1, disable"
+> hyprctl keyword monitor "HDMI-A-1, preferred, auto, 1"
+> ```
 
 ---
 
