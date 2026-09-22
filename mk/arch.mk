@@ -52,9 +52,23 @@ install-alacritty:
 install-wezterm:
 	@$(call pkg_add,wezterm)
 
+# stow links arch/.config/systemd/user/kanata.service into ~, and `enable`
+# turns that unit into a login-time service, so stow has to run first.
+#
+# systemd follows the stow symlink and writes the repository path itself into
+# default.target.wants, not the path under ~/.config. Move this checkout and
+# the unit stops starting, until `systemctl --user reenable kanata.service`
+# rewrites that link.
 .PHONY: install-kanata
-install-kanata: uinput-config
+install-kanata: uinput-config stow
 	@$(call pkg_add,kanata)
+	@systemctl --user daemon-reload
+	@if systemctl --user is-enabled kanata.service >/dev/null 2>&1; then \
+		echo "[kanata] service already enabled"; \
+	else \
+		echo "[kanata] enabling the user service..."; \
+		systemctl --user enable kanata.service; \
+	fi
 
 .PHONY: install-spotatui
 install-spotatui:
