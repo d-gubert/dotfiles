@@ -30,3 +30,12 @@ hl.config({
 -- names that class as well.
 o.window({ tag = "terminal" }, { opacity = "1 1" })
 o.window("org\\.wezfurlong\\.wezterm", { opacity = "1 1" })
+
+-- https://wiki.hypr.land/Configuring/Code-Snippets/
+-- Smart borders. The border marks the focused window. A workspace that holds
+-- one window has nothing to tell apart, so the border only costs 2 px on each
+-- edge. w[tv1] selects a workspace with one tiled, visible window, and f[1]
+-- covers the fullscreen case. Omarchy already sets rounding to 0, and the gaps
+-- above are 0 on every workspace, so the border is the only part left to drop.
+o.window({ float = false, workspace = "w[tv1]" }, { border_size = 0 })
+o.window({ float = false, workspace = "f[1]" }, { border_size = 0 })
