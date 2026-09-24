@@ -51,8 +51,8 @@ Stow is usually used by having one directory for each software you want to manag
 | Package | Contents |
 | --------- | ---------- |
 | `common/` | Everything OS-agnostic — zsh, tmux, wezterm, nvim, yazi, zellij, lazygit, herdr, kanata, starship, git, `.claude/` |
-| `ubuntu/` | Debian/Ubuntu only — i3, i3status, rofi, clipmenu, nushell, `.Xresources`, `.xprofile`, and the [Hyprland session](#hyprland-session-on-ubuntu) (hypr, waybar, mako) |
-| `arch/` | Arch/Omarchy only — Wayland clipboard, mise toolchain wiring, the [kanata login service](#kanata-at-login-arch-only), and the [Omarchy desktop config](#omarchy-desktop-preferences) |
+| `ubuntu/` | Debian/Ubuntu only — i3, i3status, rofi, clipmenu, nushell, `.Xresources`, `.xprofile`, and the [Hyprland session](#hyprland-session-on-ubuntu) (hypr, waybar, mako), plus the [kanata login service](#kanata-at-login-linux) |
+| `arch/` | Arch/Omarchy only — Wayland clipboard, mise toolchain wiring, the [kanata login service](#kanata-at-login-linux), and the [Omarchy desktop config](#omarchy-desktop-preferences) |
 | `mac/` | macOS only |
 
 `make` stows `common` plus the package for this OS, so a macOS machine never gets i3 or X11 config dropped into its home directory. `uname` only separates Darwin from Linux, so the two Linux packages are split on `/etc/os-release` instead: `ID` or `ID_LIKE` naming `arch` selects `arch/`, anything else gets `ubuntu/`. Omarchy reports `ID=omarchy` with `ID_LIKE=arch`, which is why the match reads both fields. The target uses `stow -R`, which also cleans up stale symlinks when a file moves between packages.
@@ -149,18 +149,20 @@ On macOS kanata needs Karabiner's VirtualHIDDevice driver instead. The target
 installs Karabiner-Elements and prints what you still have to approve under
 System Settings > Privacy & Security.
 
-#### kanata at login (Arch only)
+#### kanata at login (Linux)
 
-`arch/.config/systemd/user/kanata.service` starts kanata at login and restarts
-it if it dies. A *user* unit, not a system one: kanata runs as you and reads
-your config from `~/.config/kanata`. `make install-kanata` enables it.
+`<os>/.config/systemd/user/kanata.service` starts kanata at login and restarts
+it if it dies. The `arch/` and `ubuntu/` copies differ only in the path to the
+binary: `/usr/bin` on Arch, the brew prefix on Ubuntu. A *user* unit, not a
+system one: kanata runs as you and reads your config from `~/.config/kanata`. `make install-kanata` enables it.
 
 The unit is not tied to `graphical-session.target`, so kanata remaps the
 keyboard on a plain TTY as well. Nothing here waits for `/dev/uinput` — the
-module drop-in loads it at boot, long before any login.
+module drop-in loads it at boot, long before any login. On Ubuntu, kanata
+runs the same under i3 and Hyprland.
 
 Check it with `systemctl --user status kanata`, and read its output with
-`journalctl --user -u kanata`. Ubuntu and macOS have no equivalent yet.
+`journalctl --user -u kanata`. macOS has no equivalent yet.
 
 #### kanata home-row mods
 

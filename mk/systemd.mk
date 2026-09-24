@@ -65,3 +65,22 @@ uinput-config:
 		echo "[uinput] NOTE: this session has no input or uinput group."; \
 		echo "[uinput] NOTE: log out and back in, then start kanata again."; \
 	fi
+
+# kanata-service — stow links <os>/.config/systemd/user/kanata.service into ~,
+#          and `enable` turns that unit into a login-time service, so stow has
+#          to run first. `enable` only links the unit, so the kanata binary
+#          can arrive after it.
+#
+#          systemd follows the stow symlink and writes the repository path
+#          itself into default.target.wants, not the path under ~/.config.
+#          Move this checkout and the unit stops starting, until
+#          `systemctl --user reenable kanata.service` rewrites that link.
+.PHONY: kanata-service
+kanata-service: stow
+	@systemctl --user daemon-reload
+	@if systemctl --user is-enabled kanata.service >/dev/null 2>&1; then \
+		echo "[kanata] service already enabled"; \
+	else \
+		echo "[kanata] enabling the user service..."; \
+		systemctl --user enable kanata.service; \
+	fi
