@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  kanata at boot on macOS, the launchd twin of the systemd user unit in
+  arch/ and ubuntu/. It has to be a root daemon, not a user agent: only root
+  can open the keyboard and reach the VirtualHIDDevice daemon.
+
+  launchd does not expand ~ or $HOME, so scripts/kanata-macos.sh replaces @HOME@
+  when it copies this file to /Library/LaunchDaemons.
+-->
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>local.dotfiles.kanata</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/opt/homebrew/bin/kanata</string>
+		<string>--cfg</string>
+		<string>@HOME@/.config/kanata/kanata.kbd</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>KeepAlive</key>
+	<true/>
+	<key>StandardOutPath</key>
+	<string>/Library/Logs/kanata.log</string>
+	<key>StandardErrorPath</key>
+	<string>/Library/Logs/kanata.log</string>
+</dict>
+</plist>

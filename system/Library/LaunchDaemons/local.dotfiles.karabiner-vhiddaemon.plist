@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  kanata writes the remapped keys through Karabiner's VirtualHIDDevice driver,
+  and this daemon is the process that talks to the driver. The standalone
+  driver pkg installs the daemon but does not start it. So run it as root, at
+  boot.
+-->
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>local.dotfiles.karabiner-vhiddaemon</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Library/Application Support/org.pqrs/Karabiner-DriverKit-VirtualHIDDevice/Applications/Karabiner-VirtualHIDDevice-Daemon.app/Contents/MacOS/Karabiner-VirtualHIDDevice-Daemon</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>KeepAlive</key>
+	<true/>
+</dict>
+</plist>

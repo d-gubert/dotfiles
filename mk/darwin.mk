@@ -52,24 +52,10 @@ install-wezterm: homebrew
 	fi
 
 .PHONY: install-kanata
-# On macOS kanata drives the keyboard through Karabiner's VirtualHIDDevice
-# driver, which ships with Karabiner-Elements. The driver is a system extension,
-# so macOS requires it to be approved by hand — brew can install it but cannot
-# activate it.
-install-kanata: homebrew
-	@if command -v kanata >/dev/null 2>&1; then echo "[kanata] already installed"; else \
-		echo "[kanata] installing via brew..."; \
-		$(BREW_INSTALL) kanata; \
-	fi
-	@if [ -d "/Applications/Karabiner-Elements.app" ]; then \
-		echo "[kanata] Karabiner-Elements already installed"; \
-	else \
-		echo "[kanata] installing Karabiner-Elements (VirtualHIDDevice driver)..."; \
-		$(BREW_INSTALL) --cask karabiner-elements; \
-	fi
-	@echo "[kanata] NOTE: approve the driver under System Settings > Privacy &"
-	@echo "[kanata]       Security, and grant kanata Input Monitoring access,"
-	@echo "[kanata]       before it will capture keys."
+# scripts/kanata-macos.sh holds the steps: the driver, the launchd daemons and
+# the keyboard type.
+install-kanata: homebrew stow
+	@BREW=$(BREW) scripts/kanata-macos.sh
 
 # macOS ships curl, so there is nothing to install.
 .PHONY: install-curl

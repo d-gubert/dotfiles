@@ -145,9 +145,27 @@ at boot. Log out and back in for the group change to take effect, or run
 `newgrp uinput -c kanata` once in the current shell. See the [kanata Linux
 setup docs](https://github.com/jtroo/kanata/blob/main/docs/setup-linux.md).
 
-On macOS kanata needs Karabiner's VirtualHIDDevice driver instead. The target
-installs Karabiner-Elements and prints what you still have to approve under
-System Settings > Privacy & Security.
+On macOS kanata needs Karabiner's VirtualHIDDevice driver instead. Each kanata
+release supports one driver version, and its release notes name it.
+`make install-kanata` runs `scripts/kanata-macos.sh`, which installs that
+version from the standalone pkg (`VHID_VERSION` in the script) and requests
+the driver activation. Two approvals stay manual:
+
+1. Allow the driver under System Settings > General > Login Items &
+   Extensions > Driver Extensions.
+2. Add the kanata binary under System Settings > Privacy & Security > Input
+   Monitoring. Add the real file, `readlink -f /opt/homebrew/bin/kanata`, not the
+   symlink. The path contains the version, so do this again after each
+   `brew upgrade kanata`.
+
+Do not install Karabiner-Elements. It bundles a newer driver, and kanata then
+logs `connect_failed asio.system:2` and releases the keyboard. The script
+uninstalls the cask if it finds it.
+
+If the key below Esc types `§` and `±` in place of `` ` `` and `~`, macOS took
+the virtual keyboard for an ISO keyboard. The script sets the type of the
+virtual keyboard to ANSI in `/Library/Preferences/com.apple.keyboardtype`.
+Restart the daemon or log out to apply the change.
 
 #### kanata at login (Linux)
 
@@ -162,7 +180,20 @@ module drop-in loads it at boot, long before any login. On Ubuntu, kanata
 runs the same under i3 and Hyprland.
 
 Check it with `systemctl --user status kanata`, and read its output with
-`journalctl --user -u kanata`. macOS has no equivalent yet.
+`journalctl --user -u kanata`.
+
+#### kanata at boot (macOS)
+
+`system/Library/LaunchDaemons/` holds two root daemons, and
+`make install-kanata` copies them to `/Library/LaunchDaemons` and loads them.
+`local.dotfiles.karabiner-vhiddaemon` runs the daemon that talks to the
+driver. `local.dotfiles.kanata` runs kanata with `~/.config/kanata/kanata.kbd`.
+Both must run as root. The script also stops a `brew services` kanata job,
+because two kanata processes cannot share the keyboard.
+
+Check them with `sudo launchctl print system/local.dotfiles.kanata`, and read
+the kanata output in `/Library/Logs/kanata.log`. After a config change, run
+`sudo launchctl kickstart -k system/local.dotfiles.kanata`.
 
 #### kanata home-row mods
 
