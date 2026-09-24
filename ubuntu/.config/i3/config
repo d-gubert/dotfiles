@@ -180,13 +180,10 @@ for_window [class="Enpass"] floating enable, border pixel 3, resize 160px 90px
 default_border none
 
 # Common applications
-# bindsym $super+1 exec brave-browser
 # bindsym $super+2 exec spotify
 # bindsym $super+w exec /opt/Rocket.Chat/rocketchat-desktop %U
 # bindsym $mod+s exec spotify
 bindsym $mod+c exec /opt/Rocket.Chat/rocketchat-desktop %U
-bindsym $mod+b exec brave-browser --ozone-platform=x11 --force-device-scale-factor=1
-# bindsym $mod+b exec brave-browser --ozone-platform=x11 --force-device-scale-factor=1
 bindsym $mod+Return exec wezterm
 bindsym $mod+Shift+Return exec alacritty
 # bindsym $mod+v exec --no-startup-id ~/.config/i3/scripts/dmenu-cliphist.sh sel

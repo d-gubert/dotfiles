@@ -12,15 +12,13 @@
 PKG_PREREQ :=
 
 # Tools that only the AUR carries. The repositories carry everything else.
-AUR_TOOLS := brave-browser carapace dvm enpass kanata mise rgx spotatui sttr \
-             vi-mongo
+AUR_TOOLS := carapace dvm enpass kanata mise rgx spotatui sttr vi-mongo
 
 # lazyjira ships only through a Homebrew tap. Arch has no package for it, so
 # pkg_add reports it instead of failing the whole list.
 PKG_SKIP := lazyjira
 
 # Package names that differ from the name of the tool.
-PKG_brave-browser  := brave-bin
 PKG_carapace       := carapace-bin
 PKG_enpass         := enpass-bin
 PKG_fira-code-nerd := ttf-firacode-nerd

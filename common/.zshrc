@@ -738,7 +738,6 @@ fi
 # Ubuntu 26.04 (resolute) starts the GUI in Wayland by default, causing Electron based apps to think they should use that backend to render
 # But i3 uses x11, so if I don't override the GUI backend when starting those apps they just fail, sometimes silently
 if exists lsb_release && test "$DESKTOP_SESSION" = "i3" && test "$(lsb_release -cs)" = "resolute"; then
-	alias brave="brave-browser --ozone-platform=x11"
 	alias code="code --ozone-platform=x11"
 fi
 

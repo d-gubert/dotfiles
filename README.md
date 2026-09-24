@@ -79,7 +79,7 @@ manager. To add a tool that is only a package name, put it in one of the
 `*_TOOLS` lists and add a `PKG_<tool>` line wherever the name differs.
 
 Three tools differ from the table on Arch. `gh` is `github-cli`, `carapace`,
-`kanata`, `enpass` and `brave-browser` come from the AUR, and `lazyjira` has no
+`kanata` and `enpass` come from the AUR, and `lazyjira` has no
 Arch package at all, so `make` reports it and installs the rest. Node comes
 from mise instead of volta, and i3 is not installed because Omarchy runs
 Hyprland.
@@ -90,7 +90,6 @@ Hyprland.
 | ------ | ------------- | --------------- |
 | [homebrew](https://brew.sh) | Package manager | install script |
 | [stow](https://www.gnu.org/software/stow) | Dotfiles symlink manager | brew |
-| [brave-browser](https://brave.com) | Brave Browser | install script |
 | [enpass](https://www.enpass.io) | Password manager | apt (Linux) / brew cask (macOS) |
 | [zsh](https://www.zsh.org) | Shell | brew |
 | [oh-my-zsh](https://ohmyz.sh) | Zsh framework | install script |

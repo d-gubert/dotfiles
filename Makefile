@@ -48,7 +48,6 @@ all: essential development utilities
 # ESSENTIAL_TOOLS below covers everything that is only a package name. These
 # are the ones that are not:
 #
-# brave-browser — official install script
 # docker        — official script (docker-ce, not the apt docker.io snap)
 # enpass        — vendor apt repo on Linux, cask on macOS
 # kanata        — Linux also needs the uinput group and a udev rule; macOS
@@ -61,7 +60,6 @@ all: essential development utilities
 .PHONY: base-essential
 base-essential: $(PKG_PREREQ) \
 	stow \
-	install-brave-browser \
 	install-enpass \
 	install-wezterm \
 	install-zsh \

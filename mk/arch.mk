@@ -34,12 +34,6 @@ install-node: install-mise
 		mise use -g node@lts; \
 	fi
 
-# Omarchy also offers `omarchy install browser brave`, which opens a floating
-# terminal. The package is the predictable choice inside a Makefile.
-.PHONY: install-brave-browser
-install-brave-browser:
-	@$(call pkg_add,brave-browser)
-
 .PHONY: install-enpass
 install-enpass:
 	@$(call pkg_add,enpass)
