@@ -14,8 +14,15 @@
 ;; explains what differs and why.
 
 ;; defsrc is still necessary
+;;
+;; On macOS kanata grabs only the internal keyboard. The Glove80 has its own
+;; home-row mods, and kanata must not apply them a second time. An exclude
+;; cannot name the Glove80: over Bluetooth kanata reads its name as garbage,
+;; and it shares its vendor and product IDs with the Karabiner virtual
+;; keyboard. Linux ignores this option.
 (defcfg
   process-unmapped-keys yes
+  macos-dev-names-include ("Apple Internal Keyboard / Trackpad")
 )
 
 (defsrc
