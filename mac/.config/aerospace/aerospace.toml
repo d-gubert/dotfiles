@@ -33,9 +33,9 @@ accordion-padding = 30
     10 = 'secondary'
 
 [mode.main.binding]
-    # See: https://nikitabobko.github.io/AeroSpace/goodies#open-a-new-window-with-applescript
-    alt-enter = '''exec-and-forget osascript -e \
-    'tell application "Terminal" to tell (do script) to activate' '''
+    cmd-alt-enter = 'exec-and-forget /Applications/WezTerm.app/Contents/MacOS/wezterm start'
+    cmd-alt-b = 'exec-and-forget ~/.config/aerospace/new-firefox-window.sh'
+    cmd-alt-c = 'exec-and-forget open -a Rocket.Chat'
 
     # i3 wraps focus by default
     cmd-j =         'focus --boundaries-action wrap-around-the-workspace left'
