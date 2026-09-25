@@ -33,6 +33,12 @@ if is_darwin then
 	-- the M- bindings in .tmux.conf and .config/herdr/config.toml never arrive.
 	config.send_composed_key_when_left_alt_is_pressed = false
 	config.native_macos_fullscreen_mode = true
+
+	-- No title bar, so there is nothing to grab; CMD-SHIFT-drag moves the window.
+	config.window_decorations = "RESIZE"
+	config.mouse_bindings = {
+		{ event = { Drag = { streak = 1, button = 'Left' } }, mods = 'CMD|SHIFT', action = act.StartWindowDrag },
+	}
 end
 
 if build_target:find('linux') then
