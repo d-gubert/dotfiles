@@ -12,7 +12,15 @@ BREW_PREFIX := /opt/homebrew
 STOW_OS_PKG := mac
 
 # aerospace -- a tiling window manager, macOS only
-EXTRA_ESSENTIAL := install-aerospace
+# MAC_ESSENTIAL_TOOLS -- plain brew packages that only macOS installs
+EXTRA_ESSENTIAL := install-aerospace install-mac-essential
+
+# maccy -- a clipboard manager (a cask; brew finds it without --cask)
+MAC_ESSENTIAL_TOOLS := maccy
+
+.PHONY: install-mac-essential
+install-mac-essential: homebrew
+	@$(call pkg_add,$(MAC_ESSENTIAL_TOOLS))
 
 .PHONY: install-spotatui
 install-spotatui: homebrew

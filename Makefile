@@ -220,7 +220,7 @@ install-tmux: pre-tmux
 # Nothing guards these installs. brew, apt and pacman all skip a package that
 # is already present, so a guard only repeats work the package manager does.
 
-ESSENTIAL_TOOLS   := bat btop ffmpeg fd fzf glow herdr jq neovim ripgrep
+ESSENTIAL_TOOLS   := bat btop eza ffmpeg fd fzf glow herdr jq neovim ripgrep
 DEVELOPMENT_TOOLS := ast-grep gh lazygit tealdeer
 UTILITY_TOOLS     := carapace jwt-ui lazyjira tree-sitter
 
