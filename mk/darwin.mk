@@ -11,8 +11,8 @@ include mk/scripts.mk
 BREW_PREFIX := /opt/homebrew
 STOW_OS_PKG := mac
 
-# base-essential is the whole of `essential` on macOS.
-EXTRA_ESSENTIAL :=
+# aerospace -- a tiling window manager, macOS only
+EXTRA_ESSENTIAL := install-aerospace
 
 .PHONY: install-spotatui
 install-spotatui: homebrew
@@ -56,6 +56,14 @@ install-wezterm: homebrew
 # the keyboard type.
 install-kanata: homebrew stow
 	@BREW=$(BREW) scripts/kanata-macos.sh
+
+# The cask lives in the vendor tap, not in homebrew/cask.
+.PHONY: install-aerospace
+install-aerospace: homebrew
+	@if $(BREW) list --cask aerospace >/dev/null 2>&1; then echo "[aerospace] already installed"; else \
+		echo "[aerospace] installing via brew..."; \
+		$(BREW_INSTALL) --cask nikitabobko/tap/aerospace; \
+	fi
 
 # macOS ships curl, so there is nothing to install.
 .PHONY: install-curl
