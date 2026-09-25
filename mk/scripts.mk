@@ -31,9 +31,3 @@ install-node: install-volta
 		volta install node; \
 	fi
 
-.PHONY: install-dvm
-install-dvm: install-curl
-	@if command -v dvm >/dev/null 2>&1; then echo "[dvm] already installed"; else \
-		echo "[dvm] installing via official script..."; \
-		curl -fsSL https://dvm.deno.dev | sh; \
-	fi
