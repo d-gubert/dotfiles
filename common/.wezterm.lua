@@ -8,7 +8,7 @@ config.color_scheme = 'Catppuccin Mocha (Gogh)'
 local is_darwin = build_target:find('darwin') ~= nil
 
 config.font = wezterm.font "FiraCode Nerd Font Mono"
-config.font_size = is_darwin and 13 or 10
+config.font_size = is_darwin and 17 or 10
 
 config.enable_tab_bar = false
 
@@ -19,10 +19,15 @@ config.disable_default_key_bindings = true
 -- defaults off nothing would copy or paste at all.
 local mod = is_darwin and 'CMD' or 'CTRL'
 
+-- An uppercase key implies SHIFT: CTRL-SHIFT-C on Linux, but plain CMD-C on macOS.
+local function letter(l)
+	return is_darwin and l:lower() or l
+end
+
 config.keys = {
-	{ key = 'C', mods = mod, action = act.CopyTo 'Clipboard' },
-	{ key = 'V', mods = mod, action = act.PasteFrom 'Clipboard' },
-	{ key = 'P', mods = mod, action = act.ActivateCommandPalette },
+	{ key = letter 'C', mods = mod, action = act.CopyTo 'Clipboard' },
+	{ key = letter 'V', mods = mod, action = act.PasteFrom 'Clipboard' },
+	{ key = letter 'P', mods = mod, action = act.ActivateCommandPalette },
 	{ key = '-', mods = mod, action = act.DecreaseFontSize },
 	{ key = '=', mods = mod, action = act.IncreaseFontSize },
 	{ key = '0', mods = mod, action = act.ResetFontSize },
@@ -33,6 +38,10 @@ if is_darwin then
 	-- the M- bindings in .tmux.conf and .config/herdr/config.toml never arrive.
 	config.send_composed_key_when_left_alt_is_pressed = false
 	config.native_macos_fullscreen_mode = true
+
+	-- The tab bar is off, so each window holds one tab, and closing the tab
+	-- closes the window. CTRL-Q stays free on Linux for the terminal itself.
+	table.insert(config.keys, { key = 'q', mods = 'CMD', action = act.CloseCurrentTab { confirm = true } })
 
 	-- No title bar, so there is nothing to grab; CMD-SHIFT-drag moves the window.
 	config.window_decorations = "RESIZE"
