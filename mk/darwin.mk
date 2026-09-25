@@ -14,7 +14,8 @@ STOW_OS_PKG := mac
 # aerospace -- a tiling window manager, macOS only
 # MAC_ESSENTIAL_TOOLS -- plain brew packages that only macOS installs
 # macos-defaults -- the keyboard shortcuts from System Settings
-EXTRA_ESSENTIAL := install-aerospace install-mac-essential macos-defaults
+# install-keylayout -- the keyboard layout for the Glove80 symbol layer
+EXTRA_ESSENTIAL := install-aerospace install-mac-essential macos-defaults install-keylayout
 
 # maccy -- a clipboard manager (a cask; brew finds it without --cask)
 MAC_ESSENTIAL_TOOLS := maccy
@@ -78,6 +79,20 @@ install-aerospace: homebrew
 .PHONY: macos-defaults
 macos-defaults:
 	@scripts/macos-defaults.sh
+
+# glove80/README.md explains the layout. It is a copy and not a stow symlink:
+# System Settings is sandboxed and does not follow a symlink into this
+# repository, so the layout does not show in the list of input sources.
+KEYLAYOUT := glove80/US-Intl-AltGr.keylayout
+KEYLAYOUT_DIR := $(HOME)/Library/Keyboard Layouts
+
+.PHONY: install-keylayout
+install-keylayout:
+	@if cmp -s "$(KEYLAYOUT)" "$(KEYLAYOUT_DIR)/$(notdir $(KEYLAYOUT))"; then echo "[keylayout] already installed"; else \
+		echo "[keylayout] installing; log out and in to see it in System Settings..."; \
+		mkdir -p "$(KEYLAYOUT_DIR)"; \
+		install -m 0644 "$(KEYLAYOUT)" "$(KEYLAYOUT_DIR)/"; \
+	fi
 
 # macOS ships curl, so there is nothing to install.
 .PHONY: install-curl

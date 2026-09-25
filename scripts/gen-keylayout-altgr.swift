@@ -1,0 +1,214 @@
+// Generate glove80/US-Intl-AltGr.keylayout.
+//
+// The Glove80 symbol layer sends RALT+key for symbols such as ç, ¿ and the
+// literal ` ~ ' " ^. Those are the AltGr symbols of the Linux us(intl) layout.
+// macOS treats RALT as Option, and the Option layer of "U.S. International -
+// PC" has other symbols (Option+, is ≤, not ç).
+//
+// This script copies "U.S. International - PC", dead keys included, and
+// replaces its Option layer with the us(intl) AltGr layer. The Linux dead
+// keys of level 4 (dead_macron, dead_caron...) are not copied; those keys keep
+// the macOS symbol. macOS cannot tell the left Option from the right Option,
+// so both Option keys type the AltGr symbols.
+//
+// Usage:
+//   swift scripts/gen-keylayout-altgr.swift > glove80/US-Intl-AltGr.keylayout
+//   make install-keylayout
+import Carbon
+
+let sourceID = "com.apple.keylayout.USInternational-PC"
+let ansiKbdType: UInt32 = 40
+
+// UCKeyTranslate modifier bits, already shifted right by 8.
+let cmd: UInt32 = 1, shift: UInt32 = 2, caps: UInt32 = 4, opt: UInt32 = 8, ctrl: UInt32 = 16
+
+// Each key map: the modifier state to read from the source layout, and the
+// keyMapSelect expressions that pick it.
+let maps: [(mods: UInt32, select: [String])] = [
+	(0, [""]),
+	(shift, ["anyShift"]),
+	(caps, ["caps"]),
+	(shift | caps, ["anyShift caps"]),
+	(opt, ["anyOption"]),
+	(shift | opt, ["anyShift anyOption"]),
+	(caps | opt, ["caps anyOption"]),
+	(shift | caps | opt, ["anyShift caps anyOption"]),
+	(cmd, ["command caps? anyOption?"]),
+	(cmd | shift, ["command anyShift caps? anyOption?"]),
+	(ctrl, ["anyControl anyShift? caps? anyOption? command?"]),
+]
+
+// us(intl) AltGr layer: macOS ANSI keycode -> (AltGr, Shift+AltGr). nil keeps
+// the macOS symbol.
+let altgr: [UInt16: (String?, String?)] = [
+	50: ("`", "~"),
+	18: ("¡", "¹"),
+	19: ("²", nil),
+	20: ("³", nil),
+	21: ("¤", "£"),
+	23: ("€", nil),
+	22: ("¼", "^"),
+	26: ("½", nil),
+	28: ("¾", nil),
+	25: ("‘", nil),
+	29: ("’", nil),
+	27: ("¥", nil),
+	24: ("×", "÷"),
+	12: ("ä", "Ä"),
+	13: ("å", "Å"),
+	14: ("é", "É"),
+	15: ("®", "®"),
+	17: ("þ", "Þ"),
+	16: ("ü", "Ü"),
+	32: ("ú", "Ú"),
+	34: ("í", "Í"),
+	31: ("ó", "Ó"),
+	35: ("ö", "Ö"),
+	33: ("«", "“"),
+	30: ("»", "”"),
+	42: ("¬", "¦"),
+	0: ("á", "Á"),
+	1: ("ß", "§"),
+	2: ("ð", "Ð"),
+	37: ("ø", "Ø"),
+	41: ("¶", "°"),
+	39: ("'", "\""),
+	6: ("æ", "Æ"),
+	8: ("©", "¢"),
+	45: ("ñ", "Ñ"),
+	46: ("µ", "µ"),
+	43: ("ç", "Ç"),
+	44: ("¿", nil),
+]
+
+let props = [kTISPropertyInputSourceID as String: sourceID] as CFDictionary
+guard let sources = TISCreateInputSourceList(props, true)?.takeRetainedValue() as? [TISInputSource],
+	let source = sources.first,
+	let dataPtr = TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData)
+else {
+	FileHandle.standardError.write("cannot load \(sourceID)\n".data(using: .utf8)!)
+	exit(1)
+}
+let layoutData = Unmanaged<CFData>.fromOpaque(dataPtr).takeUnretainedValue() as Data
+
+enum Result { case output(String), dead(UInt32) }
+
+func translate(_ layout: UnsafePointer<UCKeyboardLayout>, _ code: UInt16, _ mods: UInt32, _ state: UInt32) -> Result {
+	var dead = state
+	var len = 0
+	var chars = [UniChar](repeating: 0, count: 16)
+	UCKeyTranslate(layout, code, UInt16(kUCKeyActionDown), mods, ansiKbdType, 0, &dead, 16, &len, &chars)
+	if len == 0 && dead != 0 { return .dead(dead) }
+	return .output(String(utf16CodeUnits: chars, count: len))
+}
+
+func xml(_ s: String) -> String {
+	s.unicodeScalars.map { u in
+		let v = u.value
+		if (v >= 0x30 && v <= 0x39) || (v >= 0x41 && v <= 0x5A) || (v >= 0x61 && v <= 0x7A) { return String(u) }
+		return String(format: "&#x%04X;", v)
+	}.joined()
+}
+
+let codes = (0..<128).map { UInt16($0) }
+
+layoutData.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
+	let layout = raw.baseAddress!.assumingMemoryBound(to: UCKeyboardLayout.self)
+
+	// Pass 1: the plain result of every key in every map, and the dead states.
+	var base: [[Result]] = []
+	var states: [UInt32] = []
+	for (mi, m) in maps.enumerated() {
+		var row: [Result] = []
+		for code in codes {
+			var r = translate(layout, code, m.mods, 0)
+			if (4...7).contains(mi), let o = altgr[code] {
+				let shifted = mi == 5 || mi == 7
+				if let s = shifted ? o.1 : o.0 {
+					// Caps Lock without Shift types the capital letter, as on Linux.
+					r = .output(mi == 6 && o.1 != nil && o.0!.uppercased() == o.1! ? o.1! : s)
+				}
+			}
+			if case .dead(let d) = r, !states.contains(d) { states.append(d) }
+			row.append(r)
+		}
+		base.append(row)
+	}
+	states.sort()
+
+	// A dead state ends with the terminator when the next key does not compose.
+	// Return never composes, so its output is the terminator plus "\r".
+	var terminators: [UInt32: String] = [:]
+	for d in states {
+		if case .output(let t) = translate(layout, 36, 0, d) { terminators[d] = String(t.dropLast()) }
+	}
+
+	var out = """
+		<?xml version="1.1" encoding="UTF-8"?>
+		<!DOCTYPE keyboard SYSTEM "file://localhost/System/Library/DTDs/KeyboardLayout.dtd">
+		<!-- Generated by scripts/gen-keylayout-altgr.swift. Do not edit. -->
+		<keyboard group="126" id="-24601" name="US Intl AltGr" maxout="2">
+		\t<layouts>
+		\t\t<layout first="0" last="255" mapSet="ANSI" modifiers="Modifiers"/>
+		\t</layouts>
+		\t<modifierMap id="Modifiers" defaultIndex="0">
+
+		"""
+	for (mi, m) in maps.enumerated() {
+		out += "\t\t<keyMapSelect mapIndex=\"\(mi)\">\n"
+		for s in m.select { out += "\t\t\t<modifier keys=\"\(s)\"/>\n" }
+		out += "\t\t</keyMapSelect>\n"
+	}
+	out += "\t</modifierMap>\n\t<keyMapSet id=\"ANSI\">\n"
+
+	var actions = ""
+	for (mi, row) in base.enumerated() {
+		out += "\t\t<keyMap index=\"\(mi)\">\n"
+		for (ci, r) in row.enumerated() {
+			let code = codes[ci]
+			let id = "m\(mi)k\(code)"
+			var whens: [String] = []
+			switch r {
+			case .dead(let d):
+				whens.append("<when state=\"none\" next=\"s\(d)\"/>")
+			case .output(let s):
+				if s.isEmpty { continue }
+				whens.append("<when state=\"none\" output=\"\(xml(s))\"/>")
+			}
+			// Compositions after a dead key. The Option layer drops them, as
+			// its keys are no longer the ones the source layout composes.
+			if !(4...7).contains(mi) || altgr[code] == nil {
+				for d in states {
+					let plain: String
+					switch r {
+					case .output(let s): plain = s
+					case .dead: plain = ""
+					}
+					switch translate(layout, code, maps[mi].mods, d) {
+					case .dead(let n):
+						whens.append("<when state=\"s\(d)\" next=\"s\(n)\"/>")
+					case .output(let s):
+						if s != (terminators[d] ?? "") + plain {
+							whens.append("<when state=\"s\(d)\" output=\"\(xml(s))\"/>")
+						}
+					}
+				}
+			}
+			if whens.count == 1, case .output(let s) = r {
+				out += "\t\t\t<key code=\"\(code)\" output=\"\(xml(s))\"/>\n"
+			} else {
+				out += "\t\t\t<key code=\"\(code)\" action=\"\(id)\"/>\n"
+				actions += "\t\t<action id=\"\(id)\">\n"
+				for w in whens { actions += "\t\t\t\(w)\n" }
+				actions += "\t\t</action>\n"
+			}
+		}
+		out += "\t\t</keyMap>\n"
+	}
+	out += "\t</keyMapSet>\n\t<actions>\n" + actions + "\t</actions>\n\t<terminators>\n"
+	for d in states {
+		out += "\t\t<when state=\"s\(d)\" output=\"\(xml(terminators[d] ?? ""))\"/>\n"
+	}
+	out += "\t</terminators>\n</keyboard>\n"
+	print(out, terminator: "")
+}

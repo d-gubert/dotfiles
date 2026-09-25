@@ -2,6 +2,21 @@
 
 My Glove80 config. Some layers omitted due to insignificance.
 
+## macOS
+
+The symbol layer sends RALT+key for ç, ¿, ¡ and the literal `` ` ~ ' " ^ ``.
+Those are the AltGr symbols of the Linux `us(intl)` layout. macOS treats RALT
+as Option, and its own Option symbols are different.
+
+`make install-keylayout` copies `US-Intl-AltGr.keylayout` to
+`~/Library/Keyboard Layouts`. It is
+"U.S. International – PC" with the `us(intl)` AltGr layer on Option.
+`scripts/gen-keylayout-altgr.swift` generates it. To use it:
+
+1. Log out and log in again.
+2. Open System Settings > Keyboard > Input Sources > Edit.
+3. Add "US Intl AltGr" from the "Others" group and select it.
+
 ## Layer 0: Homerow Mod
 <img width="1300" height="593" alt="image" src="https://github.com/user-attachments/assets/83695764-4153-44ee-a1cc-ed17d0e3a698" />
 
