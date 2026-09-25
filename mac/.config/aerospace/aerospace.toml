@@ -6,17 +6,19 @@ config-version = 2
 start-at-login = true
 
 # In i3, all workspaces are phantom
-persistent-workspaces = []
+persistent-workspaces = ["1","2","7"]
 
 # i3 doesn't have "normalizations" feature that why we disable them here.
 # But the feature is very helpful.
 # Normalizations eliminate all sorts of weird tree configurations that don't make sense.
 # Give normalizations a chance and enable them back.
-enable-normalization-flatten-containers = false
-enable-normalization-opposite-orientation-for-nested-containers = false
+enable-normalization-flatten-containers = true
+enable-normalization-opposite-orientation-for-nested-containers = true
 
 # Mouse follows focus when focused monitor changes
 on-focused-monitor-changed = ['move-mouse monitor-lazy-center']
+
+accordion-padding = 30
 
 # 'main' is the monitor with the menu bar. 'secondary' is the other one.
 [workspace-to-monitor-force-assignment]
@@ -46,17 +48,18 @@ on-focused-monitor-changed = ['move-mouse monitor-lazy-center']
     cmd-alt-l = 'move up'
     cmd-alt-semicolon = 'move right'
 
+	cmd-alt-equal = 'balance-sizes'
+
     # Consider using 'join-with' command as a 'split' replacement if you want to enable
     # normalizations
-    alt-h = 'split horizontal'
-    alt-v = 'split vertical'
+    # alt-h = 'split horizontal'
+    # alt-v = 'split vertical'
 
-    alt-f = 'fullscreen'
+    # alt-f = 'fullscreen'
 
-    alt-s = 'layout v_accordion' # 'layout stacking' in i3
-    alt-e = 'layout tiles horizontal vertical' # 'layout toggle split' in i3
+    cmd-alt-f = 'layout tiles accordion'
 
-    alt-shift-space = 'layout floating tiling' # 'floating toggle' in i3
+    cmd-alt-t = 'layout floating tiling'
 
     # Not supported, because this command is redundant in AeroSpace mental model.
     # See: https://nikitabobko.github.io/AeroSpace/guide#floating-windows
@@ -66,16 +69,16 @@ on-focused-monitor-changed = ['move-mouse monitor-lazy-center']
     # should be supported at all https://github.com/nikitabobko/AeroSpace/issues/5
     # alt-a = 'focus parent'
 
-    cmd-1 = 'workspace 1'
-    cmd-2 = 'workspace 2'
-    cmd-3 = 'workspace 3'
-    cmd-4 = 'workspace 4'
-    cmd-5 = 'workspace 5'
-    cmd-6 = 'workspace 6'
-    cmd-7 = 'workspace 7'
-    cmd-8 = 'workspace 8'
-    cmd-9 = 'workspace 9'
-    cmd-0 = 'workspace 10'
+    cmd-1 = 'workspace --auto-back-and-forth 1'
+    cmd-2 = 'workspace --auto-back-and-forth 2'
+    cmd-3 = 'workspace --auto-back-and-forth 3'
+    cmd-4 = 'workspace --auto-back-and-forth 4'
+    cmd-5 = 'workspace --auto-back-and-forth 5'
+    cmd-6 = 'workspace --auto-back-and-forth 6'
+    cmd-7 = 'workspace --auto-back-and-forth 7'
+    cmd-8 = 'workspace --auto-back-and-forth 8'
+    cmd-9 = 'workspace --auto-back-and-forth 9'
+    cmd-0 = 'workspace --auto-back-and-forth 10'
 
     cmd-alt-1 = 'move-node-to-workspace --focus-follows-window 1'
     cmd-alt-2 = 'move-node-to-workspace --focus-follows-window 2'
@@ -96,9 +99,10 @@ on-focused-monitor-changed = ['move-mouse monitor-lazy-center']
     alt-r = 'mode resize'
 
 [mode.resize.binding]
-    h = 'resize width -50'
-    j = 'resize height +50'
-    k = 'resize height -50'
-    l = 'resize width +50'
+    j = 'resize width -50'
+    k = 'resize height +50'
+    l = 'resize height -50'
+    semicolon = 'resize width +50'
+	ctrl-c = 'mode main'
     enter = 'mode main'
     esc = 'mode main'
