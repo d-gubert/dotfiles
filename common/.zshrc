@@ -186,12 +186,12 @@ function gwl() {
 		return 1;
 	fi
 
-	if [[ -n $HERDR_ENV ]]; then
-		herdr worktree open --path "${target}" --focus >/dev/null 2>&1
-		if [[ $? -eq 0 ]]; then
-			return 0
-		fi
-	fi
+	# if [[ -n $HERDR_ENV ]]; then
+	# 	herdr worktree open --path "${target}" --focus >/dev/null 2>&1
+	# 	if [[ $? -eq 0 ]]; then
+	# 		return 0
+	# 	fi
+	# fi
 	
 	cd "${target}"
 }
