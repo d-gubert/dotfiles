@@ -26,7 +26,9 @@
 )
 
 (defsrc
+  fn f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12
   a s d f j k l ;
+  bspc left down up rght
 )
 (defvar
   tap-time 150
@@ -37,5 +39,14 @@
 (include "mods.kbd")
 
 (deflayer base
+  @fn @f1 @f2 @f3 @f4 @f5 @f6 @f7 @f8 @f9 @f10 @f11 @f12
   @a @s @d @f @j @k @l @;
+  _ _ _ _ _
+)
+
+;; Held fn on macOS. mods.kbd explains why kanata has to handle the fn key.
+(deflayer fn
+  _ f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12
+  _ _ _ _ _ _ _ _
+  del home pgdn pgup end
 )

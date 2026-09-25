@@ -20,3 +20,17 @@
   l (multi f24 (tap-hold $tap-time $hold-time l lalt))
   ; (multi f24 (tap-hold $tap-time $hold-time ; rmet))
 )
+
+;; The top row of the internal keyboard sends plain F1-F12. macOS turns them
+;; into media keys only for an Apple keyboard, and kanata types through the
+;; Karabiner virtual keyboard, which is not one. So kanata sends the media keys
+;; itself. The actions follow the icons on an Apple silicon MacBook.
+;;
+;; kanata also takes the fn key, because the virtual keyboard does not carry
+;; it to macOS. A held fn switches to the fn layer in kanata.kbd. That layer
+;; gives F1-F12 and the fn shortcuts for Delete and the arrows.
+(defalias
+  fn (layer-while-held fn)
+  f1 brdn  f2 brup  f3 mctl  f4 sls   f5 dtn   f6 dnd
+  f7 prev  f8 pp    f9 next  f10 mute f11 vold f12 volu
+)
