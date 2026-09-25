@@ -1,6 +1,6 @@
 #!/bin/zsh 
 
-source "$(dirname $0)/watch_rocket.sh"
+# source "$(dirname $0)/watch_rocket.sh"
 
 TEST_MODE=${TEST_MODE:-'api'}
 PORT=${PORT:-3000}
@@ -21,7 +21,9 @@ OVERWRITE_SETTING_Log_Level='2' \
 OVERWRITE_SETTING_Cloud_Url='https://my.staging.cloud.rocket.chat' \
 OVERWRITE_SETTING_Cloud_Billing_Url='https://billing.staging.cloud.rocket.chat' \
 OVERWRITE_INTERNAL_MARKETPLACE_URL='https://marketplace.staging.cloud.rocket.chat' \
-script --quiet --flush --return --log-out $_WATCHRC_pipe --command "yarn dev $@"
+yarn dev "$@"
+
+# script --quiet --flush --return --log-out $_WATCHRC_pipe --command "yarn dev $@"
 
 # `script` will run the --command, write output to stdout AND to --log-out (maintaining colors) and set its exit code to --return
 
