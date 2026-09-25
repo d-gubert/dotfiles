@@ -13,7 +13,8 @@ STOW_OS_PKG := mac
 
 # aerospace -- a tiling window manager, macOS only
 # MAC_ESSENTIAL_TOOLS -- plain brew packages that only macOS installs
-EXTRA_ESSENTIAL := install-aerospace install-mac-essential
+# macos-defaults -- the keyboard shortcuts from System Settings
+EXTRA_ESSENTIAL := install-aerospace install-mac-essential macos-defaults
 
 # maccy -- a clipboard manager (a cask; brew finds it without --cask)
 MAC_ESSENTIAL_TOOLS := maccy
@@ -72,6 +73,11 @@ install-aerospace: homebrew
 		echo "[aerospace] installing via brew..."; \
 		$(BREW_INSTALL) --cask nikitabobko/tap/aerospace; \
 	fi
+
+# scripts/macos-defaults.sh holds the keyboard shortcuts from System Settings.
+.PHONY: macos-defaults
+macos-defaults:
+	@scripts/macos-defaults.sh
 
 # macOS ships curl, so there is nothing to install.
 .PHONY: install-curl
