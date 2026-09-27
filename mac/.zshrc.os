@@ -16,3 +16,7 @@ BREW_BIN="/opt/homebrew/bin/brew"
 if [[ -x "$BREW_BIN" ]]; then
 	eval "$($BREW_BIN shellenv)"
 fi
+
+# Install font casks to the system fonts folder, not ~/Library/Fonts, so every
+# user that shares this Homebrew prefix can use them.
+export HOMEBREW_CASK_OPTS="--fontdir=/Library/Fonts"
