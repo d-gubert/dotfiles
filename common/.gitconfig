@@ -7,3 +7,6 @@
 	defaultBranch = main
 [rebase]
 	updateRefs = true
+[safe]
+	directory = /opt/homebrew
+	directory = /opt/homebrew/*
