@@ -1329,10 +1329,20 @@
         ]
       },
       {
-        "value": "&trans"
+        "value": "&kp",
+        "params": [
+          {
+            "value": "C_BRI_UP"
+          }
+        ]
       },
       {
-        "value": "&trans"
+        "value": "&kp",
+        "params": [
+          {
+            "value": "C_BRI_DN"
+          }
+        ]
       },
       {
         "value": "&none"
@@ -1483,19 +1493,6 @@
         "value": "&kp",
         "params": [
           {
-            "value": "LC",
-            "params": [
-              {
-                "value": "L"
-              }
-            ]
-          }
-        ]
-      },
-      {
-        "value": "&kp",
-        "params": [
-          {
             "value": "LG",
             "params": [
               {
@@ -1509,7 +1506,12 @@
         "value": "&kp",
         "params": [
           {
-            "value": "PSCRN"
+            "value": "LG",
+            "params": [
+              {
+                "value": "W"
+              }
+            ]
           }
         ]
       },
@@ -1517,7 +1519,15 @@
         "value": "&kp",
         "params": [
           {
-            "value": "CAPS"
+            "value": "F11"
+          }
+        ]
+      },
+      {
+        "value": "&kp",
+        "params": [
+          {
+            "value": "F12"
           }
         ]
       },
@@ -1691,7 +1701,12 @@
         "value": "&kp",
         "params": [
           {
-            "value": "F11"
+            "value": "LG",
+            "params": [
+              {
+                "value": "C"
+              }
+            ]
           }
         ]
       },
@@ -1699,7 +1714,12 @@
         "value": "&kp",
         "params": [
           {
-            "value": "F12"
+            "value": "LG",
+            "params": [
+              {
+                "value": "V"
+              }
+            ]
           }
         ]
       },

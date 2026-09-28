@@ -628,11 +628,11 @@
 
         layer_Lower {
             bindings = <
-         &kp C_VOL_DN  &kp C_VOL_UP  &kp C_PREV    &kp C_PP  &kp C_NEXT                                                                                                         &kp C_MUTE      &trans         &trans         &none   &none
+         &kp C_VOL_DN  &kp C_VOL_UP  &kp C_PREV    &kp C_PP  &kp C_NEXT                                                                                                         &kp C_MUTE      &kp C_BRI_UP   &kp C_BRI_DN   &none   &none
                &trans    &kp LG(N1)  &kp LG(N2)  &kp LG(N3)  &kp LG(N4)  &kp LG(N5)                                                                                 &kp LG(N6)  &kp LG(N7)  &kp LG(N8)     &kp LG(N9)    &kp LG(N0)   &none
-               &trans     &kp LC(L)   &kp LG(Q)   &kp PSCRN    &kp CAPS     &kp INS                                                                                  &kp GRAVE   &kp KP_N1   &kp KP_N2      &kp KP_N3      &kp RBKT   &none
+               &trans     &kp LG(Q)   &kp LG(W)   &kp F11      &kp F12      &kp INS                                                                                  &kp GRAVE   &kp KP_N1   &kp KP_N2      &kp KP_N3      &kp RBKT   &none
                &trans     &kp LC(O)    &kp HOME     &kp ESC     &kp TAB     &kp RET                                                                              &kp LS(GRAVE)   &kp KP_N4   &kp KP_N5      &kp KP_N6  &kp LS(LBKT)   &none
-               &trans         &none     &kp END     &kp F11     &kp F12   &kp SPACE     &trans                  &trans  &trans  &trans  &kp PG_DN     &kp PG_UP        &kp SQT   &kp KP_N7   &kp KP_N8      &kp KP_N9  &kp LS(RBKT)  &trans
+               &trans         &none     &kp END     &kp LG(C)   &kp LG(V)  &kp SPACE     &trans                  &trans  &trans  &trans  &kp PG_DN     &kp PG_UP        &kp SQT   &kp KP_N7   &kp KP_N8      &kp KP_N9  &kp LS(RBKT)  &trans
  &magic LAYER_Magic 0       &kp END   &kp LC(Y)    &kp DOWN      &kp UP              &kp K_APP  &to LAYER_Homerow_Mods  &trans  &trans     &trans  &kp LC(LBKT)                 &kp LS(N6)   &kp KP_N0  &kp RA(COMMA)  &kp LS(BSLH)  &trans
             >;
         };
