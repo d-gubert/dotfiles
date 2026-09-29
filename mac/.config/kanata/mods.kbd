@@ -34,3 +34,12 @@
   f1 brdn  f2 brup  f3 mctl  f4 sls   f5 dtn   f6 dnd
   f7 prev  f8 pp    f9 next  f10 mute f11 vold f12 volu
 )
+
+;; Ctrl-M sends Return, as it does in a terminal. An override acts on the keys
+;; that kanata sends, so it also catches the Ctrl of a home-row mod. Only one
+;; defoverrides may exist in the config, so it lives here and not in kanata.kbd
+;; while it is macOS only.
+(defoverrides
+  (lctl m) (ret)
+  (rctl m) (ret)
+)
