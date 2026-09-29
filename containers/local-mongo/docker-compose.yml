@@ -9,7 +9,7 @@
 name: local-mongo
 
 volumes:
-  mongo-data-1:
+  mongo-data:
 
 networks:
   # The project's default network, renamed so every service in here keeps
@@ -33,8 +33,11 @@ networks:
 
 services:
   mongo:
-    image: mongodb/mongodb-community-server:${MONGODB_VERSION:-7.0}-ubi8
+    image: mongodb/mongodb-community-server:${MONGODB_VERSION:-8.2}-ubi8
     restart: on-failure
+    # mongod reads the cgroup limit and sizes the WiredTiger cache from it
+    # (50% of limit - 1GB, so 0.5GB here).
+    mem_limit: 2g
     ports:
       - 27017:27017
     environment:
@@ -42,19 +45,21 @@ services:
       MONGODB_PORT_NUMBER: ${MONGODB_PORT_NUMBER:-27017}
       MONGODB_INITIAL_PRIMARY_HOST: ${MONGODB_INITIAL_PRIMARY_HOST:-mongo}
     volumes:
-      - mongo-data-1:/data/db
-    entrypoint: |
-      bash -c
-        "mongod --replSet $$MONGODB_REPLICA_SET_NAME --bind_ip_all &
-          sleep 2;
-          until mongosh --eval \"db.adminCommand('ping')\"; do
-            echo '=====> Waiting for Mongo...';
-            sleep 1;
-          done;
-          echo \"=====> Initiating ReplSet $$MONGODB_REPLICA_SET_NAME at $$MONGODB_INITIAL_PRIMARY_HOST:$$MONGODB_PORT_NUMBER...\";
-          mongosh --eval \"rs.initiate({_id: '$$MONGODB_REPLICA_SET_NAME', members: [{ _id: 0, host: '$$MONGODB_INITIAL_PRIMARY_HOST:$$MONGODB_PORT_NUMBER' }]})\";
-          echo '=====> Initiating ReplSet done...';
-        wait"
+      - mongo-data:/data/db
+    entrypoint:
+      - bash 
+      - -c
+      - |
+        mongod --replSet "$$MONGODB_REPLICA_SET_NAME" --bind_ip_all &
+            sleep 2;
+            until mongosh --eval "db.adminCommand('ping')"; do
+              echo '=====> Waiting for Mongo...';
+              sleep 1;
+            done;
+            echo "=====> Initiating ReplSet $$MONGODB_REPLICA_SET_NAME at $$MONGODB_INITIAL_PRIMARY_HOST:$$MONGODB_PORT_NUMBER...";
+            mongosh --eval "rs.initiate({_id: '$$MONGODB_REPLICA_SET_NAME', members: [{ _id: 0, host: '$$MONGODB_INITIAL_PRIMARY_HOST:$$MONGODB_PORT_NUMBER' }]})";
+            echo '=====> Initiating ReplSet done...';
+          wait
 
   nats:
     image: nats:2.6-alpine
