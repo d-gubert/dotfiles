@@ -5,8 +5,9 @@
   arch/ and ubuntu/. It has to be a root daemon, not a user agent: only root
   can open the keyboard and reach the VirtualHIDDevice daemon.
 
-  launchd does not expand ~ or $HOME, so scripts/kanata-macos.sh replaces @HOME@
-  when it copies this file to /Library/LaunchDaemons.
+  The daemon serves every account on the Mac, so it reads a system copy of the
+  config and not the config in the home of one user. scripts/kanata-macos.sh
+  copies the config there.
 -->
 <plist version="1.0">
 <dict>
@@ -16,7 +17,7 @@
 	<array>
 		<string>/opt/homebrew/bin/kanata</string>
 		<string>--cfg</string>
-		<string>@HOME@/.config/kanata/kanata.kbd</string>
+		<string>/Library/Application Support/kanata/kanata.kbd</string>
 	</array>
 	<key>RunAtLoad</key>
 	<true/>

@@ -63,20 +63,32 @@ Check it with `systemctl --user status kanata`, and read its output with
 `system/Library/LaunchDaemons/` holds two root daemons, and
 `make install-kanata` copies them to `/Library/LaunchDaemons` and loads them.
 `local.dotfiles.karabiner-vhiddaemon` runs the daemon that talks to the
-driver. `local.dotfiles.kanata` runs kanata with `~/.config/kanata/kanata.kbd`.
-Both must run as root. The script also stops a `brew services` kanata job,
-because two kanata processes cannot share the keyboard.
+driver. `local.dotfiles.kanata` runs kanata with
+`/Library/Application Support/kanata/kanata.kbd`. Both must run as root. The
+script also stops a `brew services` kanata job, because two kanata processes
+cannot share the keyboard.
 
-Check them with `sudo launchctl print system/local.dotfiles.kanata`, and read
-the kanata output in `/Library/Logs/kanata.log`. After a config change, run
-`sudo launchctl kickstart -k system/local.dotfiles.kanata`.
+The kanata daemon serves every account on the Mac, so it cannot read the
+config in one home directory. With a path such as `$HOME/.config/kanata`, the
+account that ran the install last decides the config for all accounts. So the
+script copies `common/.config/kanata/kanata.kbd`
+and `mac/.config/kanata/mods.kbd` to `/Library/Application Support/kanata`,
+owned by root. The script checks the config with `kanata --check` first, and
+it restarts the daemon when a file changed.
+
+The daemon does not see an edit until you copy it. After a config change, run
+`make install-kanata`.
+
+Check the daemons with `sudo launchctl print system/local.dotfiles.kanata`,
+and read the kanata output in `/Library/Logs/kanata.log`.
 
 ## Home-row mods
 
 `common/.config/kanata/kanata.kbd` holds the layer, and each OS package holds
 its own `mods.kbd` with the aliases. kanata resolves an `include` against the
 directory of the config file it opened, which is `~/.config/kanata` and not
-this repository, so stow decides which variant kanata reads.
+this repository, so stow decides which variant kanata reads. On macOS the
+install script picks the `mac/` variant when it copies the config.
 
 Only one thing differs. The Debian and macOS copies wrap each alias in
 `(multi f24 ...)`, which presses a spare key with the modifier so the desktop

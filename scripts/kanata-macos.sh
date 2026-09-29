@@ -27,6 +27,16 @@ VHID_MANAGER="/Applications/.Karabiner-VirtualHIDDevice-Manager.app/Contents/Mac
 # the comments in the plists for why each one runs as root.
 DAEMONS=(local.dotfiles.karabiner-vhiddaemon local.dotfiles.kanata)
 
+# The kanata daemon serves every account on the Mac, so it reads a root-owned
+# copy of the config at a fixed path. A path in a home directory makes the
+# account that ran the script last decide the config for all accounts. kanata
+# resolves the include of mods.kbd against this directory.
+CONFIG_DIR="/Library/Application Support/kanata"
+CONFIG_FILES=(
+	"common/.config/kanata/kanata.kbd"
+	"mac/.config/kanata/mods.kbd"
+)
+
 # macOS can take the Karabiner virtual keyboard for an ISO keyboard (type 41),
 # and then the key below Esc types § and ± in place of ` and ~. The key of the
 # entry is <product>-<vendor>-33: 0x27db and 0x16c0 are the IDs of the virtual
@@ -86,24 +96,54 @@ stop_brew_service() {
 	fi
 }
 
-# A root daemon cannot be a symlink, so copy each plist. launchd does not
-# expand ~ or $HOME, so replace @HOME@ on the way.
+# Copy the config and restart a running daemon when a file changed. Run
+# `make install-kanata` again after each edit of the config.
+install_config() {
+	local f src dst tmp changed=0
+	# Check the files together, as the daemon reads them. The repo keeps
+	# kanata.kbd and mods.kbd in different directories, so the include fails there.
+	tmp="$(mktemp -d)"
+	for f in "${CONFIG_FILES[@]}"; do cp "$REPO_DIR/$f" "$tmp/"; done
+	if ! kanata --check --cfg "$tmp/kanata.kbd" >/dev/null; then
+		kanata --check --cfg "$tmp/kanata.kbd" | tail -20
+		log "ERROR: the config is not valid, nothing installed"
+		rm -rf "$tmp"
+		exit 1
+	fi
+	rm -rf "$tmp"
+	sudo install -d -m 0755 -o root -g wheel "$CONFIG_DIR"
+	for f in "${CONFIG_FILES[@]}"; do
+		src="$REPO_DIR/$f"
+		dst="$CONFIG_DIR/$(basename "$f")"
+		if ! cmp -s "$src" "$dst"; then
+			sudo install -m 0644 -o root -g wheel "$src" "$dst"
+			changed=1
+		fi
+	done
+	if [ "$changed" = 0 ]; then
+		log "config already up to date"
+	elif sudo launchctl print system/local.dotfiles.kanata >/dev/null 2>&1; then
+		log "config changed, restarting kanata..."
+		sudo launchctl kickstart -k system/local.dotfiles.kanata
+	else
+		log "config installed in $CONFIG_DIR"
+	fi
+}
+
+# A root daemon cannot be a symlink, so copy each plist.
 install_daemons() {
-	local d src dst tmp
+	local d src dst
 	for d in "${DAEMONS[@]}"; do
 		src="$REPO_DIR/system/Library/LaunchDaemons/$d.plist"
 		dst="/Library/LaunchDaemons/$d.plist"
-		tmp="$(mktemp)"
-		sed "s|@HOME@|$HOME|g" "$src" >"$tmp"
-		if cmp -s "$tmp" "$dst" && sudo launchctl print "system/$d" >/dev/null 2>&1; then
+		if cmp -s "$src" "$dst" && sudo launchctl print "system/$d" >/dev/null 2>&1; then
 			log "$d already loaded"
 		else
 			log "installing and loading $d..."
 			sudo launchctl bootout "system/$d" 2>/dev/null || true
-			sudo install -m 0644 -o root -g wheel "$tmp" "$dst"
+			sudo install -m 0644 -o root -g wheel "$src" "$dst"
 			sudo launchctl bootstrap system "$dst"
 		fi
-		rm -f "$tmp"
 	done
 }
 
@@ -124,6 +164,7 @@ main() {
 	remove_karabiner_elements
 	install_driver
 	stop_brew_service
+	install_config
 	install_daemons
 	set_ansi_layout
 

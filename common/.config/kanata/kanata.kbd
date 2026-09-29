@@ -12,6 +12,10 @@
 ;; that directory is ~/.config/kanata, not this repository. The symlink that
 ;; stow puts there does not change the lookup. arch/.config/kanata/mods.kbd
 ;; explains what differs and why.
+;;
+;; The macOS daemon does not read ~/.config/kanata. It reads a copy in
+;; /Library/Application Support/kanata, so run `make install-kanata` after an
+;; edit. docs/kanata.md explains why.
 
 ;; defsrc is still necessary
 ;;
