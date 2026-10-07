@@ -1,0 +1,7 @@
+{
+  "name": "context-tree",
+  "version": "0.1.0",
+  "description": "A sidebar tree of what the context window holds: session-start files, then each turn's reads and commands",
+  "author": { "name": "Douglas Gubert" },
+  "types": "./types/index.d.ts"
+}

@@ -1,0 +1,8 @@
+{
+  "name": "dotfiles",
+  "description": "Local Claude Code plugins kept in the dotfiles repo",
+  "owner": { "name": "Douglas Gubert" },
+  "plugins": [
+    { "name": "context-tree", "source": "./context-tree" }
+  ]
+}

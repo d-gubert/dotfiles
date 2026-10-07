@@ -121,7 +121,19 @@ install-stow: $(PKG_PREREQ)
 stow: install-stow
 	@echo "Stowing dotfiles: $(STOW_PKGS)"
 	@echo
-	@stow -R --no-folding -t ~ $(STOW_PKGS)
+	@stow -R --no-folding $(STOW_IGNORE) -t ~ $(STOW_PKGS)
+
+# context-tree loads from the local `dotfiles` marketplace (see claude-plugins),
+# because skills-dir rejects per-file stow symlinks. Stow must not link it.
+STOW_IGNORE := --ignore='^\.claude/skills/context-tree$$' --ignore='^\.claude/skills/\.claude-plugin$$'
+
+DOTFILES_DIR := $(abspath $(dir $(firstword $(MAKEFILE_LIST))))
+
+.PHONY: claude-plugins
+claude-plugins:
+	@echo "Installing Claude Code plugins from the local dotfiles marketplace"
+	@claude plugin marketplace add $(DOTFILES_DIR)/common/.claude/skills
+	@claude plugin install context-tree@dotfiles
 
 
 # ─────────────────────────────────────────────────────────────────────────────
