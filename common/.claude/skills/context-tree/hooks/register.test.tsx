@@ -31,6 +31,7 @@ test('a Bash call shows as a node with command and output children', async ($, o
 const HEAD = [
   { type: 'user', message: { role: 'user', content: 'hello' } },
   { type: 'attachment', attachment: { type: 'skill_listing', content: '- a skill' }, rendered: [{ content: '<system-reminder>- a skill</system-reminder>' }] },
+  { type: 'attachment', attachment: { type: 'total_tokens_reminder' }, rendered: [{ content: '<total_tokens>1000 tokens left</total_tokens>' }] },
   { type: 'attachment', attachment: { type: 'instructions', files: [{ path: '/home/me/CLAUDE.md', type: 'User', content: '# Style' }] } },
   { type: 'attachment', attachment: { type: 'session_context', context: { userEmail: 'me@example.com', gitStatus: 'clean' } } },
   { type: 'attachment', attachment: { type: 'prompt_snapshot', cliPrefix: 'You are Claude Code.', systemPrompt: ['# Harness\nrules', '# Memory\nnotes'] } },
@@ -55,5 +56,6 @@ test('the session start node lists what the transcript head holds', async ($, on
     expect(await ui.find({ type: 'Button', text: new RegExp(label) })).toBeDefined()
   }
   expect(await ui.find({ type: 'Button', text: /command_permissions/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Button', text: /total_tokens_reminder/ })).toBeUndefined()
   await ui.unmount()
 })

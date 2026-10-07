@@ -23,10 +23,11 @@ const START_TYPES = new Set([
   'environment',
   'model',
   'auto_mode',
-  'total_tokens_reminder',
   'date',
   'remote_session_change',
 ])
+// Attachments the tree never shows, at the session start or in a turn.
+const HIDDEN_TYPES = new Set(['total_tokens_reminder'])
 // Attachment rows the session start node shows in a group of their own.
 const START_OWN_GROUP = new Set(['instructions', 'session_context', 'prompt_snapshot'])
 
@@ -254,7 +255,7 @@ const fillStart = async ($: $) => {
   )
 
   const attTexts = atts
-    .filter(r => r.attachment && !START_OWN_GROUP.has(r.attachment.type))
+    .filter(r => r.attachment && !START_OWN_GROUP.has(r.attachment.type) && !HIDDEN_TYPES.has(r.attachment.type))
     .map(r => ({ type: r.attachment!.type, text: renderedText(r) }))
     .filter(r => r.text)
   const attachments = await Promise.all(attTexts.map(r => captureNode($, r.type, `${r.type}.md`, r.text, estimate(r.text))))
@@ -364,7 +365,7 @@ export const register: Register = on => {
     const fromHook = e.origin.kind === 'hook' ? e.origin.event : undefined
     const label = fromHook ? `${e.type} (${fromHook} hook)` : e.type
     const isStart = !e.agentId && (fromHook === 'SessionStart' || (isFirstTurn && START_TYPES.has(e.type)))
-    if (isStart) return out
+    if (isStart || HIDDEN_TYPES.has(e.type)) return out
     const n = await captureNode($, label, `${e.type}.txt`, text, estimate(text))
     await addToTurn($, n, e.agentId)
     return out
