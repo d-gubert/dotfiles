@@ -5,15 +5,15 @@ import type { CtxNode } from '../types'
 // register.tsx does the reads, the writes and the captures.
 
 export const START = 'start'
-const START_FILES = 'start:files'
-const START_BLOCKS = 'start:blocks'
-const START_SYSTEM = 'start:system'
-const START_ATTACHMENTS = 'start:attachments'
-const START_TOOLS = 'start:tools'
+export const START_FILES = 'start:files'
+export const START_BLOCKS = 'start:blocks'
+export const START_SYSTEM = 'start:system'
+export const START_ATTACHMENTS = 'start:attachments'
+export const START_TOOLS = 'start:tools'
 
 // Attachments that describe the session, not the prompt that carried them.
 // The session start node reads them from the transcript, so the turn skips them.
-const START_TYPES = new Set([
+export const START_TYPES = new Set([
   'skill_listing',
   'deferred_tools_delta',
   'mcp_instructions',
@@ -26,18 +26,14 @@ const START_TYPES = new Set([
   'remote_session_change',
 ])
 // Attachments the tree never shows, at the session start or in a turn.
-const HIDDEN_TYPES = new Set(['total_tokens_reminder'])
+export const HIDDEN_TYPES = new Set(['total_tokens_reminder'])
 // Attachment rows the session start node shows in a group of their own.
-const START_OWN_GROUP = new Set(['instructions', 'session_context', 'prompt_snapshot'])
-
-// Prints the transcript up to the first prompt snapshot that lists the tools:
-// the rows of the session start and the first prompt.
-export const HEAD_AWK = '{ print } /"prompt_snapshot"/ && /"tools":\\[/ { exit } NR >= 400 { exit }'
+export const START_OWN_GROUP = new Set(['instructions', 'session_context', 'prompt_snapshot'])
 
 /** A node before its capture file exists: `capture` holds the text to write. */
 export type Draft = Omit<CtxNode, 'children'> & { capture?: { file: string; text: string }; children: Draft[] }
 
-const node = (label: string, extra: Partial<CtxNode> = {}): CtxNode => ({
+export const node = (label: string, extra: Partial<CtxNode> = {}): CtxNode => ({
   id: crypto.randomUUID(),
   label,
   children: [],
@@ -73,7 +69,7 @@ const findNode = (list: CtxNode[], id: string): CtxNode | undefined => {
 }
 
 /** A capture node: the viewer opens the file that register.tsx writes for it. */
-const captureDraft = (event: string, label: string, file: string, text: string, hint?: string): Draft => ({
+export const captureDraft = (event: string, label: string, file: string, text: string, hint?: string): Draft => ({
   ...node(label, { hint, event }),
   capture: { file, text },
 })
@@ -85,7 +81,7 @@ export const firstLine = (text: string, max = 80) => {
   return line.length > max ? `${line.slice(0, max - 1)}…` : line
 }
 
-const estimate = (text: string) => `~${tokens(Math.ceil(text.length / 4))}`
+export const estimate = (text: string) => `~${tokens(Math.ceil(text.length / 4))}`
 
 /** The tree with the session start node first. */
 export const withStart = (list: CtxNode[], event: string): CtxNode[] =>
@@ -121,8 +117,7 @@ export const mentionNode = (mention: string, path: string, offset?: number): Ctx
 export type AttachmentInput = { type: string; text: string; agentId?: string; hookEvent?: string }
 
 /** The node for an attachment, or nothing when the session start node holds it or the tree hides it. */
-export const attachmentDraft = (list: CtxNode[], a: AttachmentInput, event: string): Draft | undefined => {
-  const isFirstTurn = turnCount(list) <= 1
+export const attachmentDraft = (isFirstTurn: boolean, a: AttachmentInput, event: string): Draft | undefined => {
   const label = a.hookEvent ? `${a.type} (${a.hookEvent} hook)` : a.type
   const isStart = !a.agentId && (a.hookEvent === 'SessionStart' || (isFirstTurn && START_TYPES.has(a.type)))
   if (isStart || HIDDEN_TYPES.has(a.type)) return undefined
@@ -182,33 +177,6 @@ export const annotateUsage = (list: CtxNode[], memoryFiles: MemoryFile[], event:
   return mapNode(list, START_FILES, g => ({ ...g, children: annotate(g.children) }))
 }
 
-type Attachment = Record<string, unknown> & { type: string }
-type Row = { type?: string; attachment?: Attachment; rendered?: { content?: unknown }[] }
-
-/** The text the model read for a transcript row, as the engine rendered it. */
-const renderedText = (row: Row) =>
-  (row.rendered ?? [])
-    .map(r =>
-      typeof r.content === 'string'
-        ? r.content
-        : Array.isArray(r.content)
-          ? r.content.map(b => (typeof b?.text === 'string' ? b.text : '')).join('\n')
-          : '',
-    )
-    .join('\n')
-
-/** A short label for a system prompt section: its first heading or line. */
-const sectionLabel = (text: string) => firstLine(text.replace(/^\s*#+\s*/, ''), 50) || '(empty)'
-
-/** A group node; `texts` are what its children hold, for the token estimate. */
-const groupOf = (id: string, label: string, event: string, children: Draft[], texts: string[]): Draft => ({
-  id,
-  label,
-  hint: `${children.length} items · ${estimate(texts.join(''))}`,
-  event,
-  children,
-})
-
 /** True when the transcript filled the session start node. */
 export const isStartFilled = (list: CtxNode[]) => Boolean(findNode(list, START)?.hint)
 
@@ -216,68 +184,8 @@ export const isStartFilled = (list: CtxNode[]) => Boolean(findNode(list, START)?
 export const fillStart = (list: CtxNode[], children: CtxNode[]) =>
   mapNode(list, START, n => ({ ...n, hint: 'from the transcript', children }))
 
-/** The groups of the session start node, from the head of the transcript; nothing before the first snapshot. */
-export const startDrafts = (text: string, event: string): Draft[] | undefined => {
-  const rows: Row[] = text.split('\n').flatMap(line => {
-    try {
-      return [JSON.parse(line) as Row]
-    } catch {
-      return []
-    }
-  })
-  let snapshot: Attachment | undefined
-  let tools: unknown[] = []
-  const atts: Row[] = []
-  for (const row of rows) {
-    const a = row.attachment
-    if (row.type !== 'attachment' || !a) continue
-    if (a.type === 'prompt_snapshot') {
-      snapshot ??= a
-      if (Array.isArray(a.tools)) {
-        tools = a.tools
-        break
-      }
-    } else if (!snapshot) {
-      // Rows after the first snapshot belong to the first turn.
-      atts.push(row)
-    }
-  }
-  if (!snapshot) return undefined
-
-  const instructions = atts.find(r => r.attachment?.type === 'instructions')?.attachment
-  const fileList = Array.isArray(instructions?.files) ? (instructions.files as { path: string; type: string; content: string }[]) : []
-  const files = fileList.map(f => node(f.path, { path: f.path, hint: `${f.type} · ${estimate(f.content)}`, event }))
-
-  const context = atts.find(r => r.attachment?.type === 'session_context')?.attachment?.context
-  const blockTexts = Object.entries((context ?? {}) as Record<string, unknown>).map(([name, value]) => ({
-    name,
-    text: typeof value === 'string' ? value : JSON.stringify(value, null, 2),
-  }))
-  const blocks = blockTexts.map(b => captureDraft(event, b.name, `${b.name}.md`, b.text, estimate(b.text)))
-
-  const prefix = typeof snapshot.cliPrefix === 'string' ? [snapshot.cliPrefix] : []
-  const sections = [...prefix, ...(Array.isArray(snapshot.systemPrompt) ? (snapshot.systemPrompt as string[]) : [])]
-  const system = sections.map((text, i) => captureDraft(event, sectionLabel(text), `system-${i}.md`, text, estimate(text)))
-
-  const toolTexts = tools.map(t => ({
-    name: String((t as { name?: unknown }).name ?? 'tool'),
-    text: JSON.stringify(t, null, 2),
-  }))
-  const schemas = toolTexts.map(t =>
-    captureDraft(event, t.name, `tool-${t.name.replace(/[^\w-]/g, '_')}.json`, t.text, estimate(t.text)),
-  )
-
-  const attTexts = atts
-    .filter(r => r.attachment && !START_OWN_GROUP.has(r.attachment.type) && !HIDDEN_TYPES.has(r.attachment.type))
-    .map(r => ({ type: r.attachment!.type, text: renderedText(r) }))
-    .filter(r => r.text)
-  const attachments = attTexts.map(r => captureDraft(event, r.type, `${r.type}.md`, r.text, estimate(r.text)))
-
-  return [
-    groupOf(START_FILES, 'Instruction files', event, files, fileList.map(f => f.content)),
-    groupOf(START_BLOCKS, 'Context blocks', event, blocks, blockTexts.map(b => b.text)),
-    groupOf(START_SYSTEM, 'System prompt', event, system, sections),
-    groupOf(START_TOOLS, 'Tool schemas', event, schemas, toolTexts.map(t => t.text)),
-    groupOf(START_ATTACHMENTS, 'Attachments', event, attachments, attTexts.map(r => r.text)),
-  ]
+/** The tree with `turns` after the session start node and before the turns it holds. */
+export const prependTurns = (list: CtxNode[], turns: CtxNode[], event: string) => {
+  const [start, ...rest] = withStart(list, event)
+  return [start!, ...turns, ...rest]
 }
