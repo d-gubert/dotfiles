@@ -23,6 +23,7 @@ test('a Bash call shows as a node with command and output children', async ($, o
     await ui.press({ key: row!.key! })
     expect(await ui.find({ type: 'Button', text: /output/ })).toBeDefined()
     expect(await ui.find({ type: 'Button', text: /command/ })).toBeDefined()
+    expect(await ui.find({ text: /on: tool\.call/ })).toBeDefined()
     await ui.press({ key: row!.key! })
     await ui.unmount()
   }
