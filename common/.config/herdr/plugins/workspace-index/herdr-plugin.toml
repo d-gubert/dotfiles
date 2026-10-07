@@ -1,0 +1,29 @@
+id = "dgubert.workspace-index"
+name = "Workspace Index"
+version = "0.1.0"
+min_herdr_version = "0.9.3"
+description = "Prefix each workspace label with its position in the sidebar"
+platforms = ["linux", "macos"]
+
+[[startup]]
+command = ["bash", "sync.sh"]
+
+[[events]]
+on = "workspace.created"
+command = ["bash", "sync.sh"]
+
+[[events]]
+on = "workspace.closed"
+command = ["bash", "sync.sh"]
+
+[[events]]
+on = "workspace.moved"
+command = ["bash", "sync.sh"]
+
+[[events]]
+on = "workspace.reordered"
+command = ["bash", "sync.sh"]
+
+[[events]]
+on = "workspace.renamed"
+command = ["bash", "sync.sh"]
