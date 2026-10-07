@@ -42,12 +42,18 @@ const HEAD = [
   .map(row => JSON.stringify(row))
   .join('\n')
 
+/** Answers the reads of the transcript: the head, and the first chunk of the whole file. */
+const transcript = (head: string, whole: string) => (_$: unknown, e: { argv: readonly string[] }) => {
+  const out = e.argv[1]?.startsWith('{ print }') ? head : e.argv.includes('from=0') ? `${whole}\n` : ''
+  return { value: { exitCode: 0, stdout: out, stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+}
+
 test('the session start node lists what the transcript head holds', async ($, on) => {
   mock.env(on, { TMPDIR: '/tmp/context-tree-test/', HOME: '/home/me' })
   on('session.id', () => ({ value: 'test-session' }))
   on('session.cwd', () => ({ value: '/home/me/project' }))
   on('fs.write', () => ({ value: undefined }))
-  on('process.run', () => ({ value: { exitCode: 0, stdout: HEAD, stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }))
+  on('process.run', transcript(HEAD, HEAD))
   on('tool.call', () => ({ result: { stdout: '', stderr: '', interrupted: false }, text: '' }))
   await $.tool.call({ tool: 'Bash', command: 'true' })
 
@@ -58,5 +64,67 @@ test('the session start node lists what the transcript head holds', async ($, on
   }
   expect(await ui.find({ type: 'Button', text: /command_permissions/ })).toBeUndefined()
   expect(await ui.find({ type: 'Button', text: /total_tokens_reminder/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+const TURNS = [
+  { type: 'user', uuid: 'p1', promptId: 'prompt-1', message: { role: 'user', content: 'list the files' } },
+  ...HEAD.split('\n').slice(1).map(line => JSON.parse(line)),
+  { type: 'assistant', message: { content: [{ type: 'tool_use', id: 'call-1', name: 'Bash', input: { command: 'ls -la', description: 'List files' } }] } },
+  { type: 'user', toolUseResult: {}, message: { content: [{ type: 'tool_result', tool_use_id: 'call-1', content: 'a.txt' }] } },
+  { type: 'attachment', attachment: { type: 'nested_memory', path: '/home/me/project/CLAUDE.md' }, rendered: [{ content: 'nested rules' }] },
+  { type: 'attachment', attachment: { type: 'total_tokens_reminder' }, rendered: [{ content: '<total_tokens>9 tokens left</total_tokens>' }] },
+  { type: 'user', isSidechain: true, message: { content: 'a subagent prompt' } },
+  { type: 'user', isMeta: true, promptId: 'prompt-2', message: { content: [{ type: 'text', text: 'skill body' }] } },
+  { type: 'user', uuid: 'p2', promptId: 'prompt-2', message: { role: 'user', content: 'now read it' } },
+  { type: 'assistant', message: { content: [{ type: 'tool_use', id: 'call-2', name: 'Read', input: { file_path: '/home/me/project/a.txt' } }] } },
+  { type: 'user', toolUseResult: {}, message: { content: [{ type: 'tool_result', tool_use_id: 'call-2', content: 'no such file', is_error: true }] } },
+]
+  .map(row => JSON.stringify(row))
+  .join('\n')
+
+test('a resumed session shows the turns its transcript holds', async ($, on) => {
+  mock.env(on, { TMPDIR: '/tmp/context-tree-test/', HOME: '/home/me' })
+  on('session.id', () => ({ value: 'test-session' }))
+  on('session.cwd', () => ({ value: '/home/me/project' }))
+  on('fs.write', () => ({ value: undefined }))
+  on('process.run', transcript(HEAD, TURNS))
+  on('session.start', () => ({ cwd: '/home/me/project' }))
+  on('command.register', () => ({ value: { command: 'context-tree' } }))
+  on('session.usage', () => ({ value: { startedAt: 0, context: { window: 200_000 }, rateLimits: [] } }))
+  on('ui.open', () => ({ value: { isPlaced: true } }))
+  await $.session.start({ cwd: '/home/me/project', surface: 'terminal', isInteractive: true })
+
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  await ui.press({ key: 'expand' })
+  for (const label of ['Turn 1: list the files', '\\$ ls -la', 'nested_memory', 'command_permissions', 'Turn 2: now read it', 'Read /home/me/project/a.txt']) {
+    expect(await ui.find({ type: 'Button', text: new RegExp(label) })).toBeDefined()
+  }
+  for (const label of ['Turn 3', 'subagent prompt', 'skill body', 'total_tokens_reminder']) {
+    expect(await ui.find({ type: 'Button', text: new RegExp(label) })).toBeUndefined()
+  }
+  expect(await ui.find({ text: /on: transcript/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('a /resume in the process rebuilds the tree at the next turn', async ($, on) => {
+  mock.env(on, { TMPDIR: '/tmp/context-tree-test/', HOME: '/home/me' })
+  on('session.id', () => ({ value: 'test-session' }))
+  on('session.cwd', () => ({ value: '/home/me/project' }))
+  on('fs.write', () => ({ value: undefined }))
+  on('process.run', transcript(HEAD, TURNS))
+  on('session.end', (_$, e) => ({ sessionId: e.sessionId }))
+  on('turn.start', (_$, e) => ({ turnId: e.turnId }))
+  on('tool.call', () => ({ result: { stdout: '', stderr: '', interrupted: false }, text: '' }))
+  await $.tool.call({ tool: 'Bash', command: 'echo before' })
+  await $.session.end({ reason: 'resume', sessionId: 'old-session', resume: { id: 'old-session' } })
+  await $.turn.start({ text: 'now read it', turnId: 'live-turn' })
+
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  await ui.press({ key: 'expand' })
+  expect(await ui.find({ type: 'Button', text: /echo before/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Button', text: /Turn 1: list the files/ })).toBeDefined()
+  expect(await ui.find({ type: 'Button', text: /Turn 2: now read it/ })).toBeDefined()
+  expect(await ui.find({ type: 'Button', text: /Turn 3/ })).toBeUndefined()
   await ui.unmount()
 })

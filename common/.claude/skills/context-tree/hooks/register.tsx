@@ -2,8 +2,8 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { CtxNode, CtxView } from '../types'
+import { CHUNK_AWK, CHUNK_CHARS, HEAD_AWK, chunkLines, startDrafts, turnDrafts, withoutPrompt } from './transcript'
 import {
-  HEAD_AWK,
   START,
   addToTurn,
   annotateUsage,
@@ -12,7 +12,7 @@ import {
   firstLine,
   isStartFilled,
   mentionNode,
-  startDrafts,
+  prependTurns,
   startNode,
   tokens,
   toolDraft,
@@ -66,6 +66,8 @@ const transcriptPath = async ($: $) => {
 }
 
 let loading: Promise<void> | undefined
+// True after a /resume in this process: session.start does not fire again, so the next turn rebuilds the tree.
+let isResumed = false
 
 /** Fills the session start node from the head of the transcript, once per conversation. */
 const loadStart = ($: $, event: string) => {
@@ -85,6 +87,34 @@ const readStart = async ($: $, event: string) => {
   const children = await Promise.all(drafts.map(d => materialize($, d)))
   await update($, tree, list => fillStart(list, children))
   await refreshUsage($, event)
+}
+
+/** Reads every line of the transcript, in chunks under the read limit of the engine. */
+const readTranscript = async ($: $) => {
+  const path = await transcriptPath($)
+  const lines: string[] = []
+  for (let from = 0; ; ) {
+    const chunk = await $.process.run(['awk', '-v', `from=${from}`, '-v', `max=${CHUNK_CHARS}`, CHUNK_AWK, path])
+    if (chunk.exitCode !== 0) return undefined
+    if (!chunk.stdout) return lines
+    const { lines: got, consumed } = chunkLines(chunk.stdout, chunk.isStdoutTruncated)
+    if (consumed === 0) return lines
+    lines.push(...got)
+    from += consumed
+  }
+}
+
+/**
+ * Adds the turns of a resumed conversation from its transcript, before the turns of this process.
+ * `prompt` is the prompt of a turn that starts now: the file holds it, and its own hooks add it.
+ */
+const rebuildTurns = async ($: $, event: string, prompt?: string) => {
+  if (turnCount(await read($, tree)) > 0) return
+  const lines = await readTranscript($).catch(() => undefined)
+  if (!lines) return
+  const drafts = turnDrafts(lines)
+  const turns = await Promise.all((prompt === undefined ? drafts : withoutPrompt(drafts, prompt)).map(d => materialize($, d)))
+  if (turns.length > 0) await update($, tree, list => prependTurns(list, turns, event))
 }
 
 /** Adds a draft to the current turn. */
@@ -128,6 +158,7 @@ export const register: Register = on => {
     await $.command.register({ name: 'context-tree', description: 'Show the context window as a tree in a pane' })
     await update($, tree, list => withStart(list, 'session.start'))
     void loadStart($, 'session.start').then(() => refreshUsage($, 'session.start')).catch(() => undefined)
+    void rebuildTurns($, 'session.start').catch(() => undefined)
     void $.ui.open({ id: PANE, title: 'Context' })
     return next(e)
   })
@@ -138,10 +169,12 @@ export const register: Register = on => {
   })
 
   on('session.end', async ($, e, next) => {
-    if (e.reason === 'clear') {
+    // A /resume in this process loads another conversation: the next turn rebuilds it from its transcript.
+    if (e.reason === 'clear' || e.reason === 'resume') {
       await update($, tree, () => [startNode('session.end')])
       await update($, expanded, () => [START])
       await update($, usage, () => null)
+      isResumed = e.reason === 'resume'
     }
     return next(e)
   })
@@ -151,7 +184,7 @@ export const register: Register = on => {
     if (out.text === null) return out
     const hookEvent = e.origin.kind === 'hook' ? e.origin.event : undefined
     const input = { type: e.type, text: out.text ?? e.text, agentId: e.agentId, hookEvent }
-    const draft = attachmentDraft(await read($, tree), input, 'prompt.attachment')
+    const draft = attachmentDraft(turnCount(await read($, tree)) <= 1, input, 'prompt.attachment')
     if (draft) await addDraft($, draft, 'prompt.attachment', e.agentId)
     return out
   })
@@ -164,6 +197,10 @@ export const register: Register = on => {
 
   on('turn.start', async ($, e, next) => {
     const out = await next(e)
+    if (isResumed) {
+      isResumed = false
+      await rebuildTurns($, 'turn.start', e.text).catch(() => undefined)
+    }
     const mentions = await read($, pending)
     await update($, pending, () => [])
     const turn = await materialize($, turnDraft(turnCount(await read($, tree)) + 1, e.turnId, 'turn.start', e.text, mentions))
