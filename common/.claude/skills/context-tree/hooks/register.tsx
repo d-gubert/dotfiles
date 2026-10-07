@@ -2,6 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { CtxNode, CtxView } from '../types'
+import { PANE, VIEW, VIEW_LIMIT, allIds, languageOf, nvimCommand, paneRows, splitPaneId, toggled, usageText } from './pane'
 import { CHUNK_AWK, CHUNK_CHARS, HEAD_AWK, chunkLines, startDrafts, turnDrafts, withoutPrompt } from './transcript'
 import {
   START,
@@ -14,17 +15,12 @@ import {
   mentionNode,
   prependTurns,
   startNode,
-  tokens,
   toolDraft,
   turnCount,
   turnDraft,
   withStart,
 } from './tree'
 import type { Draft } from './tree'
-
-const PANE = 'context-tree'
-const VIEW = 'context-view'
-const VIEW_LIMIT = 100_000
 
 const tree = atom({ plugin: 'context-tree', key: 'tree' } as const, [])
 const expanded = atom({ plugin: 'context-tree', key: 'expanded' } as const, [START])
@@ -123,8 +119,6 @@ const addDraft = async ($: $, draft: Draft, event: string, agentId?: string) => 
   await update($, tree, list => addToTurn(list, n, event, agentId))
 }
 
-const shellQuote = (s: string) => `'${s.replace(/'/g, `'\\''`)}'`
-
 /** Opens the file in nvim, in a new herdr pane to the right of this one. */
 const openInHerdr = async ($: $, view: CtxView) => {
   const pane = await $.env.get('HERDR_PANE_ID')
@@ -134,23 +128,17 @@ const openInHerdr = async ($: $, view: CtxView) => {
   }
   const bin = (await $.env.get('HERDR_BIN_PATH')) ?? 'herdr'
   const split = await $.process.run([bin, 'pane', 'split', pane, '--direction', 'right', '--focus'])
-  const id: unknown = split.exitCode === 0 ? JSON.parse(split.stdout)?.result?.pane?.pane_id : undefined
-  if (typeof id !== 'string') {
+  const id = split.exitCode === 0 ? splitPaneId(split.stdout) : undefined
+  if (!id) {
     $.ui.toast(`context-tree: herdr pane split failed: ${firstLine(split.stderr || split.stdout)}`)
     return
   }
-  const args = [view.isCapture ? '-R' : '', view.line ? `+${view.line}` : '', shellQuote(view.path)]
-  await $.process.run([bin, 'pane', 'run', id, `exec nvim ${args.filter(Boolean).join(' ')}`])
+  await $.process.run([bin, 'pane', 'run', id, nvimCommand(view)])
 }
 
 const openViewer = async ($: $, view: CtxView) => {
   await update($, viewing, () => view)
   await $.ui.open({ id: VIEW, title: view.label.slice(0, 60), focus: true, closeOnEscape: true, holdToasts: true })
-}
-
-const LANGS: Record<string, string> = {
-  ts: 'typescript', tsx: 'tsx', js: 'javascript', json: 'json', md: 'markdown', sh: 'bash',
-  py: 'python', go: 'go', rs: 'rust', lua: 'lua', toml: 'toml', yaml: 'yaml', yml: 'yaml',
 }
 
 export const register: Register = on => {
@@ -226,66 +214,44 @@ export const register: Register = on => {
     const list = await read($, tree)
     const open = new Set(await read($, expanded))
     const now = await read($, usage)
-    const width = e.props.bodyColumns
 
-    const toggle = (id: string) =>
-      update($, expanded, ids => (ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id]))
-
-    const rows: JSX.Element[] = []
-    const walk = (nodes: CtxNode[], depth: number, parentEvent?: string) => {
-      for (const n of nodes) {
-        const hasKids = n.children.length > 0
-        const isOpen = open.has(n.id)
-        const mark = hasKids ? (isOpen ? '▾ ' : '▸ ') : '  '
-        const indent = '  '.repeat(depth)
-        const view: CtxView | undefined = n.path
-          ? { label: n.label, path: n.path, line: n.line, isCapture: n.isCapture }
-          : undefined
-        const room = Math.max(8, width - indent.length - 4)
-        const text = `${mark}${n.label}`
-        const label = text.length > room ? `${text.slice(0, room - 1)}…` : text
-        // A child shows its event only when it differs from the event of its parent.
-        const event = n.event !== parentEvent ? n.event : undefined
-        const hint = [n.hint, event && `on: ${event}`].filter(Boolean).join(' · ')
-        rows.push(
-          <Box key={`row:${n.id}`} flexDirection="column">
-            <Box flexDirection="row">
-              <Text>{indent}</Text>
-              <Button
-                key={`n:${n.id}`}
-                plain
-                dimColor={!hasKids && !view}
-                onPress={() => (hasKids ? toggle(n.id) : view ? openViewer($, view) : undefined)}
-              >
-                {label}
-              </Button>
-              {view && (
-                <Button key={`o:${n.id}`} plain dimColor onPress={() => openInHerdr($, view)}>
-                  {' ↗'}
-                </Button>
-              )}
-            </Box>
-            {hint && (
-              <Text dimColor wrap="truncate-end">
-                {`${indent}    ${hint}`}
-              </Text>
-            )}
-          </Box>,
-        )
-        if (isOpen) walk(n.children, depth + 1, n.event)
-      }
-    }
-    walk(list, 0)
-
-    const fill = now
-      ? `${now.percent ?? '?'}% · ${now.tokens ? tokens(now.tokens) : '?'} of ${tokens(now.window)}`
-      : 'no usage yet'
+    const rows = paneRows(list, open, e.props.bodyColumns).map(row => (
+      <Box key={`row:${row.id}`} flexDirection="column">
+        <Box flexDirection="row">
+          <Text>{row.indent}</Text>
+          <Button
+            key={`n:${row.id}`}
+            plain
+            dimColor={!row.hasKids && !row.view}
+            onPress={() =>
+              row.hasKids
+                ? update($, expanded, ids => toggled(ids, row.id))
+                : row.view
+                  ? openViewer($, row.view)
+                  : undefined
+            }
+          >
+            {row.label}
+          </Button>
+          {row.view && (
+            <Button key={`o:${row.id}`} plain dimColor onPress={() => row.view && openInHerdr($, row.view)}>
+              {' ↗'}
+            </Button>
+          )}
+        </Box>
+        {row.hint && (
+          <Text dimColor wrap="truncate-end">
+            {`${row.indent}    ${row.hint}`}
+          </Text>
+        )}
+      </Box>
+    ))
 
     return (
       <Box flexDirection="column">
         <Box flexDirection="row" gap={1}>
           <Text bold>Context</Text>
-          <Text dimColor>{fill}</Text>
+          <Text dimColor>{usageText(now)}</Text>
         </Box>
         <Box flexDirection="row" gap={1}>
           <Button key="expand" plain dimColor onPress={() => update($, expanded, () => allIds(list))}>
@@ -311,7 +277,6 @@ export const register: Register = on => {
       source = `Cannot read ${view.path}: ${String(err)}`
     }
     const isCut = source.length > VIEW_LIMIT
-    const ext = view.path.split('.').pop() ?? ''
     return (
       <Box flexDirection="column">
         <Box flexDirection="row" gap={1}>
@@ -324,10 +289,8 @@ export const register: Register = on => {
         </Box>
         <Text dimColor wrap="truncate-start">{view.path}</Text>
         {isCut && <Text color="warning">{`Shows the first ${VIEW_LIMIT} characters; open in nvim for the rest.`}</Text>}
-        <Code source={source.slice(0, VIEW_LIMIT)} language={LANGS[ext]} startLine={1} />
+        <Code source={source.slice(0, VIEW_LIMIT)} language={languageOf(view.path)} startLine={1} />
       </Box>
     )
   })
 }
-
-const allIds = (list: CtxNode[]): string[] => list.flatMap(n => (n.children.length ? [n.id, ...allIds(n.children)] : []))
