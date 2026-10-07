@@ -8,6 +8,8 @@ export type CtxNode = {
   line?: number
   /** True when `path` is a capture the mod wrote, not a file of the project. */
   isCapture?: boolean
+  /** The hook event that added the node; the pane shows it as an `on:` child row. */
+  event?: string
   children: CtxNode[]
 }
 

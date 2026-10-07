@@ -51,17 +51,18 @@ const node = (label: string, extra: Partial<CtxNode> = {}): CtxNode => ({
   ...extra,
 })
 
-const group = (id: string, label: string): CtxNode => ({ id, label, children: [] })
+const group = (id: string, label: string, event: string): CtxNode => ({ id, label, event, children: [] })
 
-const startNode = (): CtxNode => ({
+const startNode = (event: string): CtxNode => ({
   id: START,
   label: 'Session start',
+  event,
   children: [
-    group(START_FILES, 'Instruction files'),
-    group(START_BLOCKS, 'Context blocks'),
-    group(START_SYSTEM, 'System prompt'),
-    group(START_TOOLS, 'Tool schemas'),
-    group(START_ATTACHMENTS, 'Attachments'),
+    group(START_FILES, 'Instruction files', event),
+    group(START_BLOCKS, 'Context blocks', event),
+    group(START_SYSTEM, 'System prompt', event),
+    group(START_TOOLS, 'Tool schemas', event),
+    group(START_ATTACHMENTS, 'Attachments', event),
   ],
 })
 
@@ -88,8 +89,8 @@ const addChild = ($: $, id: string, child: CtxNode) =>
 const currentRoot = (list: CtxNode[]) => list[list.length - 1]?.id ?? START
 
 /** Adds a node under the current turn, or under a subagent group inside it. */
-const addToTurn = async ($: $, child: CtxNode, agentId?: string) => {
-  await ensureStart($)
+const addToTurn = async ($: $, child: CtxNode, event: string, agentId?: string) => {
+  await ensureStart($, event)
   const root = currentRoot(await read($, tree))
   if (!agentId) return addChild($, root, child)
   const agentGroup = `${root}:agent:${agentId}`
@@ -98,7 +99,7 @@ const addToTurn = async ($: $, child: CtxNode, agentId?: string) => {
       const has = n.children.some(c => c.id === agentGroup)
       const children = has
         ? n.children
-        : [...n.children, group(agentGroup, `subagent ${agentId.slice(0, 8)}`)]
+        : [...n.children, group(agentGroup, `subagent ${agentId.slice(0, 8)}`, event)]
       return { ...n, children: mapNode(children, agentGroup, g => ({ ...g, children: [...g.children, child] })) }
     }),
   )
@@ -113,8 +114,8 @@ const capture = async ($: $, name: string, text: string) => {
   return path
 }
 
-const captureNode = async ($: $, label: string, file: string, text: string, hint?: string) =>
-  node(label, { path: await capture($, file, text), isCapture: true, hint })
+const captureNode = async ($: $, event: string, label: string, file: string, text: string, hint?: string) =>
+  node(label, { path: await capture($, file, text), isCapture: true, hint, event })
 
 const tokens = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k tok` : `${n} tok`)
 
@@ -123,13 +124,13 @@ const firstLine = (text: string, max = 80) => {
   return line.length > max ? `${line.slice(0, max - 1)}…` : line
 }
 
-const ensureStart = async ($: $) => {
+const ensureStart = async ($: $, event: string) => {
   if ((await read($, tree)).some(n => n.id === START)) return
-  await update($, tree, list => [startNode(), ...list.filter(n => n.id !== START)])
+  await update($, tree, list => [startNode(event), ...list.filter(n => n.id !== START)])
 }
 
 /** Reads the token counts the context breakdown gives, by memory file path. */
-const refreshUsage = async ($: $) => {
+const refreshUsage = async ($: $, event: string) => {
   const now = await $.session.usage({ breakdown: 'summary' })
   const { percent, tokens: used, window, breakdown } = now.context
   await update($, usage, () => ({ percent, tokens: used, window }))
@@ -141,7 +142,7 @@ const refreshUsage = async ($: $) => {
     await setChildren(
       $,
       START_FILES,
-      [...byPath.values()].map(f => node(f.path, { path: f.path, hint: `${f.type} · ${tokens(f.tokens)}` })),
+      [...byPath.values()].map(f => node(f.path, { path: f.path, hint: `${f.type} · ${tokens(f.tokens)}`, event })),
     )
     return
   }
@@ -175,10 +176,11 @@ const renderedText = (row: Row) =>
 const sectionLabel = (text: string) => firstLine(text.replace(/^\s*#+\s*/, ''), 50) || '(empty)'
 
 /** A group node; `texts` are what its children hold, for the token estimate. */
-const groupOf = (id: string, label: string, children: CtxNode[], texts: string[]): CtxNode => ({
+const groupOf = (id: string, label: string, event: string, children: CtxNode[], texts: string[]): CtxNode => ({
   id,
   label,
   hint: `${children.length} items · ${estimate(texts.join(''))}`,
+  event,
   children,
 })
 
@@ -191,15 +193,15 @@ const transcriptPath = async ($: $) => {
 let loading: Promise<void> | undefined
 
 /** Fills the session start node from the head of the transcript, once per conversation. */
-const loadStart = ($: $) => {
-  loading ??= fillStart($).finally(() => {
+const loadStart = ($: $, event: string) => {
+  loading ??= fillStart($, event).finally(() => {
     loading = undefined
   })
   return loading
 }
 
-const fillStart = async ($: $) => {
-  await ensureStart($)
+const fillStart = async ($: $, event: string) => {
+  await ensureStart($, event)
   if (findNode(await read($, tree), START)?.hint) return
   const head = await $.process.run(['awk', HEAD_AWK, await transcriptPath($)]).catch(() => undefined)
   if (!head || head.exitCode !== 0) return
@@ -231,19 +233,19 @@ const fillStart = async ($: $) => {
 
   const instructions = atts.find(r => r.attachment?.type === 'instructions')?.attachment
   const fileList = Array.isArray(instructions?.files) ? (instructions.files as { path: string; type: string; content: string }[]) : []
-  const files = fileList.map(f => node(f.path, { path: f.path, hint: `${f.type} · ${estimate(f.content)}` }))
+  const files = fileList.map(f => node(f.path, { path: f.path, hint: `${f.type} · ${estimate(f.content)}`, event }))
 
   const context = atts.find(r => r.attachment?.type === 'session_context')?.attachment?.context
   const blockTexts = Object.entries((context ?? {}) as Record<string, unknown>).map(([name, value]) => ({
     name,
     text: typeof value === 'string' ? value : JSON.stringify(value, null, 2),
   }))
-  const blocks = await Promise.all(blockTexts.map(b => captureNode($, b.name, `${b.name}.md`, b.text, estimate(b.text))))
+  const blocks = await Promise.all(blockTexts.map(b => captureNode($, event, b.name, `${b.name}.md`, b.text, estimate(b.text))))
 
   const prefix = typeof snapshot.cliPrefix === 'string' ? [snapshot.cliPrefix] : []
   const sections = [...prefix, ...(Array.isArray(snapshot.systemPrompt) ? (snapshot.systemPrompt as string[]) : [])]
   const system = await Promise.all(
-    sections.map((text, i) => captureNode($, sectionLabel(text), `system-${i}.md`, text, estimate(text))),
+    sections.map((text, i) => captureNode($, event, sectionLabel(text), `system-${i}.md`, text, estimate(text))),
   )
 
   const toolTexts = tools.map(t => ({
@@ -251,24 +253,24 @@ const fillStart = async ($: $) => {
     text: JSON.stringify(t, null, 2),
   }))
   const schemas = await Promise.all(
-    toolTexts.map(t => captureNode($, t.name, `tool-${t.name.replace(/[^\w-]/g, '_')}.json`, t.text, estimate(t.text))),
+    toolTexts.map(t => captureNode($, event, t.name, `tool-${t.name.replace(/[^\w-]/g, '_')}.json`, t.text, estimate(t.text))),
   )
 
   const attTexts = atts
     .filter(r => r.attachment && !START_OWN_GROUP.has(r.attachment.type) && !HIDDEN_TYPES.has(r.attachment.type))
     .map(r => ({ type: r.attachment!.type, text: renderedText(r) }))
     .filter(r => r.text)
-  const attachments = await Promise.all(attTexts.map(r => captureNode($, r.type, `${r.type}.md`, r.text, estimate(r.text))))
+  const attachments = await Promise.all(attTexts.map(r => captureNode($, event, r.type, `${r.type}.md`, r.text, estimate(r.text))))
 
   const children = [
-    groupOf(START_FILES, 'Instruction files', files, fileList.map(f => f.content)),
-    groupOf(START_BLOCKS, 'Context blocks', blocks, blockTexts.map(b => b.text)),
-    groupOf(START_SYSTEM, 'System prompt', system, sections),
-    groupOf(START_TOOLS, 'Tool schemas', schemas, toolTexts.map(t => t.text)),
-    groupOf(START_ATTACHMENTS, 'Attachments', attachments, attTexts.map(r => r.text)),
+    groupOf(START_FILES, 'Instruction files', event, files, fileList.map(f => f.content)),
+    groupOf(START_BLOCKS, 'Context blocks', event, blocks, blockTexts.map(b => b.text)),
+    groupOf(START_SYSTEM, 'System prompt', event, system, sections),
+    groupOf(START_TOOLS, 'Tool schemas', event, schemas, toolTexts.map(t => t.text)),
+    groupOf(START_ATTACHMENTS, 'Attachments', event, attachments, attTexts.map(r => r.text)),
   ]
   await update($, tree, list => mapNode(list, START, n => ({ ...n, hint: 'from the transcript', children })))
-  await refreshUsage($)
+  await refreshUsage($, event)
 }
 
 const toolNode = async ($: $, e: Record<string, unknown>, tool: string, out: string, isError: boolean) => {
@@ -279,7 +281,7 @@ const toolNode = async ($: $, e: Record<string, unknown>, tool: string, out: str
   if (filePath && ['Read', 'Write', 'Edit', 'MultiEdit', 'NotebookEdit'].includes(tool)) {
     const offset = num('offset')
     const label = `${tool} ${filePath}${offset ? `:${offset}` : ''}`
-    return node(label, { path: filePath, line: offset, hint: err })
+    return node(label, { path: filePath, line: offset, hint: err, event: 'tool.call' })
   }
   const input = { ...e }
   for (const k of ['tool', 'tool_use_id', 'agentId', 'consent']) delete input[k]
@@ -287,18 +289,20 @@ const toolNode = async ($: $, e: Record<string, unknown>, tool: string, out: str
     const command = str('command') ?? ''
     return node(`$ ${firstLine(command)}`, {
       hint: err ?? str('description'),
+      event: 'tool.call',
       children: [
-        await captureNode($, 'command', 'command.sh', command),
-        await captureNode($, 'output', 'output.txt', out, tokens(Math.ceil(out.length / 4))),
+        await captureNode($, 'tool.call', 'command', 'command.sh', command),
+        await captureNode($, 'tool.call', 'output', 'output.txt', out, tokens(Math.ceil(out.length / 4))),
       ],
     })
   }
   const summary = str('pattern') ?? str('url') ?? str('skill') ?? str('description') ?? str('query') ?? str('path') ?? ''
   return node(`${tool} ${firstLine(summary, 60)}`.trim(), {
     hint: err,
+    event: 'tool.call',
     children: [
-      await captureNode($, 'input', 'input.json', JSON.stringify(input, null, 2)),
-      await captureNode($, 'output', 'output.txt', out, tokens(Math.ceil(out.length / 4))),
+      await captureNode($, 'tool.call', 'input', 'input.json', JSON.stringify(input, null, 2)),
+      await captureNode($, 'tool.call', 'output', 'output.txt', out, tokens(Math.ceil(out.length / 4))),
     ],
   })
 }
@@ -336,8 +340,8 @@ const LANGS: Record<string, string> = {
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({ name: 'context-tree', description: 'Show the context window as a tree in a pane' })
-    await ensureStart($)
-    void loadStart($).then(() => refreshUsage($)).catch(() => undefined)
+    await ensureStart($, 'session.start')
+    void loadStart($, 'session.start').then(() => refreshUsage($, 'session.start')).catch(() => undefined)
     void $.ui.open({ id: PANE, title: 'Context' })
     return next(e)
   })
@@ -349,7 +353,7 @@ export const register: Register = on => {
 
   on('session.end', async ($, e, next) => {
     if (e.reason === 'clear') {
-      await update($, tree, () => [startNode()])
+      await update($, tree, () => [startNode('session.end')])
       await update($, expanded, () => [START])
       await update($, usage, () => null)
     }
@@ -366,15 +370,15 @@ export const register: Register = on => {
     const label = fromHook ? `${e.type} (${fromHook} hook)` : e.type
     const isStart = !e.agentId && (fromHook === 'SessionStart' || (isFirstTurn && START_TYPES.has(e.type)))
     if (isStart || HIDDEN_TYPES.has(e.type)) return out
-    const n = await captureNode($, label, `${e.type}.txt`, text, estimate(text))
-    await addToTurn($, n, e.agentId)
+    const n = await captureNode($, 'prompt.attachment', label, `${e.type}.txt`, text, estimate(text))
+    await addToTurn($, n, 'prompt.attachment', e.agentId)
     return out
   })
 
   on('prompt.mention', async ($, e, next) => {
     const out = await next(e)
     if (!e.agentId) {
-      const n = node(`@${e.mention}`, { path: e.path, line: e.offset })
+      const n = node(`@${e.mention}`, { path: e.path, line: e.offset, event: 'prompt.mention' })
       await update($, pending, list => [...list, n])
     }
     return out
@@ -382,35 +386,35 @@ export const register: Register = on => {
 
   on('turn.start', async ($, e, next) => {
     const out = await next(e)
-    await ensureStart($)
+    await ensureStart($, 'turn.start')
     const count = (await read($, tree)).filter(n => n.id !== START).length + 1
     const title = e.text ? firstLine(e.text, 60) : '(continuation)'
-    const prompt = e.text ? [await captureNode($, 'prompt', 'prompt.txt', e.text)] : []
+    const prompt = e.text ? [await captureNode($, 'turn.start', 'prompt', 'prompt.txt', e.text)] : []
     const mentions = await read($, pending)
     await update($, pending, () => [])
     await update($, tree, list => [
       ...list,
-      { id: e.turnId, label: `Turn ${count}: ${title}`, children: [...prompt, ...mentions] },
+      { id: e.turnId, label: `Turn ${count}: ${title}`, event: 'turn.start', children: [...prompt, ...mentions] },
     ])
     return out
   })
 
   on('turn.complete', async ($, e, next) => {
     const out = await next(e)
-    void loadStart($).then(() => refreshUsage($)).catch(() => undefined)
+    void loadStart($, 'turn.complete').then(() => refreshUsage($, 'turn.complete')).catch(() => undefined)
     return out
   })
 
   on('tool.call', async ($, e, next) => {
     const ran = await next(e)
-    void loadStart($).catch(() => undefined)
+    void loadStart($, 'tool.call').catch(() => undefined)
     if ('deny' in ran && ran.deny !== undefined) {
-      await addToTurn($, node(`${e.tool} (denied)`, { hint: firstLine(ran.deny, 60) }), e.agentId)
+      await addToTurn($, node(`${e.tool} (denied)`, { hint: firstLine(ran.deny, 60), event: 'tool.call' }), 'tool.call', e.agentId)
       return ran
     }
     const out = ran.text ?? JSON.stringify(ran.result, null, 2) ?? ''
     const n = await toolNode($, e as unknown as Record<string, unknown>, String(e.tool), out, ran.isError === true)
-    await addToTurn($, n, e.agentId)
+    await addToTurn($, n, 'tool.call', e.agentId)
     return ran
   }).catch(($, e, next) => next(e))
 
@@ -428,24 +432,33 @@ export const register: Register = on => {
     const walk = (nodes: CtxNode[], depth: number) => {
       for (const n of nodes) {
         const hasKids = n.children.length > 0
+        // The `on:` row makes a node with an event open, even without children.
+        const canOpen = hasKids || n.event !== undefined
         const isOpen = open.has(n.id)
-        const mark = hasKids ? (isOpen ? '▾ ' : '▸ ') : '  '
+        const mark = canOpen ? (isOpen ? '▾ ' : '▸ ') : '  '
         const indent = '  '.repeat(depth)
-        const room = Math.max(8, width - indent.length - 4)
-        const text = `${mark}${n.label}`
-        const label = text.length > room ? `${text.slice(0, room - 1)}…` : text
         const view: CtxView | undefined = n.path
           ? { label: n.label, path: n.path, line: n.line, isCapture: n.isCapture }
           : undefined
+        // A leaf with a view opens the viewer from its label, so its mark toggles on its own.
+        const isMarkSplit = !hasKids && view !== undefined && canOpen
+        const room = Math.max(8, width - indent.length - 4)
+        const text = isMarkSplit ? n.label : `${mark}${n.label}`
+        const label = text.length > room ? `${text.slice(0, room - 1)}…` : text
         rows.push(
           <Box key={`row:${n.id}`} flexDirection="column">
             <Box flexDirection="row">
               <Text>{indent}</Text>
+              {isMarkSplit && (
+                <Button key={`t:${n.id}`} plain onPress={() => toggle(n.id)}>
+                  {mark}
+                </Button>
+              )}
               <Button
                 key={`n:${n.id}`}
                 plain
-                dimColor={!hasKids && !view}
-                onPress={() => (hasKids ? toggle(n.id) : view ? openViewer($, view) : undefined)}
+                dimColor={!canOpen && !view}
+                onPress={() => (hasKids ? toggle(n.id) : view ? openViewer($, view) : canOpen ? toggle(n.id) : undefined)}
               >
                 {label}
               </Button>
@@ -462,7 +475,15 @@ export const register: Register = on => {
             )}
           </Box>,
         )
-        if (hasKids && isOpen) walk(n.children, depth + 1)
+        if (!isOpen) continue
+        if (n.event) {
+          rows.push(
+            <Text key={`on:${n.id}`} dimColor wrap="truncate-end">
+              {`${indent}    on: ${n.event}`}
+            </Text>,
+          )
+        }
+        walk(n.children, depth + 1)
       }
     }
     walk(list, 0)
@@ -520,4 +541,4 @@ export const register: Register = on => {
   })
 }
 
-const allIds = (list: CtxNode[]): string[] => list.flatMap(n => (n.children.length ? [n.id, ...allIds(n.children)] : []))
+const allIds = (list: CtxNode[]): string[] => list.flatMap(n => (n.children.length || n.event ? [n.id, ...allIds(n.children)] : []))
