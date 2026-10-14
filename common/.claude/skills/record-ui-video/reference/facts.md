@@ -6,9 +6,13 @@ Read this when a run fails for a reason the steps do not cover.
   output `tests/e2e/.playwright`, launch args pass `--use-gl=egl --use-fake-*-for-media-stream` and
   grant the microphone. The recording spec overrides the first two and repeats the args.
 - `yarn playwright install chromium` fetches both `chromium-*` and `chromium_headless_shell-*`.
-  `native` drives the first, the `playwright` fallback drives the second, and `preflight.sh` checks
-  whichever one the chosen strategy needs.
-- `record.sh` passes `--output <temp dir>` to the fallback run, so its webm never lands in the
+  `native` drives the first, the `screencast` and `playwright` fallbacks drive the second, and
+  `preflight.sh` checks whichever one the chosen strategy needs. The cache is
+  `~/.cache/ms-playwright` on Linux and `~/Library/Caches/ms-playwright` on macOS.
+- macOS runs the scripts with `/bin/bash` 3.2. It has no `mapfile`, and with `set -u` it rejects a
+  plain `"${A[@]}"` of an empty array; write `${A[@]+"${A[@]}"}`. BSD `find` has no `-printf` and
+  BSD `stat` has no `-c`.
+- `record.sh` passes `--output <temp dir>` to the `playwright` run, so its webm never lands in the
   shared `tests/e2e/.playwright`.
 - A headed Chromium renders fine on `Xvfb` with `--use-gl=egl`; it falls back to software rendering.
 - Admin creds and `DEFAULT_USER_CREDENTIALS` (`password: 'password'`): `tests/e2e/config/constants.ts`.

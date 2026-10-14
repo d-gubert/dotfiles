@@ -16,30 +16,30 @@ When there is none, say so and stop.
 
 Nothing else is a hard requirement. Every host can record; the host only decides how well.
 
-## The two strategies
+## The three strategies
 
 `record.sh` picks one and prints which. `preflight.sh` says the same thing before you write a line
 of scenario.
 
-| | `native` | `playwright` |
-| --- | --- | --- |
-| How | ffmpeg grabs a headed browser on a virtual display | Playwright's own recorder |
-| Frame rate | constant, 60 fps by default | about 25 fps, a frame only when the page changes |
-| Idle beats | recorded as they play | dropped, so a pause reads as a jump |
-| Audio | the ringtones and call audio the app plays | none; the recorder writes no audio track |
-| Needs | a platform file with a display and a grab | nothing beyond the browser |
+| | `native` | `screencast` | `playwright` |
+| --- | --- | --- | --- |
+| How | ffmpeg grabs a headed browser on a virtual display | the headless browser streams each frame it draws, with its time | Playwright's own recorder |
+| Frame rate | constant, 60 fps by default | constant, 60 fps by default; motion as smooth as the compositor draws it | 25 fps, low-bitrate VP8 |
+| Audio | the ringtones and call audio the app plays | none | none |
+| Needs | a platform file with a display and a grab | ffmpeg | nothing beyond the browser |
 
-**Prefer `native`.** It is what makes a demo look driven by a person rather than assembled from
-screenshots. The fallback exists so a host without a virtual display still gets a usable video, not
-because the two are equal. When the preflight reports the fallback, say so and say what it costs
-before you record — the user may rather install the missing tools, or record elsewhere. A flow whose
-point is a ringtone cannot be recorded on the fallback at all.
+`auto` picks the first one the host can run, in that order. Today only `linux-x11` has `native`, so
+macOS records with `screencast`.
 
-Force one with `record.sh --strategy native|playwright`; `auto` is the default and picks native
-whenever the host can run it.
+**Prefer `native`.** It is the only one with sound. `screencast` matches its motion on a host with
+no virtual display, so a silent flow loses nothing there. A flow whose point is a ringtone cannot be
+recorded on either fallback at all. When the preflight reports a fallback, say so and say what it
+costs before you record — the user may rather install the missing tools, or record elsewhere.
 
-The scenario code never changes between the two. Only the `test.use` block does, and the template
-already switches it on `RECORD_STRATEGY`.
+Force one with `record.sh --strategy native|screencast|playwright`.
+
+The scenario code never changes between the three. Only the `test.use` block and the screencast
+hooks do, and the template already switches them on `RECORD_STRATEGY`.
 
 ## Scripts
 
@@ -52,11 +52,11 @@ themselves.
 | --- | --- |
 | `preflight.sh` | Is everything in place to record? What is missing, and who fixes it? |
 | `find-server.sh` | Which dev server is running, on which port, against which database? |
-| `record.sh` | Run the spec, capture it (either strategy), encode an MP4, extract frames to verify. |
+| `record.sh` | Run the spec, capture it (any strategy), encode an MP4, extract frames to verify. |
 | `rc-api.sh` | One-line authenticated admin REST call, for setup and cleanup checks. |
 
-`record.sh` calls `calibrate.js` itself; see
-[reference/capture-internals.md](reference/capture-internals.md).
+`record.sh` calls `calibrate.js` itself, and the spec loads `screencast.js` through
+`RECORD_SCREENCAST_JS`; see [reference/capture-internals.md](reference/capture-internals.md).
 
 `platform.sh` and `platform/` are not scripts you run. `platform.sh` picks the file under
 `platform/` that fits the host and sources it; the four scripts then call its functions.
@@ -78,7 +78,7 @@ with a list of fixes split into three groups: the ones it can run, the ones only
 and the optional ones.
 
 An **optional** fix never blocks a recording. It is what the `native` strategy would need on a host
-that is about to fall back to `playwright`. Report it, with what the fallback costs, and let the
+that is about to fall back to `screencast` or `playwright`. Report it, with what the fallback costs, and let the
 user decide.
 
 If it reports missing prerequisites, ask the user which way they want to go before you touch
@@ -108,7 +108,7 @@ Copy `template.spec.ts` (next to this file) into `apps/meteor/tests/e2e/demos/<n
 and edit the scenario. It is a spec, not a suite: assertions only gate the recording.
 
 Edit the scenario and nothing else. Keep `RECORD_VIEWPORT`, the whole `test.use` block with **both**
-of its branches, `storageState`, the `api` fixture, and the `showPointer` / `beat` / `glideClick`
+of its branches, the screencast `beforeEach` / `afterEach` hooks, `storageState`, the `api` fixture, and the `showPointer` / `beat` / `glideClick`
 helpers as the template has them. Every one of them is load-bearing.
 
 **Read [reference/write-the-spec.md](reference/write-the-spec.md) before you edit.** It says what
@@ -130,11 +130,11 @@ It finds the running dev server, starts the display, calibrates the window (once
 build), captures the run, trims the black head and tail, encodes the MP4 and extracts check frames.
 It prints the path of every output plus the log.
 
-On a host with no virtual display it runs the spec headless instead and keeps Playwright's own
-recording; the display, the calibration and the trim do not happen.
+On a host with no virtual display it runs the spec headless instead and keeps the frames the
+browser sends; the display, the calibration and the trim do not happen.
 
 Useful options: `--strategy native|playwright` to force one, `--name` for the output basename,
-`--out-dir` for the destination, `--fps N` (60 by default, native only), `--no-audio`, `--no-trim`,
+`--out-dir` for the destination, `--fps N` (60 by default, native and screencast), `--no-audio`, `--no-trim`,
 `--keep-raw` for the lossless capture, `--frame-every N` for the check-frame interval,
 `--recalibrate`, and `--port` / `--mongo-url` to override discovery.
 
@@ -145,10 +145,12 @@ Read the summary it prints:
 
 - The `capture:` line names the strategy. Say which one produced the video when you hand it over.
 - `avg_frame_rate` should equal `--fps` on `native`. A `capture:` line naming dropped frames means
-  the machine could not keep up; re-run with `--fps 30`. On `playwright` the rate is whatever the
-  page changes gave, and a lower number is not a fault.
+  the machine could not keep up; re-run with `--fps 30`. On `screencast`, the `screencast:` line
+  counts the frames the compositor sent. A still page sends none, so a low count over long beats is
+  not a fault.
 - `audio: peak <n> dB` says sound was captured. `audio: silent` means the scenario played nothing —
-  fine for a silent flow, a bug if you expected a ringtone. On `playwright` there is never audio.
+  fine for a silent flow, a bug if you expected a ringtone. On `screencast` and `playwright` there is
+  never audio.
 
 When the video comes out wrong, read
 [reference/capture-internals.md](reference/capture-internals.md).

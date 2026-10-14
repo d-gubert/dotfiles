@@ -14,8 +14,8 @@
 #     platform_list_server_processes       one "port|mongo_url|meteor_pwd|pid" line per candidate
 #
 #   Native capture, which a platform file implements only when the host can run it. A file that
-#   cannot says so with PLATFORM_CAPTURE='none', and the skill records with Playwright's own
-#   recorder instead. It still implements these, to report ABSENT and to fail with a clear reason.
+#   cannot says so with PLATFORM_CAPTURE='none', and the skill records with a headless fallback
+#   instead (see record.sh). It still implements these, to report ABSENT and to fail with a clear reason.
 #     platform_check_capture               preflight rows for the display and the capture tools
 #     platform_check_audio                 preflight rows for the audio tools (optional feature)
 #     platform_display_start W H LOG       a display of W x H; sets PLATFORM_DISPLAY_PID
@@ -39,7 +39,7 @@
 # and add its id to PLATFORM_CANDIDATES before `portable`. Nothing outside `platform/` changes.
 #
 # `portable` is the last candidate and fits every host. It knows host facts only, so it records with
-# Playwright's recorder. A new file that beats it must come earlier in the list.
+# a headless fallback. A new file that beats it must come earlier in the list.
 
 PLATFORM_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/platform"
 PLATFORM_CANDIDATES=(linux-x11 portable)

@@ -12,7 +12,8 @@
 #   7. audio           - whatever the platform needs to record what the app plays (optional)
 #   8. server          - a running Rocket.Chat dev server to record against
 #
-# A host with no virtual display still passes: `record.sh` falls back to Playwright's own recorder.
+# A host with no virtual display still passes: `record.sh` falls back to the screencast, or to
+# Playwright's own recorder when ffmpeg is absent.
 # What that host lacks is reported as ABSENT with an optional fix, not as a failure.
 #
 # Usage:
@@ -63,7 +64,7 @@ info() { printf '          %s\n' "$1"; }
 # optional feature that is unavailable, and never fails the preflight.
 #
 # In `optional` mode a MISSING row reads as ABSENT and its fix goes to the optional list. That is
-# what the capture check uses once it has settled on the Playwright fallback: the missing tools no
+# what the capture check uses once it has settled on a fallback: the missing tools no
 # longer block a recording, they only cost quality.
 render_rows() {
 	local mode=${1:-required} status label note fix
@@ -117,10 +118,17 @@ echo
 
 [ "$missing" -eq 0 ] || stop_here 'This skill cannot run here:'
 
-# Which strategy will record. Section 6 reports it; section 5 needs it first, because the two
-# strategies drive different browser builds.
-CAPTURE_STRATEGY=playwright
-platform_capture_ready && CAPTURE_STRATEGY=native
+# Which strategy will record, by the same rule as record.sh. Section 6 reports it; section 5 needs
+# it first, because native drives a different browser build than the other two.
+HAVE_FFMPEG=0
+command -v ffmpeg >/dev/null && command -v ffprobe >/dev/null && HAVE_FFMPEG=1
+if platform_capture_ready; then
+	CAPTURE_STRATEGY=native
+elif [ "$HAVE_FFMPEG" -eq 1 ]; then
+	CAPTURE_STRATEGY=screencast
+else
+	CAPTURE_STRATEGY=playwright
+fi
 
 # --- 2. workspace ----------------------------------------------------------------------------
 echo '2. workspace'
@@ -189,7 +197,8 @@ echo
 # Each strategy needs a different build, and `yarn playwright install chromium` fetches both.
 #   native      the full browser. It runs headed on the virtual display, and chromium-headless-shell
 #               cannot stand in: it has no window to grab.
-#   playwright  the headless shell. It draws no browser chrome, so its surface is the viewport and
+#   screencast, playwright
+#               the headless shell. It draws no browser chrome, so its surface is the viewport and
 #               the video needs no padding. The full browser draws chrome even headless, and
 #               Playwright then pads the video with a grey band.
 echo '5. chromium'
@@ -222,27 +231,32 @@ fi
 echo
 
 # --- 6. capture ------------------------------------------------------------------------------
-# Two strategies, and the host decides. `native` grabs a virtual display with ffmpeg, at a constant
-# frame rate and with the audio the app plays. `playwright` is the fallback for a host that cannot:
-# the browser records itself, worse but without a single extra tool.
+# Three strategies, and the host decides. `native` grabs a virtual display with ffmpeg, at a
+# constant frame rate and with the audio the app plays. `screencast` is the fallback for a host
+# that cannot: the headless browser streams its frames, smooth but silent, and ffmpeg encodes them.
+# `playwright` is the last resort without ffmpeg: the browser records itself at 25 fps.
 echo '6. capture'
-if [ "$CAPTURE_STRATEGY" = native ]; then
+case "$CAPTURE_STRATEGY" in
+native)
 	ok 'strategy: native - ffmpeg grabs a virtual display, full frame rate, sound included'
 	render_rows required < <(platform_check_capture)
-else
-	printf '  ABSENT  %s\n' 'strategy: playwright - the browser records itself'
-	info 'no audio, about 25 fps, and a frame only when the page changes'
+	;;
+screencast)
+	printf '  ABSENT  %s\n' 'strategy: screencast - the headless browser streams its frames'
+	info 'up to 60 fps as the page draws, but no audio'
 	# What native would have needed. None of it blocks a recording here, so none of it fails.
 	render_rows optional < <(platform_check_capture)
-	# ffmpeg is optional on this path: it turns the webm into an mp4 and cuts the check frames.
-	if command -v ffmpeg >/dev/null && command -v ffprobe >/dev/null; then
-		ok "$(ffmpeg -version 2>&1 | head -1 | cut -d' ' -f1-3) - the webm becomes an mp4"
-	else
-		printf '  ABSENT  %s\n' 'no ffmpeg on PATH'
-		info 'record.sh delivers the raw webm and cuts no check frames'
-		optional_fixes+=('Install ffmpeg to get an mp4 and check frames: `sudo apt install ffmpeg` or `brew install ffmpeg`.')
-	fi
-fi
+	ok "$(ffmpeg -version 2>&1 | head -1 | cut -d' ' -f1-3) - encodes the frames"
+	;;
+*)
+	printf '  ABSENT  %s\n' 'strategy: playwright - the browser records itself'
+	info 'no audio, 25 fps, and a low-bitrate encode'
+	render_rows optional < <(platform_check_capture)
+	printf '  ABSENT  %s\n' 'no ffmpeg on PATH'
+	info 'record.sh delivers the raw webm and cuts no check frames'
+	optional_fixes+=('Install ffmpeg for the screencast strategy, an mp4 and check frames: `sudo apt install ffmpeg` or `brew install ffmpeg`.')
+	;;
+esac
 echo
 
 # --- 7. audio --------------------------------------------------------------------------------
@@ -251,7 +265,7 @@ echo '7. audio (optional)'
 if [ "$CAPTURE_STRATEGY" = native ]; then
 	render_rows required < <(platform_check_audio)
 else
-	printf '  ABSENT  %s\n' "Playwright's recorder writes no audio track"
+	printf '  ABSENT  %s\n' "the $CAPTURE_STRATEGY strategy records no audio"
 	info 'pass --no-audio to record.sh to silence the warning'
 fi
 echo

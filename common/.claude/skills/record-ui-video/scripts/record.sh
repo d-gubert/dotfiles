@@ -2,14 +2,17 @@
 #
 # Record one demo spec as a video.
 #
-# Two strategies, and the host decides which one runs:
+# Three strategies, and the host decides which one runs:
 #
 #   native      a headed Chromium on a virtual display, grabbed by ffmpeg at a constant frame rate,
 #               with the audio the app plays. This is the good one. It needs a platform file that
 #               implements a display and a grab (see platform.sh).
-#   playwright  Playwright's own recorder, for a host with no such file. It captures a frame only
-#               when the page compositor changes, caps around 25 fps, drops frames during idle
-#               beats and records no audio. The scenario is the same; only the tape is worse.
+#   screencast  the fallback for a host with no such file but with ffmpeg. A headless Chromium
+#               streams its frames over CDP with the time of each one (screencast.js), and ffmpeg
+#               turns them into a constant frame rate. Smooth up to 60 fps, but no audio.
+#   playwright  Playwright's own recorder, the last resort for a host without ffmpeg. It resamples
+#               the same frames to 25 fps, encodes them as low-bitrate VP8 and records no audio.
+# The scenario is the same in all three; only the tape differs.
 #
 # What the native strategy does, in order:
 #   1. finds the running dev server (port, MONGO_URL)
@@ -20,19 +23,20 @@
 #   5. captures the page rectangle with ffmpeg while the spec drives the browser
 #   6. trims the black head and tail, encodes an MP4, extracts check frames
 #
-# The playwright strategy skips 2 to 5: it runs the spec headless, collects the webm Playwright
-# wrote, and encodes the same MP4 from it. Without ffmpeg it delivers that webm as it is.
+# The screencast and playwright strategies skip 2 to 5 and the trim: they run the spec headless,
+# collect what the browser wrote, and encode the same MP4 from it. Without ffmpeg the playwright
+# strategy delivers its webm as it is.
 #
 # Usage:
 #   record.sh tests/e2e/demos/my-demo.spec.ts
 #   record.sh apps/meteor/tests/e2e/demos/my-demo.spec.ts --fps 30 --no-audio
 #
 # Options:
-#   --strategy S       auto (default), native, or playwright
+#   --strategy S       auto (default), native, screencast, or playwright
 #   --name NAME        basename of the output files (default: the spec's file name)
 #   --out-dir DIR      where the mp4 goes (default: the repo root)
 #   --viewport WxH     page size to record (default: read from the spec, else 1280x720)
-#   --fps N            capture frame rate, native only (default: 60)
+#   --fps N            frame rate of the video, native and screencast (default: 60)
 #   --no-audio         do not capture audio
 #   --no-trim          keep the black head and tail instead of trimming them
 #   --keep-raw         keep the lossless capture next to the mp4
@@ -91,7 +95,7 @@ while [ $# -gt 0 ]; do
 	--mongo-url) MONGO_URL=$2; shift 2 ;;
 	--frames-dir) FRAMES_DIR=$2; shift 2 ;;
 	--frame-every) FRAME_EVERY=$2; shift 2 ;;
-	-h | --help) sed -n '2,46p' "$0"; exit 0 ;;
+	-h | --help) sed -n '2,49p' "$0"; exit 0 ;;
 	-*) echo "record.sh: unknown option '$1'" >&2; exit 2 ;;
 	*) SPEC=$1; shift ;;
 	esac
@@ -127,11 +131,17 @@ HAVE_FFMPEG=0
 command -v ffmpeg >/dev/null && command -v ffprobe >/dev/null && HAVE_FFMPEG=1
 
 # --- pick the strategy ----------------------------------------------------------------------
-# Native when the platform layer can grab a display and every tool it needs is there. Anything
-# else falls back to Playwright's recorder, which needs neither.
+# Native when the platform layer can grab a display and every tool it needs is there. Else the
+# screencast, which needs ffmpeg only. Else Playwright's recorder, which needs neither.
 case "$STRATEGY" in
 auto)
-	if platform_capture_ready; then STRATEGY=native; else STRATEGY=playwright; fi
+	if platform_capture_ready; then
+		STRATEGY=native
+	elif [ "$HAVE_FFMPEG" -eq 1 ]; then
+		STRATEGY=screencast
+	else
+		STRATEGY=playwright
+	fi
 	;;
 native)
 	if ! platform_capture_ready; then
@@ -143,18 +153,18 @@ native)
 			echo 'record.sh: what is missing:' >&2
 			platform_check_capture | awk -F'|' '$1 == "MISSING" { print "  - " $2 (($4 != "") ? "  " $4 : "") }' >&2
 		fi
-		echo 'record.sh: drop --strategy native to record with Playwright'"'"'s recorder instead.' >&2
+		echo 'record.sh: drop --strategy native to record with the screencast instead.' >&2
 		exit 1
 	fi
 	;;
-playwright) ;;
+screencast | playwright) ;;
 *)
-	echo "record.sh: unknown strategy '$STRATEGY'. Use auto, native or playwright." >&2
+	echo "record.sh: unknown strategy '$STRATEGY'. Use auto, native, screencast or playwright." >&2
 	exit 2
 	;;
 esac
 
-if [ "$STRATEGY" = native ]; then
+if [ "$STRATEGY" != playwright ]; then
 	need ffmpeg
 	need ffprobe
 fi
@@ -196,6 +206,8 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 # The environment and the extra CLI args the spec run needs; each strategy adds its own.
+# Expand an array that can be empty as ${A[@]+"${A[@]}"}: macOS ships bash 3.2, and with `set -u`
+# it calls a plain "${A[@]}" of an empty array unbound.
 SPEC_ENV=()
 SPEC_ARGS=()
 
@@ -270,7 +282,7 @@ if [ "$STRATEGY" = native ]; then
 	echo
 	mapfile -t CAPTURE_INPUT < <(platform_capture_input "$FPS" "$CROP_W" "$CROP_H" "$CROP_X" "$CROP_Y")
 	ffmpeg -y -hide_banner -nostdin -loglevel warning -stats \
-		"${AUDIO_ARGS[@]}" \
+		${AUDIO_ARGS[@]+"${AUDIO_ARGS[@]}"} \
 		"${CAPTURE_INPUT[@]}" \
 		-c:v libx264 -preset ultrafast -qp 18 -pix_fmt yuv420p \
 		"${AUDIO_CODEC[@]}" \
@@ -289,6 +301,23 @@ if [ "$STRATEGY" = native ]; then
 		tail -20 "$LOG" >&2
 		exit 1
 	fi
+elif [ "$STRATEGY" = screencast ]; then
+	# --- the CDP screencast -----------------------------------------------------------------------
+	# No display, no grab and no audio: the spec loads screencast.js and saves each frame the
+	# compositor draws, with its time. RECORD_STRATEGY tells the spec to switch its `test.use` block
+	# and its hooks over. Each frame lasts until the next one, so a still beat stays in the video.
+	SCREENCAST_DIR="$TMP_DIR/screencast"
+	SPEC_ENV+=("RECORD_STRATEGY=screencast" "RECORD_SCREENCAST_JS=$SCRIPT_DIR/screencast.js"
+		"RECORD_SCREENCAST_DIR=$SCREENCAST_DIR")
+	WITH_AUDIO=0
+	# screencast.js cuts the blank page before the first navigation, so there is nothing to trim.
+	TRIM=0
+	AUDIO_OUT=(-an)
+	echo "capture: screencast at $VIEWPORT, $FPS fps (platform $PLATFORM_ID has no display to grab)"
+	echo '         no audio; motion as smooth as the compositor draws it'
+	echo "spec:    $SPEC_REL"
+	echo "log:     $LOG"
+	echo
 else
 	# --- Playwright's own recorder --------------------------------------------------------------
 	# No display, no grab and no audio: the browser records itself, headless. RECORD_STRATEGY tells
@@ -302,7 +331,7 @@ else
 	TRIM=0
 	AUDIO_OUT=(-an)
 	echo "capture: playwright recorder at $VIEWPORT (platform $PLATFORM_ID has no display to grab)"
-	echo '         no audio, about 25 fps, a frame only when the page changes'
+	echo '         no audio, 25 fps, low-bitrate VP8'
 	echo "spec:    $SPEC_REL"
 	echo "log:     $LOG"
 	echo
@@ -313,7 +342,7 @@ fi
 	cd "$REPO_ROOT/apps/meteor" &&
 		env IS_EE=true BASE_URL="http://localhost:$PORT" MONGO_URL="$MONGO_URL" \
 			"${SPEC_ENV[@]}" \
-			yarn test:e2e "${SPEC_ARGS[@]}" "$SPEC_REL"
+			yarn test:e2e ${SPEC_ARGS[@]+"${SPEC_ARGS[@]}"} "$SPEC_REL"
 ) >>"$LOG" 2>&1
 RUN_EXIT=$?
 
@@ -328,6 +357,24 @@ if [ "$STRATEGY" = native ]; then
 	kill -INT "$FFMPEG_PID" 2>/dev/null
 	wait "$FFMPEG_PID" 2>/dev/null
 	FFMPEG_PID=''
+elif [ "$STRATEGY" = screencast ]; then
+	# The spec writes the frame list when its afterEach stops the screencast. Turn the variable
+	# frame times into a constant rate here, so the rest of this script treats the file like a
+	# native capture. `-safe 0` is for the `option` lines of the list; see screencast.js.
+	CONCAT="$SCREENCAST_DIR/frames.ffconcat"
+	SOURCE_FRAMES=$(grep -c '^file ' "$CONCAT" 2>/dev/null)
+	SOURCE_FRAMES=${SOURCE_FRAMES:-0}
+	if [ "$SOURCE_FRAMES" -eq 0 ]; then
+		echo 'record.sh: the screencast saved no frames.' >&2
+		echo "record.sh: check that the spec keeps the RECORD_STRATEGY block and hooks of template.spec.ts." >&2
+		tail -20 "$LOG" >&2
+		exit 1
+	fi
+	# The list names the last frame twice more to close it; see screencast.js.
+	SOURCE_FRAMES=$((SOURCE_FRAMES - 2))
+	ffmpeg -y -hide_banner -nostdin -loglevel error -f concat -safe 0 -i "$CONCAT" \
+		-vf "fps=$FPS,crop=trunc(iw/2)*2:trunc(ih/2)*2" \
+		-c:v libx264 -preset ultrafast -qp 18 -pix_fmt yuv420p "$RAW" >>"$LOG" 2>&1
 else
 	# Playwright saves the video when it closes the context, so the file exists by now. One spec,
 	# one page, one webm; take the newest in case a retry left an older one behind. `ls -t` sorts
@@ -388,7 +435,7 @@ fi
 # --- deliver ------------------------------------------------------------------------------------
 OUT_MP4="$OUT_DIR_ABS/$NAME.mp4"
 
-ffmpeg -y -hide_banner -nostdin -loglevel error -i "$RAW" "${TRIM_ARGS[@]}" \
+ffmpeg -y -hide_banner -nostdin -loglevel error -i "$RAW" ${TRIM_ARGS[@]+"${TRIM_ARGS[@]}"} \
 	-c:v libx264 -crf 20 -preset veryfast -pix_fmt yuv420p -movflags +faststart \
 	"${AUDIO_OUT[@]}" \
 	"$OUT_MP4" >>"$LOG" 2>&1
@@ -413,6 +460,11 @@ if [ "$STRATEGY" = native ]; then
 		echo "         capture: $FPS fps asked, $dropped frames dropped - try --fps 30"
 	fi
 fi
+# How often the page changed. A low number over a long still beat is not a fault: each frame
+# lasts until the next one.
+if [ "$STRATEGY" = screencast ]; then
+	echo "         screencast: $SOURCE_FRAMES frames from the compositor, held to $FPS fps"
+fi
 
 if [ "$WITH_AUDIO" -eq 1 ]; then
 	level=$(ffmpeg -hide_banner -nostdin -i "$OUT_MP4" -af volumedetect -f null - 2>&1 |
@@ -421,6 +473,8 @@ if [ "$WITH_AUDIO" -eq 1 ]; then
 	'' | '-91.0 dB' | '-inf dB') echo '         audio: silent - the scenario played nothing' ;;
 	*) echo "         audio: peak $level" ;;
 	esac
+elif [ "$STRATEGY" = screencast ]; then
+	echo '         audio: none - the screencast carries no audio'
 elif [ "$STRATEGY" = playwright ]; then
 	echo '         audio: none - Playwright'"'"'s recorder writes no audio track'
 fi

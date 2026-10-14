@@ -7,7 +7,7 @@
 
 PLATFORM_ID='linux-x11'
 PLATFORM_NAME='Linux with X11'
-# This host can grab a virtual display, so the recording does not need Playwright's own recorder.
+# This host can grab a virtual display, so the recording needs no headless fallback.
 PLATFORM_CAPTURE='native'
 
 platform_detect() {
