@@ -330,9 +330,9 @@ if [ "$STRATEGY" = native ]; then
 	FFMPEG_PID=''
 else
 	# Playwright saves the video when it closes the context, so the file exists by now. One spec,
-	# one page, one webm; take the newest in case a retry left an older one behind.
-	RAW=$(find "$PW_OUTPUT" -name '*.webm' -type f -printf '%T@ %p\n' 2>/dev/null |
-		sort -rn | head -1 | cut -d' ' -f2-)
+	# one page, one webm; take the newest in case a retry left an older one behind. `ls -t` sorts
+	# by mtime on BSD and GNU alike; `find -printf` is GNU only.
+	RAW=$(find "$PW_OUTPUT" -name '*.webm' -type f -exec ls -t {} + 2>/dev/null | head -1)
 	if [ -z "$RAW" ]; then
 		echo 'record.sh: Playwright wrote no video.' >&2
 		echo "record.sh: check that the spec keeps the RECORD_STRATEGY block of template.spec.ts." >&2
