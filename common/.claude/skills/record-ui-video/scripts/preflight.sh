@@ -165,11 +165,10 @@ while read -r changed; do
 	src_file="$REPO_ROOT/$changed"
 	[ -f "$src_file" ] || continue
 	[ -d "$pkg_dir/dist" ] || continue
-	# Newest file in dist; a source newer than that means dist is behind.
-	newest_dist=$(find "$pkg_dir/dist" -type f -printf '%T@\n' 2>/dev/null | sort -rn | head -1)
-	src_mtime=$(stat -c '%Y' "$src_file" 2>/dev/null)
-	[ -n "$newest_dist" ] && [ -n "$src_mtime" ] || continue
-	if [ "${src_mtime%.*}" -gt "${newest_dist%.*}" ]; then
+	# A source newer than every file in dist means dist is behind. `-newer` works with BSD and GNU
+	# find alike; `-printf` and `stat -c` are GNU only.
+	[ -n "$(find "$pkg_dir/dist" -type f 2>/dev/null | head -1)" ] || continue
+	if [ -z "$(find "$pkg_dir/dist" -type f -newer "$src_file" 2>/dev/null | head -1)" ]; then
 		case " $stale_pkgs " in
 		*" $pkg "*) ;;
 		*) stale_pkgs="$stale_pkgs $pkg" ;;
@@ -194,7 +193,19 @@ echo
 #               the video needs no padding. The full browser draws chrome even headless, and
 #               Playwright then pads the video with a grey band.
 echo '5. chromium'
-PW_CACHE=${PLAYWRIGHT_BROWSERS_PATH:-$HOME/.cache/ms-playwright}
+# Playwright's default cache is ~/.cache on Linux and ~/Library/Caches on macOS. Take the first
+# that exists, so the message names the Linux path when neither does.
+if [ -n "${PLAYWRIGHT_BROWSERS_PATH:-}" ]; then
+	PW_CACHE=$PLAYWRIGHT_BROWSERS_PATH
+else
+	PW_CACHE=$HOME/.cache/ms-playwright
+	for pw_cache_candidate in "$HOME/.cache/ms-playwright" "$HOME/Library/Caches/ms-playwright"; do
+		if [ -d "$pw_cache_candidate" ]; then
+			PW_CACHE=$pw_cache_candidate
+			break
+		fi
+	done
+fi
 if [ "$CAPTURE_STRATEGY" = native ]; then
 	pw_browser_glob="$PW_CACHE/chromium-[0-9]*"
 	pw_browser_label='chromium'
