@@ -15,20 +15,37 @@ Today one platform file implements this: `linux-x11`. A Wayland desktop is fine,
 recording never touches it — it brings its own X display. See
 [platform-layer.md](platform-layer.md).
 
+## How `screencast` records
+
+Chromium runs headless, so there is no display to start, no window to place and no crop to
+calibrate. The spec's `beforeEach` loads `scripts/screencast.js` and starts a CDP screencast
+(`Page.startScreencast`, JPEG at quality 90). The compositor sends a frame each time it draws a
+change, up to 60 per second. `screencast.js` acks each frame at once and writes it to disk with
+its timestamp.
+
+The `afterEach` stops it and writes `frames.ffconcat`: each frame lasts until the next one, so a
+still beat stays in the video as one held frame. `record.sh` then encodes that list to a constant
+`--fps` rate. The list has three quirks of the concat demuxer, documented in `screencast.js`; the
+one to know is the 1 ms time base, which needs `-safe 0`.
+
+`screencast.js` also cuts the blank `about:blank` frames before the first navigation, so the video
+starts on the app, not on a white screen.
+
 ## How `playwright` records
 
-Chromium runs headless and records itself, so there is no display to start, no window to place and
-no crop to calibrate. `record.sh` collects the `.webm` Playwright wrote and encodes the same MP4
-from it. Without ffmpeg on the host it hands over that `.webm` and cuts no check frames.
+Chromium runs headless and records itself. It reads the same screencast as `screencast`, then
+resamples it onto a fixed 25 fps grid and encodes realtime VP8 at 1 Mbit/s (`videoRecorder.js` in
+`playwright-core`). `record.sh` collects that `.webm` and encodes the same MP4 from it. Without
+ffmpeg on the host it hands over the `.webm` and cuts no check frames.
 
-The scenario code never changes between the two. Only the `test.use` block does, and the template
-already switches it on `RECORD_STRATEGY`.
+The scenario code never changes between the three. Only the `test.use` block and the screencast
+hooks do, and the template already switches them on `RECORD_STRATEGY`.
 
 ## Audio
 
-Only the `native` strategy records audio. Playwright's recorder writes no audio track at all, so a
-flow whose point is a ringtone cannot be recorded on the fallback — say so rather than hand over a
-silent video of it.
+Only the `native` strategy records audio. A CDP screencast carries pictures only, so neither
+fallback has an audio track. A flow whose point is a ringtone cannot be recorded on a fallback — say
+so rather than hand over a silent video of it.
 
 On `native`, the browser gets a PulseAudio null sink of its own (`PULSE_SINK` in its environment) and `parec`
 reads that sink's monitor into ffmpeg. So the recording holds what the app played and nothing else
@@ -47,7 +64,7 @@ Pass `--no-audio` for a flow with no sound; the video is the same, only smaller.
 
 ## The window has no manager
 
-This is `native` only; Playwright's recorder records the page and never sees a window.
+This is `native` only; the headless strategies record the page and never see a window.
 
 Nothing on the virtual display resizes or decorates the browser: Chromium draws its own tab strip
 and omnibox and keeps the size it was asked for. Two numbers follow from that, and both belong to
@@ -71,5 +88,5 @@ closes; both ends are the bare X root window, which is pure black. `record.sh` f
 stretches with `blackdetect` and cuts them. Nothing the app draws is pure black, not even the dark
 theme, so the cut is safe. Pass `--no-trim` to keep them.
 
-Playwright's recorder starts with the page and stops with it, so there is nothing to cut and
+The headless strategies start with the page and stop with it, so there is nothing to cut and
 `record.sh` does not try.

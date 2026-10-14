@@ -21,17 +21,22 @@ They are what make the video work.
     - `--window-position=0,0` puts the window where the calibrated crop expects it, and
       `--window-size=${windowSize}` is the value `record.sh` measured and passed in
       `RECORD_WINDOW_SIZE`.
-  - Playwright branch:
+  - Headless branch, for `screencast` and `playwright`:
     - `headless: true` — the fallback host may have no display at all.
     - `channel: 'chromium-headless-shell'` — the shell draws no browser chrome, so its surface is
       the viewport. The full chromium of `playwright.config.ts` draws chrome even headless, its
       surface comes out 85px short, and Playwright pads the video with a grey band that eats the
       composer. This is the one line that decides whether the fallback video is usable.
-    - `viewport` and `video.size` both set to `RECORD_VIEWPORT`. Set `size`, always: Playwright
-      otherwise scales the video down to fit into 800x800.
+    - `viewport` set to `RECORD_VIEWPORT`.
+    - `video` — `'off'` for `screencast`, whose hooks record instead. For `playwright`, `video.size`
+      set to `RECORD_VIEWPORT`, always: Playwright otherwise scales the video down to fit into
+      800x800.
   - `launchOptions.args` — this array **replaces** the one in `playwright.config.ts`, so both
     branches repeat the fake-media args. Without them a call cannot get a microphone, and
     `--autoplay-policy=no-user-gesture-required` is what lets a ringtone play at all.
+- The `beforeEach` / `afterEach` pair after `test.use`. On `screencast` they start and stop
+  `screencast.js`; on the other strategies they do nothing. Without them a `screencast` run saves
+  no frames and `record.sh` stops with an error.
 - `storageState: Users.user1.state` — logs the page in as `user1` with no login screen. Login
   tokens are deterministic: `base64(sha256(username))`, pre-seeded in the DB. Pick any of
   `Users.user1`, `Users.user2`, … from `tests/e2e/fixtures/userStates.ts`.
@@ -43,8 +48,8 @@ They are what make the video work.
 ## The pointer
 
 `page.mouse` moves a synthetic cursor **inside** the browser, and neither strategy captures a real
-one: `native` grabs the display with `-draw_mouse 0`, and Playwright's recorder records the page.
-So the only cursor in either video is the dot that `showPointer` draws. Keep that helper.
+one: `native` grabs the display with `-draw_mouse 0`, and the headless strategies record the page.
+So the only cursor in any video is the dot that `showPointer` draws. Keep that helper.
 
 A raw `locator.click()` teleports the synthetic cursor, and the dot jumps with it.
 `glideClick(page, locator, steps)` interpolates the move, so the dot travels. At 60 fps the glide is

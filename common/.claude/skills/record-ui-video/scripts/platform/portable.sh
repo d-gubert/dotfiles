@@ -4,15 +4,14 @@
 #
 # It fits every host, so it is the last candidate in PLATFORM_CANDIDATES and the one that answers
 # when no other file does. It knows how to find the dev server and nothing else, so `record.sh`
-# records with Playwright's own recorder: no audio, about 25 fps, and a frame only when the page
-# changes. Write a file with native capture for your system when you want the full quality.
+# records headless, with the screencast or Playwright's own recorder: no audio. Write a file with native capture for your system when you want the full quality.
 #
 # Sourced by platform.sh, which documents the contract. Run it with `detect` to ask whether it fits
 # the host; that is what the loader does before it sources anything.
 
 PLATFORM_ID='portable'
 PLATFORM_NAME='no virtual display'
-# No display and no grab, so record.sh falls back to Playwright's recorder.
+# No display and no grab, so record.sh falls back to a headless strategy.
 PLATFORM_CAPTURE='none'
 
 # The one thing this file needs is a `ps` that prints another process's environment.
@@ -36,7 +35,7 @@ platform_check_capture() {
 
 platform_check_audio() {
 	printf 'ABSENT|no audio capture without a native display|%s|\n' \
-		"Playwright's recorder writes no audio track; pass --no-audio to silence the warning"
+		"the headless strategies record no audio track; pass --no-audio to silence the warning"
 }
 
 # --- finding the dev server -----------------------------------------------------------------

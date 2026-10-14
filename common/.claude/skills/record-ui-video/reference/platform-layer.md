@@ -1,7 +1,7 @@
 # The platform layer
 
 Read this to add native capture for another operating system, or to understand why a host falls
-back to Playwright's recorder.
+back to a headless strategy.
 
 Everything that differs between operating systems lives in one file under `scripts/platform/`.
 `platform.sh` holds the contract, tries each id in `PLATFORM_CANDIDATES`, and sources the first file
@@ -10,7 +10,7 @@ system, a display server or a capture device.
 
 Two files exist. `linux-x11` implements everything and declares `PLATFORM_CAPTURE='native'`.
 `portable` fits every host, implements host facts only, and declares `PLATFORM_CAPTURE='none'`,
-which is what sends `record.sh` to Playwright's recorder. `portable` is last in the list, so a new
+which is what sends `record.sh` to `screencast`, or to `playwright` without ffmpeg. `portable` is last in the list, so a new
 file wins over it.
 
 To add native capture for a system: copy `platform/linux-x11.sh`, implement the same functions, and
@@ -39,7 +39,7 @@ when someone forces `--strategy native`. See `platform/portable.sh`.
 
 A preflight row is `STATUS|label|info|fix`. `OK` passes, `MISSING` fails the preflight, and `ABSENT`
 reports an optional feature as unavailable without failing. When the run has already fallen back to
-Playwright, `preflight.sh` reads a `MISSING` capture row as `ABSENT` and files its fix under
+a headless strategy, `preflight.sh` reads a `MISSING` capture row as `ABSENT` and files its fix under
 "optional".
 
 Set `RECORD_PLATFORM=<id>` to force one candidate. Use it to exercise the fallback on a host that

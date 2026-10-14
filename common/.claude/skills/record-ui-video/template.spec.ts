@@ -6,8 +6,9 @@
  * not record a broken screen. The parts that make recording work are marked KEEP.
  *
  * `record.sh` picks how to capture it and says so in RECORD_STRATEGY. On a host with a virtual
- * display, ffmpeg grabs a headed window and Playwright's own recorder stays off. On any other host,
- * Playwright's recorder takes over. The scenario below never changes; only the `test.use` block does.
+ * display, ffmpeg grabs a headed window. On any other host with ffmpeg, the screencast hooks below
+ * save each frame the browser draws. Without ffmpeg, Playwright's own recorder takes over. The
+ * scenario never changes; only the `test.use` block and the hooks do.
  */
 import type { Locator, Page } from '@playwright/test';
 
@@ -114,21 +115,22 @@ const mediaArgs = [
 //  - video off           : Playwright's recorder would only duplicate the capture, slowly
 //  - window-position 0,0 : the window lands where the calibrated crop expects it
 //
-// playwright - the fallback for a host with no virtual display. The browser records itself, so
-// there is no window to size or place, and the recorder writes no audio track.
+// screencast and playwright - the fallbacks for a host with no virtual display. The browser runs
+// headless and hands over its own frames, so there is no window to size or place, and no audio.
 //  - channel headless-shell : the shell has no browser chrome, so its surface is the viewport. The
 //    full chromium of playwright.config.ts draws chrome even headless, its surface comes out 85px
-//    short of the viewport, and Playwright pads the video with a grey band that eats the composer.
-//  - size                   : set it, always. Playwright otherwise scales the video down to fit
-//    into 800x800.
+//    short of the viewport, and the frames get a grey band that eats the composer.
+//  - video                  : off for screencast, whose hooks below record instead. On for
+//    playwright, with the size set, always: Playwright otherwise scales the video down to fit into
+//    800x800.
 test.use(
-	strategy === 'playwright'
+	strategy === 'screencast' || strategy === 'playwright'
 		? {
 				channel: 'chromium-headless-shell',
 				headless: true,
 				viewport: { width: recordWidth, height: recordHeight },
 				storageState: Users.user1.state,
-				video: { mode: 'on', size: { width: recordWidth, height: recordHeight } },
+				video: strategy === 'playwright' ? { mode: 'on', size: { width: recordWidth, height: recordHeight } } : 'off',
 				launchOptions: { args: mediaArgs },
 			}
 		: {
@@ -141,6 +143,23 @@ test.use(
 				},
 			},
 );
+
+// KEEP: the screencast recorder. `record.sh` passes the path of the skill's screencast.js and a
+// directory for the frames; the hooks do nothing on the other strategies. The recorder starts
+// before the scenario's first navigation and stops after its last step.
+let stopScreencast: (() => Promise<unknown>) | undefined;
+test.beforeEach(async ({ page }) => {
+	if (strategy !== 'screencast') {
+		return;
+	}
+	// eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
+	const { startScreencast } = require(process.env.RECORD_SCREENCAST_JS as string);
+	stopScreencast = await startScreencast(page, process.env.RECORD_SCREENCAST_DIR, { width: recordWidth, height: recordHeight });
+});
+test.afterEach(async () => {
+	await stopScreencast?.();
+	stopScreencast = undefined;
+});
 
 test.describe('<scenario> - demo recording', () => {
 	test.beforeAll(async ({ api }) => {
