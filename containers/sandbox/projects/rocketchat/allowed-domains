@@ -1,0 +1,30 @@
+# Extra egress allowlist for the Rocket.Chat monorepo, merged into the kit's
+# `permissions.network.allow` for workspaces on this profile. Exact hosts,
+# host:port, single-label wildcards or CIDRs; `#` comments. Takes effect on
+# `devbox rebuild` — a kit's rules are chosen at sandbox create time. See
+# ../../allowed-domains.
+
+# The two CIDRs that used to be here are gone. They named the bridge networks of
+# containers/local-mongo and containers/observability, and a sandbox cannot route
+# to either: it is a microVM with its own network namespace, so a host Docker
+# network is not on it. Both stacks are reached through host.docker.internal
+# instead, which the base allowlist grants — see the MONGO_URL note in `env`.
+
+# --- What setup.sh downloads --------------------------------------------------
+#
+# These are new, and they are new because of *when* setup.sh now runs. Under the
+# devcontainer it ran at updateContentCommand, before the firewall was applied,
+# so it had unrestricted network and none of this had to be declared. A kit's
+# setup.install runs inside the sandbox with the allowlist already in force, so
+# every host the install reaches has to be here.
+#
+# The Meteor installer, and the warehouse it unpacks the ~1GB distribution from.
+install.meteor.com
+packages.meteor.com
+static.meteor.com
+warehouse.meteor.com
+
+# Deno's install script. The release tarball itself comes from a GitHub release,
+# which the base list already covers.
+deno.land
+dl.deno.land

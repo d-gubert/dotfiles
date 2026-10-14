@@ -1,0 +1,18 @@
+# Sandbox volumes for this profile: `path [size]` per line, `#` comments. Each
+# becomes a `volumes:` entry in the generated kit — block storage inside the VM,
+# mounted over that path, named after the sandbox so it survives a
+# `devbox rebuild`. Size defaults to 4g. %WORKSPACE%, %TOOLS% and %CACHES% are
+# substituted; see ../README.md.
+#
+# Two build directories kept OFF the workspace mount. That mount is virtiofs out
+# to the host, which is the wrong place for a tree of hundreds of thousands of
+# small files being written — and, for the second one, wrong for correctness too.
+%WORKSPACE%/node_modules 20g
+
+# .meteor/local must NOT be shared with the host: Meteor writes absolute paths
+# into it (notably the dev_bundle symlink, which points into the running user's
+# ~/.meteor). A host-written dev_bundle dangles in the sandbox — /home/<hostuser>
+# does not exist in there — and Meteor then spins on any in-project command,
+# burning CPU and printing nothing. It also holds db/, the mongod data dir
+# `meteor` populates in dev, which the two sides must not share.
+%WORKSPACE%/apps/meteor/.meteor/local 20g
