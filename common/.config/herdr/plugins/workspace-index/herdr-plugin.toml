@@ -17,6 +17,14 @@ on = "workspace.closed"
 command = ["bash", "sync.sh"]
 
 [[events]]
+on = "pane.exited"
+command = ["bash", "sync.sh"]
+
+[[events]]
+on = "pane.closed"
+command = ["bash", "sync.sh"]
+
+[[events]]
 on = "workspace.moved"
 command = ["bash", "sync.sh"]
 
