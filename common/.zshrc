@@ -484,7 +484,13 @@ fi
 
 if exists lazygit; then
 	source <(lazygit completion zsh)
-	alias lg='lazygit -sm half'
+	function lg() {
+		if [ -n "$(git status --porcelain)" ]; then
+			lazygit status -sm half "$@"
+		else
+			lazygit log -sm full "$@"
+		fi
+	}
 fi
 
 if exists lazyjira; then
