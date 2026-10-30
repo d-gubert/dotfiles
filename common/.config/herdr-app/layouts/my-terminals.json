@@ -1,0 +1,77 @@
+{
+  "id": "root",
+  "cloned_from": {
+    "name": "terminals",
+    "version": "0.1.8"
+  },
+  "type": "column",
+  "titlebar": "none",
+  "traffic_lights": [
+    16,
+    10
+  ],
+  "theme": "graphite",
+  "colors": {
+    "background": "#131619",
+    "surface": "#17191c",
+    "raised": "#202225",
+    "hover": "#ffffff0d",
+    "border": "#25282c",
+    "accent": "#3b82f6",
+    "foreground": "#e8e9eb",
+    "terminal_foreground": "#e6e7e9",
+    "muted": "#a9adb3",
+    "dim": "#8b8f95",
+    "selection": "#264f78"
+  },
+  "background": "#131619",
+  "padding": [
+    6,
+    6
+  ],
+  "gap": 5,
+  "children": [
+    {
+      "id": "tabs",
+      "type": "block",
+      "size": {
+        "px": 25
+      },
+      "window_drag": false,
+      "content": {
+        "mod": "my-terminals-bar"
+      }
+    },
+    {
+      "id": "main",
+      "type": "block",
+      "content": {
+        "tab": "active",
+        "pane": {
+          "background": "#17191c",
+          "border": {
+            "width": 1,
+            "color": "#24272b"
+          },
+          "focus": {
+            "width": 1,
+            "color": "#33363b"
+          },
+          "radius": 0,
+          "gap": 0,
+          "lone": true
+        }
+      }
+    },
+    {
+      "id": "spaces",
+      "type": "block",
+      "size": {
+        "px": 25
+      },
+      "content": {
+        "mod": "spaces-bar"
+      }
+    }
+  ]
+}

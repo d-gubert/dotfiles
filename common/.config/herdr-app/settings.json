@@ -1,0 +1,11 @@
+{
+  "zoom": 1,
+  "sounds": {
+    "enabled": true
+  },
+  "font_size": 13,
+  "minimum_contrast": 1,
+  "option_as_alt": "off",
+  "theme": "catppuccin",
+  "font": "FiraCode Nerd Font Monospace"
+}
