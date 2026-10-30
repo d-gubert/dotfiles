@@ -13,10 +13,9 @@
 #          Rocket.Chat's path, and the target list is discovered from Docker
 #          labels — see prometheus/prometheus.yml.
 #
-# This is a STANDALONE compose project (`name:` below), never part of a
-# devcontainer's own project: every devbox workspace runs its own compose
-# project, so a copy defined in there would be one Prometheus per workspace, each
-# with its own empty database. Same argument as ../devcontainer/turbo-cache.
+# This is a STANDALONE compose project (`name:` below), and holds history that
+# outlives every workspace: a copy defined per workspace would be one Prometheus
+# each, with its own empty database. Same argument as ../sandbox/turbo-cache.
 name: observability
 
 services:
@@ -210,15 +209,16 @@ volumes:
 
 networks:
   observability:
-    # Fixed name so a devcontainer can attach to it as an external network,
-    # without the `observability_` project prefix compose would otherwise add.
+    # Fixed name so another compose project can attach to it as an external
+    # network, without the `observability_` prefix compose would otherwise add.
+    # A devbox sandbox cannot: it is a microVM with its own network namespace,
+    # and reaches the collector through the port published on the host instead.
     name: observability
     ipam:
       config:
-        # Pinned because the devbox egress firewall allowlists this exact CIDR
-        # (../devcontainer/projects/rocketchat/allowed-domains) — a second
-        # network is not covered by the rule the firewall derives from the
-        # container's own bridge. Chosen outside the range Docker has handed out
-        # so far but inside its default pool, beside turbo-cache (172.30.0.0/24)
-        # and local-mongo (172.31.0.0/24). Change one, change both.
+        # Pinned so the subnet is stable for anything that has to name it. The
+        # devbox egress allowlist used to be one such thing and is not any more —
+        # a sandbox does not route to this network at all. Chosen outside the
+        # range Docker has handed out so far but inside its default pool, beside
+        # turbo-cache (172.30.0.0/24) and local-mongo (172.31.0.0/24).
         - subnet: 172.29.0.0/24
