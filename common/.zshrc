@@ -662,7 +662,7 @@ if exists gh; then
 	alias prco='gh pr checkout'
 	alias prcn='gh pr create --draft'
 	alias praction='gh pr checks --watch'
-	alias repovw='gh repo view --web'
+	alias repovw='gh repo view --web --branch $(git_current_branch)'
 fi
 
 # Identification for self signed certificates via mkcert
