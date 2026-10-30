@@ -764,6 +764,13 @@ function zvm_after_init() {
 		bindkey '' fzf-file-widget
 	fi
 
+	# After fzf, so atuin takes ^R back from fzf-history-widget
+	if exists atuin; then
+		eval "$(atuin init zsh --disable-up-arrow)"
+		# atuin only binds / in vicmd, so fzf would keep ^R there
+		bindkey -M vicmd '^R' atuin-search
+	fi
+
 	# Git aliases that would be overwritten by the git plugin
 	alias gw='git worktree'
 	alias gl='git pull --autostash'
@@ -785,3 +792,5 @@ if [[ -n $IS_SANDBOX ]]; then
 fi
 
 # [ -f "$DOTFILES_SCRIPTS/watch_rocket.sh" ] && zsh -c "$DOTFILES_SCRIPTS/watch_rocket.sh start" &|
+
+[ -f "$HOME/.atuin/bin/env" ] && . "$HOME/.atuin/bin/env"
