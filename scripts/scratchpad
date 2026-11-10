@@ -1,0 +1,651 @@
+#!/usr/bin/env bash
+#
+# scratchpad — move throwaway files out of a project and into a scratchpad.
+#
+# Each PATH lands under $SCRATCHPAD_DIR/sources/<slug>/<rel>, where:
+#
+#   inside a git repo:  slug = repo root with "/" -> "-", rel = path from the root
+#   outside a git repo: slug = parent dir with "/" -> "-", rel = basename
+#
+#   ~/dev/projects/test/build/quick.js  (test/ is a repo)
+#     -> $SCRATCHPAD_DIR/sources/-home-me-dev-projects-test/build/quick.js
+#
+# Every scratch appends a record to $SCRATCHPAD_DIR/ledger.yaml. Warnings and
+# errors go to $SCRATCHPAD_DIR/scratch.log.
+#
+# Run `scratch --help` for usage. `scratch` is a symlink to this file.
+#
+# Extension points (search for "EXTEND"):
+#   - flags:        option_arity, short_to_long, apply_option, usage
+#   - file filters: build_filters + a filter_<name> function
+#   - subcommands:  SUBCOMMANDS + a cmd_<name> function
+#
+# Written for bash 3.2 (the macOS /bin/bash): no associative arrays, no mapfile,
+# and every possibly-empty array expands as ${a[@]+"${a[@]}"}.
+set -euo pipefail
+
+PROG=$(basename -- "$0")
+
+SCRATCHPAD_DIR="${SCRATCHPAD_DIR:-$HOME/.scratchpad}"
+SCRATCHPAD_DIR="${SCRATCHPAD_DIR%/}"
+LEDGER_FILE="$SCRATCHPAD_DIR/ledger.yaml"
+LOG_FILE="$SCRATCHPAD_DIR/scratch.log"
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+
+# log_to_file LEVEL MESSAGE — append one line to the log file. Never fails.
+log_to_file() {
+	mkdir -p -- "$SCRATCHPAD_DIR" 2>/dev/null || return 0
+	printf '%s [%s] %s %s: %s\n' "$(date +%Y-%m-%dT%H:%M:%S%z)" "$$" "$1" \
+		"$PWD" "$2" >>"$LOG_FILE" 2>/dev/null || true
+}
+
+warn() {
+	printf '%s: warning: %s\n' "$PROG" "$*" >&2
+	log_to_file WARN "$*"
+}
+
+err() {
+	printf '%s: error: %s\n' "$PROG" "$*" >&2
+	log_to_file ERROR "$*"
+}
+
+die() {
+	err "$*"
+	exit 1
+}
+
+info() { printf '%s\n' "$*"; }
+
+verbose() {
+	if [ "$OPT_VERBOSE" = 1 ]; then printf '%s: %s\n' "$PROG" "$*" >&2; fi
+}
+
+# ---------------------------------------------------------------------------
+# Options
+# ---------------------------------------------------------------------------
+
+OPT_KEEP=0
+OPT_FORCE=0
+OPT_VERBOSE=0
+OPT_GITIGNORE=1
+
+# Positional arguments left after parse_options.
+ARGS=()
+
+usage() {
+	cat <<EOF
+Usage: $PROG [OPTIONS] PATH...
+
+Move files or directories into the scratchpad ($SCRATCHPAD_DIR).
+
+Options:
+  -k, --[no-]keep        copy PATH instead of moving it (default: no)
+  -f, --force            skip all confirmation prompts
+  -v, --verbose          print each file as it moves
+      --[no-]gitignore   skip files that .gitignore ignores (default: yes)
+  -h, --help             show this help
+
+Options and paths can mix. Use "--" to end the options.
+
+Environment:
+  SCRATCHPAD_DIR   scratchpad root (default: ~/.scratchpad)
+  SCRATCH_ACTOR    name recorded in the ledger (default: detected agent or user)
+EOF
+}
+
+# EXTEND: map a short flag to its long name.
+short_to_long() {
+	case "$1" in
+	k) echo keep ;;
+	f) echo force ;;
+	v) echo verbose ;;
+	h) echo help ;;
+	*) return 1 ;;
+	esac
+}
+
+# EXTEND: print 1 for a flag that takes a value, 0 otherwise.
+option_arity() {
+	case "$1" in
+	*) echo 0 ;;
+	esac
+}
+
+# EXTEND: apply one flag. NAME is the long name without "--".
+apply_option() {
+	local name=$1 value=${2-}
+	case "$name" in
+	keep) OPT_KEEP=1 ;;
+	no-keep) OPT_KEEP=0 ;;
+	force) OPT_FORCE=1 ;;
+	verbose) OPT_VERBOSE=1 ;;
+	gitignore) OPT_GITIGNORE=1 ;;
+	no-gitignore) OPT_GITIGNORE=0 ;;
+	help)
+		usage
+		exit 0
+		;;
+	*)
+		usage >&2
+		die "unknown option: --$name"
+		;;
+	esac
+	: "$value" # unused until a flag takes a value
+}
+
+# parse_options ARG... — apply flags left to right and collect paths in ARGS.
+# Flags follow getopt_long(3) conventions: "--name", "--name=value",
+# "--name value", "-abc" clusters, "-xVALUE", and "--" to end the options.
+parse_options() {
+	ARGS=()
+	local arg name value cluster c i
+	while [ $# -gt 0 ]; do
+		arg=$1
+		shift
+		case "$arg" in
+		--)
+			ARGS+=("$@")
+			return 0
+			;;
+		--?*=*)
+			name=${arg%%=*}
+			name=${name#--}
+			value=${arg#*=}
+			[ "$(option_arity "$name")" = 1 ] || die "option --$name takes no value"
+			apply_option "$name" "$value"
+			;;
+		--?*)
+			name=${arg#--}
+			if [ "$(option_arity "$name")" = 1 ]; then
+				[ $# -gt 0 ] || die "option --$name needs a value"
+				apply_option "$name" "$1"
+				shift
+			else
+				apply_option "$name"
+			fi
+			;;
+		-?*)
+			cluster=${arg#-}
+			i=0
+			while [ $i -lt ${#cluster} ]; do
+				c=${cluster:$i:1}
+				i=$((i + 1))
+				name=$(short_to_long "$c") || {
+					usage >&2
+					die "unknown option: -$c"
+				}
+				if [ "$(option_arity "$name")" = 1 ]; then
+					if [ $i -lt ${#cluster} ]; then
+						value=${cluster:$i}
+					else
+						[ $# -gt 0 ] || die "option -$c needs a value"
+						value=$1
+						shift
+					fi
+					apply_option "$name" "$value"
+					break
+				fi
+				apply_option "$name"
+			done
+			;;
+		*)
+			ARGS+=("$arg")
+			;;
+		esac
+	done
+}
+
+# ---------------------------------------------------------------------------
+# File filters
+#
+# A filter reads NUL-separated absolute paths on stdin and writes the paths it
+# keeps on stdout. It reads the per-path context from the CTX_* globals. A flag
+# that changes the set of files adds its filter in build_filters.
+# ---------------------------------------------------------------------------
+
+FILTERS=()
+
+# EXTEND: append a filter name for each active flag.
+build_filters() {
+	FILTERS=()
+	if [ "$OPT_GITIGNORE" = 1 ]; then FILTERS+=(gitignore); fi
+}
+
+# Drop the paths that git ignores. Tracked files always stay.
+filter_gitignore() {
+	if [ -z "$CTX_FILTER_REPO" ]; then
+		cat
+		return 0
+	fi
+	# -v -n prints 4 fields per path; an empty source means "not ignored", and
+	# a "!" pattern means a negation matched, which also means "not ignored".
+	{ git -C "$CTX_FILTER_REPO" check-ignore -z -v -n --stdin || [ $? -eq 1 ]; } |
+		while IFS= read -r -d '' src && IFS= read -r -d '' _line &&
+			IFS= read -r -d '' pat && IFS= read -r -d '' path; do
+			if [ -n "$src" ] && [ "${pat#!}" = "$pat" ]; then continue; fi
+			printf '%s\0' "$path"
+		done
+}
+
+# run_filters IN OUT — pass the NUL list in file IN through every filter.
+run_filters() {
+	local in=$1 out=$2 f
+	cp -- "$in" "$out"
+	for f in ${FILTERS[@]+"${FILTERS[@]}"}; do
+		"filter_$f" <"$out" >"$out.next"
+		mv -- "$out.next" "$out"
+	done
+}
+
+count_nul() { tr -cd '\0' <"$1" | wc -c | tr -d ' '; }
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+# confirm PROMPT — ask on the terminal. --force answers yes.
+confirm() {
+	if [ "$OPT_FORCE" = 1 ]; then return 0; fi
+	if ! { exec 3<>/dev/tty; } 2>/dev/null; then
+		warn "no terminal to confirm \"$1\"; pass --force to skip prompts"
+		return 1
+	fi
+	local answer=""
+	printf '%s [y/N] ' "$1" >&3
+	IFS= read -r answer <&3 || true
+	exec 3>&-
+	case "$answer" in
+	y | Y | yes | YES) return 0 ;;
+	*) return 1 ;;
+	esac
+}
+
+# abs_path PATH — absolute path with every parent resolved, last part kept.
+abs_path() {
+	local p=$1 dir base
+	case "$p" in
+	. | ..)
+		(cd -P -- "$p" && pwd -P)
+		return
+		;;
+	esac
+	dir=$(dirname -- "$p")
+	base=$(basename -- "$p")
+	dir=$(cd -P -- "$dir" && pwd -P) || return 1
+	case "$base" in
+	..) (cd -P -- "$dir/.." && pwd -P) ;;
+	.) printf '%s\n' "$dir" ;;
+	*) printf '%s\n' "${dir%/}/$base" ;;
+	esac
+}
+
+# strip_slashes PATH — "foo//" -> "foo", "/" stays "/".
+strip_slashes() {
+	local p=$1
+	while [ "${#p}" -gt 1 ] && [ "${p%/}" != "$p" ]; do p=${p%/}; done
+	printf '%s\n' "$p"
+}
+
+# is_under CHILD PARENT — CHILD equals PARENT or sits inside it.
+is_under() {
+	[ "$1" = "$2" ] || [ "${1#"${2%/}"/}" != "$1" ]
+}
+
+# yaml_str VALUE — a double-quoted YAML scalar.
+yaml_str() {
+	local s=$1
+	s=${s//\\/\\\\}
+	s=${s//\"/\\\"}
+	s=${s//$'\n'/\\n}
+	s=${s//$'\t'/\\t}
+	s=${s//$'\r'/\\r}
+	printf '"%s"' "$s"
+}
+
+# yaml_str_or_null VALUE
+yaml_str_or_null() {
+	if [ -n "$1" ]; then yaml_str "$1"; else printf 'null'; fi
+}
+
+# detect_actor — the agent that runs this command, or the user.
+detect_actor() {
+	if [ -n "${SCRATCH_ACTOR:-}" ]; then
+		echo "$SCRATCH_ACTOR"
+	elif [ -n "${CLAUDECODE:-}" ]; then
+		echo "agent:claude-code"
+	elif [ -n "${CODEX_SANDBOX:-}${CODEX_THREAD_ID:-}" ]; then
+		echo "agent:codex"
+	elif [ -n "${GEMINI_CLI:-}" ]; then
+		echo "agent:gemini-cli"
+	elif [ -n "${CURSOR_AGENT:-}" ]; then
+		echo "agent:cursor"
+	elif [ -n "${OPENCODE:-}" ]; then
+		echo "agent:opencode"
+	else
+		echo "user:${USER:-$(id -un)}"
+	fi
+}
+
+# unique_target PATH KIND STAMP — PATH, or a free variant with STAMP added.
+# Files keep the extension last: quick.js -> quick.20261110T101500.js.
+unique_target() {
+	local t=$1 kind=$2 stamp=$3 dir base stem ext cand n=1
+	if [ ! -e "$t" ] && [ ! -L "$t" ]; then
+		printf '%s\n' "$t"
+		return
+	fi
+	dir=$(dirname -- "$t")
+	base=$(basename -- "$t")
+	stem=$base
+	ext=""
+	if [ "$kind" = file ] && [[ "$base" == ?*.* ]]; then
+		stem=${base%.*}
+		ext=.${base##*.}
+	fi
+	cand="$dir/$stem.$stamp$ext"
+	while [ -e "$cand" ] || [ -L "$cand" ]; do
+		cand="$dir/$stem.$stamp-$n$ext"
+		n=$((n + 1))
+	done
+	printf '%s\n' "$cand"
+}
+
+# transfer SRC DST — move or copy one entry, per --keep.
+transfer() {
+	local v=()
+	if [ "$OPT_VERBOSE" = 1 ]; then v=(-v); fi
+	if [ "$OPT_KEEP" = 1 ]; then
+		cp -RPp ${v[@]+"${v[@]}"} -- "$1" "$2"
+	else
+		mv ${v[@]+"${v[@]}"} -- "$1" "$2"
+	fi
+}
+
+# with_lock CMD... — run CMD while holding the ledger lock.
+with_lock() {
+	local lock="$SCRATCHPAD_DIR/.ledger.lock" tries=0 rc=0
+	until mkdir -- "$lock" 2>/dev/null; do
+		tries=$((tries + 1))
+		if [ $tries -ge 100 ]; then
+			err "cannot take the ledger lock $lock; remove it if no $PROG runs"
+			return 1
+		fi
+		sleep 0.1
+	done
+	"$@" || rc=$?
+	rmdir -- "$lock" 2>/dev/null || true
+	return $rc
+}
+
+append_ledger() { cat -- "$1" >>"$LEDGER_FILE"; }
+
+# ---------------------------------------------------------------------------
+# Per-path work
+# ---------------------------------------------------------------------------
+
+# Context of the path in progress, read by filters and the ledger.
+CTX_ABS=""          # resolved absolute PATH
+CTX_KIND=""         # file | directory
+CTX_GIT_ROOT=""     # repo that contains PATH, if any
+CTX_FILTER_REPO=""  # repo the git filters use; empty when PATH is the root
+CTX_REFERENCE=""    # REFERENCE_PATH
+CTX_REL=""          # FILENAME, relative to CTX_REFERENCE
+
+# validate_path PATH — refuse links, missing paths, and scratchpad paths.
+validate_path() {
+	local raw=$1 p abs
+	p=$(strip_slashes "$raw")
+	if [ -L "$p" ]; then
+		local target
+		target=$(readlink -f -- "$p" 2>/dev/null) || target="(unresolved)"
+		err "$raw is a symbolic link to $target; scratch the original instead"
+		return 1
+	fi
+	if [ ! -e "$p" ]; then
+		err "$raw does not exist"
+		return 1
+	fi
+	abs=$(abs_path "$p") || {
+		err "cannot resolve $raw"
+		return 1
+	}
+	if is_under "$abs" "$SCRATCHPAD_REAL"; then
+		err "$raw is inside the scratchpad ($SCRATCHPAD_REAL)"
+		return 1
+	fi
+	if is_under "$SCRATCHPAD_REAL" "$abs"; then
+		err "$raw contains the scratchpad ($SCRATCHPAD_REAL)"
+		return 1
+	fi
+	if [ "$abs" = / ]; then
+		err "refusing to scratch /"
+		return 1
+	fi
+}
+
+# resolve_context ABS — fill the CTX_* globals for ABS.
+resolve_context() {
+	local abs=$1 dir root
+	CTX_ABS=$abs
+	if [ -d "$abs" ]; then CTX_KIND=directory; else CTX_KIND=file; fi
+
+	if [ "$CTX_KIND" = directory ]; then dir=$abs; else dir=$(dirname -- "$abs"); fi
+	if [ "$(git -C "$dir" rev-parse --is-inside-git-dir 2>/dev/null)" = true ]; then
+		die "$abs is inside a .git directory"
+	fi
+
+	CTX_GIT_ROOT=""
+	if root=$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null) && [ -n "$root" ]; then
+		CTX_GIT_ROOT=$(cd -P -- "$root" && pwd -P)
+	fi
+
+	if [ -n "$CTX_GIT_ROOT" ] && [ "$abs" != "$CTX_GIT_ROOT" ]; then
+		CTX_FILTER_REPO=$CTX_GIT_ROOT
+		CTX_REFERENCE=$CTX_GIT_ROOT
+	else
+		# Outside a repo, or PATH is the repo root itself.
+		CTX_FILTER_REPO=""
+		CTX_REFERENCE=$(dirname -- "$abs")
+	fi
+	CTX_REL=${abs#"${CTX_REFERENCE%/}"/}
+}
+
+# git_field CMD... — run a git query in the repo, print "" on failure.
+git_field() { git -C "$CTX_GIT_ROOT" "$@" 2>/dev/null || true; }
+
+# write_record FILE TARGET TIME LISTFILE EXCLUDED [HEAD BRANCH STATE]
+write_record() {
+	local out=$1 target=$2 when=$3 list=$4 excluded=$5
+	local head=${6-} branch=${7-} state=${8-} f
+	{
+		printf -- '- original_path: %s\n' "$(yaml_str "$CTX_ABS")"
+		printf '  scratch_path: %s\n' "$(yaml_str "$target")"
+		printf '  kind: %s\n' "$CTX_KIND"
+		if [ "$OPT_KEEP" = 1 ]; then printf '  action: copy\n'; else printf '  action: move\n'; fi
+		printf '  time: %s\n' "$(yaml_str "$when")"
+		printf '  ran_by: %s\n' "$(yaml_str "$ACTOR")"
+		if [ "$CTX_KIND" = directory ]; then
+			printf '  excluded_count: %s\n' "$excluded"
+			if [ -s "$list" ]; then
+				printf '  files:\n'
+				while IFS= read -r -d '' f; do
+					printf '    - %s\n' "$(yaml_str "${f#"$CTX_ABS"/}")"
+				done <"$list"
+			else
+				printf '  files: []\n'
+			fi
+		fi
+		if [ -n "$CTX_GIT_ROOT" ]; then
+			printf '  git:\n'
+			printf '    root: %s\n' "$(yaml_str "$CTX_GIT_ROOT")"
+			printf '    head: %s\n' "$(yaml_str_or_null "$head")"
+			printf '    branch: %s\n' "$(yaml_str_or_null "$branch")"
+			printf '    state: %s\n' "$state"
+		fi
+	} >"$out"
+}
+
+# scratch_one PATH — scratch one validated path. Runs in a subshell.
+scratch_one() {
+	local p
+	p=$(strip_slashes "$1")
+
+	case "$p" in
+	/*)
+		warn "$p is an absolute path"
+		confirm "Scratch absolute path $p?" || {
+			info "skipped $p"
+			return 0
+		}
+		cd -P -- "$(dirname -- "$p")" || die "cannot cd into $(dirname -- "$p")"
+		p=$(basename -- "$p")
+		verbose "working from $PWD"
+		;;
+	esac
+
+	resolve_context "$(abs_path "$p")"
+	verbose "reference: $CTX_REFERENCE"
+	verbose "relative path: $CTX_REL"
+
+	local verb=move
+	if [ "$OPT_KEEP" = 1 ]; then verb=copy; fi
+	if [ "$CTX_KIND" = directory ]; then
+		warn "$CTX_ABS is a directory"
+		confirm "Recursively $verb $CTX_ABS?" || {
+			info "skipped $CTX_ABS"
+			return 0
+		}
+	fi
+	if [ -n "$CTX_GIT_ROOT" ] && [ -z "$CTX_FILTER_REPO" ]; then
+		warn "$CTX_ABS is a repository root; the .gitignore rules do not apply"
+	fi
+
+	# Capture the repo state before the move changes it.
+	local head="" branch="" state=""
+	if [ -n "$CTX_GIT_ROOT" ]; then
+		head=$(git_field rev-parse --verify -q HEAD)
+		branch=$(git_field symbolic-ref -q --short HEAD)
+		if [ -n "$(git_field status --porcelain)" ]; then state=DIRTY; else state=CLEAN; fi
+	fi
+
+	# Build the file set and pass it through the filters.
+	local all="$WORK_DIR/all.$BASHPID_SAFE" kept="$WORK_DIR/kept.$BASHPID_SAFE"
+	if [ "$CTX_KIND" = directory ]; then
+		find "$CTX_ABS" \( -type f -o -type l \) -print0 >"$all"
+	else
+		printf '%s\0' "$CTX_ABS" >"$all"
+	fi
+	run_filters "$all" "$kept"
+	local n_all n_kept excluded
+	n_all=$(count_nul "$all")
+	n_kept=$(count_nul "$kept")
+	excluded=$((n_all - n_kept))
+
+	if [ "$CTX_KIND" = file ] && [ "$n_kept" -eq 0 ]; then
+		warn "$CTX_ABS matches a .gitignore rule; skipped (use --no-gitignore)"
+		return 0
+	fi
+	if [ "$CTX_KIND" = directory ] && [ "$n_all" -gt 0 ] && [ "$n_kept" -eq 0 ]; then
+		warn "every file in $CTX_ABS matches a .gitignore rule; skipped (use --no-gitignore)"
+		return 0
+	fi
+
+	local slug stamp target when
+	slug=${CTX_REFERENCE//\//-}
+	stamp=$(date +%Y%m%dT%H%M%S)
+	when=$(date +%Y-%m-%dT%H:%M:%S%z)
+	target=$(unique_target "$SCRATCHPAD_REAL/sources/$slug/$CTX_REL" "$CTX_KIND" "$stamp")
+	if [ "$target" != "$SCRATCHPAD_REAL/sources/$slug/$CTX_REL" ]; then
+		warn "$SCRATCHPAD_REAL/sources/$slug/$CTX_REL exists; using $target"
+	fi
+	mkdir -p -- "$(dirname -- "$target")"
+
+	if [ "$excluded" -eq 0 ]; then
+		transfer "$CTX_ABS" "$target"
+	else
+		# The filters dropped files: transfer the kept files one by one.
+		verbose "$excluded file(s) excluded by the filters stay in place"
+		local f rel
+		mkdir -p -- "$target"
+		while IFS= read -r -d '' f; do
+			rel=${f#"$CTX_ABS"/}
+			mkdir -p -- "$target/$(dirname -- "$rel")"
+			transfer "$f" "$target/$rel"
+		done <"$kept"
+		if [ "$OPT_KEEP" = 0 ]; then
+			find "$CTX_ABS" -depth -type d -empty -delete 2>/dev/null || true
+		fi
+	fi
+
+	local record="$WORK_DIR/record.$BASHPID_SAFE"
+	write_record "$record" "$target" "$when" "$kept" "$excluded" "$head" "$branch" "$state"
+	with_lock append_ledger "$record" || err "the ledger misses the record for $CTX_ABS"
+
+	# In verbose mode, mv/cp -v already printed this line for a single file.
+	if [ "$OPT_VERBOSE" = 0 ] || [ "$CTX_KIND" = directory ]; then
+		info "$CTX_ABS -> $target"
+	fi
+}
+
+# ---------------------------------------------------------------------------
+# Subcommands
+# ---------------------------------------------------------------------------
+
+# EXTEND: list subcommand names here and define cmd_<name> for each. The first
+# argument picks a subcommand only when it matches a name here, so a path with
+# the same name needs "--" in front of it: `scratch -- NAME`.
+SUBCOMMANDS=""
+
+# The default command: scratch every PATH.
+cmd_scratch() {
+	parse_options "$@"
+	build_filters
+	[ ${#ARGS[@]} -gt 0 ] || {
+		usage >&2
+		exit 2
+	}
+
+	mkdir -p -- "$SCRATCHPAD_DIR/sources"
+	SCRATCHPAD_REAL=$(cd -P -- "$SCRATCHPAD_DIR" && pwd -P)
+	ACTOR=$(detect_actor)
+
+	# Validate every path before any of them moves.
+	local p bad=0
+	for p in "${ARGS[@]}"; do
+		validate_path "$p" || bad=1
+	done
+	[ $bad = 0 ] || exit 1
+
+	local failed=0 i=0
+	for p in "${ARGS[@]}"; do
+		i=$((i + 1))
+		BASHPID_SAFE=$i
+		(scratch_one "$p") || {
+			err "failed to scratch $p"
+			failed=1
+		}
+	done
+	return $failed
+}
+
+main() {
+	local cmd=scratch name
+	if [ $# -gt 0 ]; then
+		for name in $SUBCOMMANDS; do
+			if [ "$1" = "$name" ]; then
+				cmd=$name
+				shift
+				break
+			fi
+		done
+	fi
+	"cmd_$cmd" "$@"
+}
+
+WORK_DIR=$(mktemp -d "${TMPDIR:-/tmp}/scratch.XXXXXX")
+trap 'rm -rf -- "$WORK_DIR"' EXIT
+
+main "$@"
