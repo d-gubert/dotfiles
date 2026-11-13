@@ -71,6 +71,7 @@ OPT_KEEP=0
 OPT_FORCE=0
 OPT_VERBOSE=0
 OPT_GITIGNORE=1
+OPT_GIT_UNTRACKED=0
 
 # Positional arguments left after parse_options.
 ARGS=()
@@ -78,6 +79,7 @@ ARGS=()
 usage() {
 	cat <<EOF
 Usage: $PROG [OPTIONS] PATH...
+       $PROG [OPTIONS] --git-untracked
 
 Move files or directories into the scratchpad ($SCRATCHPAD_DIR).
 
@@ -86,6 +88,8 @@ Options:
   -f, --force            skip all confirmation prompts
   -v, --verbose          print each file as it moves
       --[no-]gitignore   skip files that .gitignore ignores (default: yes)
+      --git-untracked    scratch the untracked files under the current directory;
+                         takes no PATH and needs a git repo
   -h, --help             show this help
 
 Options and paths can mix. Use "--" to end the options.
@@ -124,6 +128,7 @@ apply_option() {
 	verbose) OPT_VERBOSE=1 ;;
 	gitignore) OPT_GITIGNORE=1 ;;
 	no-gitignore) OPT_GITIGNORE=0 ;;
+	git-untracked) OPT_GIT_UNTRACKED=1 ;;
 	help)
 		usage
 		exit 0
@@ -599,10 +604,28 @@ scratch_one() {
 # the same name needs "--" in front of it: `scratch -- NAME`.
 SUBCOMMANDS=""
 
+# collect_untracked — fill ARGS with the untracked files under the current
+# directory. --no-gitignore adds the ignored files too.
+collect_untracked() {
+	[ ${#ARGS[@]} -eq 0 ] || die "--git-untracked takes no PATH"
+	[ "$(git rev-parse --is-inside-work-tree 2>/dev/null)" = true ] ||
+		die "--git-untracked needs a git repo; $PWD is not in one"
+	local excl=() f list="$WORK_DIR/untracked"
+	if [ "$OPT_GITIGNORE" = 1 ]; then excl=(--exclude-standard); fi
+	git ls-files -z --others ${excl[@]+"${excl[@]}"} -- . >"$list" ||
+		die "cannot list the untracked files"
+	while IFS= read -r -d '' f; do ARGS+=("$f"); done <"$list"
+	if [ ${#ARGS[@]} -eq 0 ]; then
+		info "no untracked files in $PWD"
+		exit 0
+	fi
+}
+
 # The default command: scratch every PATH.
 cmd_scratch() {
 	parse_options "$@"
 	build_filters
+	if [ "$OPT_GIT_UNTRACKED" = 1 ]; then collect_untracked; fi
 	[ ${#ARGS[@]} -gt 0 ] || {
 		usage >&2
 		exit 2
