@@ -1,0 +1,78 @@
+# Base egress allowlist for every devbox sandbox.
+#
+# One entry per line, `#` starts a comment. An entry is an exact host
+# (`example.com`, port 443 assumed), a host with a port (`example.com:8080`), a
+# single-label wildcard (`*.example.com` — one label, so not `a.b.example.com`),
+# or a CIDR. sbx enforces the first three today and accepts the rest as declared.
+#
+# This file is the *floor*: what the image's own toolchain needs. Two other
+# things add to it, and neither belongs here:
+#
+#   projects/<profile>/allowed-domains        merged for the matching workspace
+#   DEVBOX_ALLOW_DOMAINS=a.example b.example  one-off, at `devbox up` time
+#
+# scripts/build-kit.sh merges the three into `permissions.network.allow` in the
+# generated kit, and `sbx create --kit` applies it to the sandbox. Changing any
+# of them takes effect on `devbox rebuild` — a kit's rules are chosen at create
+# time, so a restart is no longer enough. Confirm what landed with
+# `devbox status`, which prints the sandbox's active policy.
+#
+# It is only an allowlist if the machine denies by default. A kit's rules are
+# added on top of the global policy, so under `allow-all` egress is open and
+# every line here is decoration:
+#
+#   sbx policy init deny-all
+#
+# Anthropic's own hosts are NOT here: the built-in `claude` kit declares
+# api.anthropic.com, platform.claude.com, claude.com, downloads.claude.ai,
+# mcp-proxy.anthropic.com and bridge.claudeusercontent.com, and sbx merges its
+# list with this one. Only what that kit misses is listed below.
+#
+# https://code.claude.com/docs/en/network-config#network-access-requirements
+
+# --- GitHub -------------------------------------------------------------------
+# Also the five domains the kit's `github` credential injects into, and the spec
+# requires every one of those to appear in an allow list.
+github.com
+api.github.com
+codeload.github.com
+raw.githubusercontent.com
+objects.githubusercontent.com
+
+# --- Node / package registries ------------------------------------------------
+registry.npmjs.org
+registry.yarnpkg.com
+repo.yarnpkg.com
+nodejs.org
+
+# --- Claude Code --------------------------------------------------------------
+# What the built-in kit's own list leaves out: error reporting, and the feature
+# gates. Claude Code's telemetry host is statsig.anthropic.com, but that name has
+# no public A record; it lands on Statsig's CDN, which these two cover.
+sentry.io
+statsig.com
+featuregates.org
+
+# --- Playwright ---------------------------------------------------------------
+# Where `playwright install` fetches browser builds from. The CDN moved hosts
+# between versions, so all three are listed. The download lands in the shared
+# ~/.cache/devbox/ms-playwright, so it happens once for every workspace.
+cdn.playwright.dev
+playwright.azureedge.net
+playwright.download.prss.microsoft.com
+
+# --- The host machine ---------------------------------------------------------
+# The one route out of the VM to something running on this machine. Claude Code's
+# OTLP export uses it (scripts/build-kit.sh), and the rocketchat profile reaches
+# the shared MongoDB over it.
+#
+# Nothing on the host is reachable without a published port on the host side: the
+# sandbox has its own network namespace, so `localhost` in here is the VM.
+host.docker.internal
+
+# --- Editors ------------------------------------------------------------------
+# For attaching VS Code over `sbx setup ssh`, which downloads its own server into
+# the sandbox on first connect.
+marketplace.visualstudio.com
+vscode.blob.core.windows.net
+update.code.visualstudio.com

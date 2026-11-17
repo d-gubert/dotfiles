@@ -1,6 +1,0 @@
-# Declared without `external`, so compose creates them and prefixes them with the
-# workspace's project name — one node_modules and one .meteor/local per checkout,
-# which is what these two want. (The caches that should be *shared* are external
-# with fixed names; see ../../../docker-compose.yml.)
-node-modules: {}
-meteor-local: {}
